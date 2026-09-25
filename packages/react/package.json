@@ -1,0 +1,29 @@
+{
+  "name": "@danfessler/trellis-react",
+  "version": "0.1.0",
+  "description": "React bindings for Trellis: dockable, zoomable workspaces for web tools.",
+  "type": "module",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "author": "Dan Fessler",
+  "homepage": "https://github.com/DanFessler/trellis",
+  "repository": { "type": "git", "url": "git+https://github.com/DanFessler/trellis.git", "directory": "packages/react" },
+  "keywords": ["react", "docking", "layout", "tabs", "panels", "workspace"],
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "LICENSE*.md", "README.md"],
+  "peerDependencies": {
+    "@danfessler/trellis": "^0.1.0",
+    "react": ">=18.3",
+    "react-dom": ">=18.3"
+  },
+  "scripts": {
+    "build": "tsup && cp ../../LICENSE*.md .",
+    "prepack": "npm run build"
+  }
+}

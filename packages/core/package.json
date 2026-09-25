@@ -1,0 +1,25 @@
+{
+  "name": "@danfessler/trellis",
+  "version": "0.1.0",
+  "description": "Dockable, zoomable workspaces for web tools. Framework-agnostic core.",
+  "type": "module",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "author": "Dan Fessler",
+  "homepage": "https://github.com/DanFessler/trellis",
+  "repository": { "type": "git", "url": "git+https://github.com/DanFessler/trellis.git", "directory": "packages/core" },
+  "keywords": ["docking", "layout", "tabs", "panels", "workspace", "window-manager", "split-view"],
+  "sideEffects": ["*.css"],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./style.css": "./dist/style.css",
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "LICENSE*.md", "README.md"],
+  "scripts": {
+    "build": "tsup && cp src/style.css dist/style.css && cp ../../LICENSE*.md .",
+    "prepack": "npm run build"
+  }
+}

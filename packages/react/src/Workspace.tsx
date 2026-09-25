@@ -1,0 +1,482 @@
+import {
+  Children,
+  createContext,
+  Fragment,
+  isValidElement,
+  useContext,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type ReactElement,
+  type ReactNode,
+  type Ref,
+} from "react";
+import { createPortal } from "react-dom";
+import {
+  createWorkspace,
+  type Edge,
+  type FloatingLayer,
+  type Keymap,
+  type LayoutDocument,
+  type LayoutSpec,
+  type MenuEntry,
+  type Params,
+  type Placement,
+  type Surface,
+  type Theme,
+  type ViewHandle,
+  type ViewInfo,
+  type ViewRules,
+  type ViewState,
+  type ViewTypeDefinition,
+  type WorkspaceHandle,
+  type WorkspaceSnapshot,
+} from "@danfessler/trellis";
+
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+// ------------------------------------------------------------------ contexts
+const WorkspaceContext = createContext<WorkspaceHandle | null>(null);
+const ViewContext = createContext<ViewHandle | null>(null);
+
+/** The workspace's imperative handle. Available inside `<Workspace>` and in view content. */
+export function useWorkspace(): WorkspaceHandle {
+  const ws = useContext(WorkspaceContext);
+  if (!ws) throw Error("Trellis: useWorkspace() must be used inside <Workspace>");
+  return ws;
+}
+/** Like useWorkspace, but returns null outside a workspace or before it mounts. */
+export function useOptionalWorkspace(): WorkspaceHandle | null {
+  return useContext(WorkspaceContext);
+}
+
+/** Subscribe to workspace state (layout, focus, hidden panels, navigation). */
+export function useWorkspaceState(): WorkspaceSnapshot {
+  const ws = useWorkspace();
+  return useSyncExternalStore(ws.subscribe, ws.getSnapshot, ws.getSnapshot);
+}
+/** Select part of the workspace state; re-renders only when the selection changes. */
+export function useWorkspaceSelector<T>(select: (s: WorkspaceSnapshot) => T, equal: (a: T, b: T) => boolean = Object.is): T {
+  const ws = useWorkspace();
+  const last = useRef<{ value: T } | null>(null);
+  const get = () => {
+    const next = select(ws.getSnapshot());
+    if (last.current && equal(last.current.value, next)) return last.current.value;
+    last.current = { value: next };
+    return next;
+  };
+  return useSyncExternalStore(ws.subscribe, get, get);
+}
+
+export type ViewApi<P extends Params = Params> = ViewHandle<P> & ViewState & { params: P };
+
+/** The view whose content is rendering. Re-renders when its presentation state settles. */
+export function useView<P extends Params = Params>(): ViewApi<P> {
+  const view = useContext(ViewContext) as ViewHandle<P> | null;
+  if (!view) throw Error("Trellis: useView() must be used inside view content");
+  const state = useSyncExternalStore(view.subscribe, view.getState, view.getState);
+  return useMemo(
+    () =>
+      ({
+        ...state,
+        id: view.id,
+        type: view.type,
+        workspace: view.workspace,
+        setTitle: (title: string) => view.setTitle(title),
+        setParams: (patch: Partial<P>) => view.setParams(patch),
+        setBadge: (badge: string | number | null) => view.setBadge(badge),
+        focus: () => view.focus(),
+        close: (options?: { force?: boolean }) => view.close(options),
+        hide: () => view.hide(),
+        guardClose: (guard: () => boolean | Promise<boolean>) => view.guardClose(guard),
+        on: ((event: any, handler: any) => view.on(event, handler)) as ViewHandle<P>["on"],
+        subscribe: view.subscribe,
+        getState: view.getState,
+      }) as ViewApi<P>,
+    [view, state],
+  );
+}
+/** Like useView, but null outside view content (e.g. in shared components). */
+export function useOptionalView(): ViewHandle | null {
+  return useContext(ViewContext);
+}
+/** Keep the tab title in sync with a value. */
+export function useViewTitle(title: string | null | undefined) {
+  const view = useContext(ViewContext);
+  useEffect(() => {
+    if (view && title) view.setTitle(title);
+  }, [view, title]);
+}
+/** Show a badge on the view's tab. */
+export function useViewBadge(badge: string | number | null | undefined) {
+  const view = useContext(ViewContext);
+  useEffect(() => {
+    if (!view) return;
+    view.setBadge(badge ?? null);
+    return () => view.setBadge(null);
+  }, [view, badge]);
+}
+/** Veto closing: return false (or resolve false) to keep the view open. */
+export function useCloseGuard(guard: () => boolean | Promise<boolean>) {
+  const view = useContext(ViewContext);
+  const ref = useRef(guard);
+  ref.current = guard;
+  useEffect(() => view?.guardClose(() => ref.current()), [view]);
+}
+
+// ------------------------------------------------------------------ declarative components
+type Renderable<P extends Params> = ReactNode | ((view: ViewApi<P>) => ReactNode);
+
+export interface ViewTypeProps<P extends Params = Params> extends ViewRules {
+  /** Unique type name. `<View type>` and `open(type)` refer to it. */
+  id: string;
+  title?: string | ((view: ViewHandle<P>) => string);
+  /** A React node, or trusted SVG/HTML markup as a string. */
+  icon?: ReactNode;
+  /** Content for each view. Receives nothing; use `useView()` inside. */
+  children?: ReactNode;
+  /** Alternative to children: render from the view's params and state. */
+  render?: (view: ViewApi<P>) => ReactNode;
+  /** Shown in the tab bar while this view is selected. */
+  accessory?: Renderable<P>;
+  iframe?: string | ((view: ViewHandle<P>) => string);
+  mount?: ViewTypeDefinition<P>["mount"];
+  menu?: MenuEntry[] | ((view: ViewHandle<P>) => MenuEntry[]);
+  gestures?: "content" | "workspace";
+  className?: string;
+}
+/** Register a kind of view. Renders nothing itself. */
+export function ViewType<P extends Params = Params>(_props: ViewTypeProps<P>): null {
+  return null;
+}
+
+export interface SplitProps {
+  axis?: "x" | "y";
+  weights?: number[];
+  id?: string;
+  children?: ReactNode;
+}
+/** Initial layout: a weighted row (`axis="x"`, default) or column. */
+export function Split(_props: SplitProps): null {
+  return null;
+}
+export interface PanelProps {
+  id?: string;
+  /** Index of the initially selected view. */
+  selected?: number;
+  children?: ReactNode;
+}
+/** Initial layout: a tab group. */
+export function Panel(_props: PanelProps): null {
+  return null;
+}
+export interface ViewProps {
+  type: string;
+  id?: string;
+  params?: Params;
+  title?: string;
+}
+/** Initial layout: one view. A bare view is wrapped in its own panel. */
+export function View(_props: ViewProps): null {
+  return null;
+}
+export interface StageProps {
+  id?: string;
+  /** Rendered behind the stage's panels (e.g. a single-document canvas or wallpaper). */
+  backdrop?: ReactNode;
+  /** Rendered when the stage has no panels. */
+  empty?: ReactNode;
+  children?: ReactNode;
+}
+/** The primary region. At most one per workspace. */
+export function Stage(_props: StageProps): null {
+  return null;
+}
+/** Rendered when the workspace has nothing in it. */
+function Empty(_props: { children?: ReactNode }): null {
+  return null;
+}
+/** A full-size layer above the workspace for your own overlays. */
+function Chrome(_props: { children?: ReactNode }): null {
+  return null;
+}
+
+// ------------------------------------------------------------------ parsing
+interface Parsed {
+  types: ViewTypeProps<any>[];
+  layout: LayoutSpec | null;
+  stage: StageProps | null;
+  empty: ReactNode;
+  chrome: ReactNode;
+}
+function flatten(children: ReactNode): ReactElement[] {
+  const out: ReactElement[] = [];
+  Children.forEach(children, (child) => {
+    if (!isValidElement(child)) return;
+    if (child.type === Fragment) out.push(...flatten((child.props as { children?: ReactNode }).children));
+    else out.push(child);
+  });
+  return out;
+}
+function parse(children: ReactNode): Parsed {
+  const parsed: Parsed = { types: [], layout: null, stage: null, empty: null, chrome: null };
+  const layouts: LayoutSpec[] = [];
+  const toSpec = (el: ReactElement): LayoutSpec | null => {
+    const props = el.props as any;
+    if (el.type === View) return { kind: "view", type: props.type, id: props.id, params: props.params, title: props.title };
+    if (el.type === Panel)
+      return {
+        kind: "panel",
+        id: props.id,
+        selected: props.selected,
+        views: flatten(props.children)
+          .filter((c) => c.type === View)
+          .map((c) => toSpec(c) as Extract<LayoutSpec, { kind: "view" }>),
+      };
+    if (el.type === Split) {
+      const kids = flatten(props.children).map(toSpec).filter((x): x is LayoutSpec => !!x);
+      return { kind: "split", axis: props.axis ?? "x", weights: props.weights, id: props.id, children: kids };
+    }
+    if (el.type === Stage) {
+      parsed.stage = props;
+      const kids = flatten(props.children).map(toSpec).filter((x): x is LayoutSpec => !!x);
+      const child = kids.length > 1 ? ({ kind: "split", axis: "x", children: kids } as LayoutSpec) : kids[0];
+      return { kind: "stage", id: props.id, child };
+    }
+    return null;
+  };
+  for (const el of flatten(children)) {
+    if (el.type === ViewType) parsed.types.push(el.props as ViewTypeProps);
+    else if (el.type === Empty) parsed.empty = (el.props as any).children;
+    else if (el.type === Chrome) parsed.chrome = (el.props as any).children;
+    else {
+      const spec = toSpec(el);
+      if (spec) layouts.push(spec);
+    }
+  }
+  parsed.layout = layouts.length > 1 ? { kind: "split", axis: "x", children: layouts } : (layouts[0] ?? null);
+  return parsed;
+}
+
+function isMarkup(icon: ReactNode): icon is string {
+  return typeof icon === "string";
+}
+
+// ------------------------------------------------------------------ Workspace
+export interface WorkspaceProps {
+  children?: ReactNode;
+  floating?: false | FloatingLayer;
+  navigation?: false | "focus" | "free";
+  motion?: "system" | "full" | "reduced";
+  theme?: Theme;
+  tokens?: Record<string, string>;
+  keymap?: Keymap;
+  panelMenu?: boolean;
+  label?: string;
+  /** Persist to localStorage under this key. Bump `version` when your default layout changes. */
+  storageKey?: string;
+  version?: string | number;
+  /** Initial layout, if you prefer data over JSX. JSX layout children take precedence. */
+  defaultLayout?: LayoutDocument | LayoutSpec | null;
+  /** Controlled layout. Pair with onDocumentChange. */
+  document?: LayoutDocument;
+  onDocumentChange?(document: LayoutDocument): void;
+  onOpen?(view: ViewInfo): void;
+  onClose?(view: ViewInfo): void;
+  onFocus?(viewId: string | null): void;
+  onNavigate?(framed: string | null): void;
+  onMissingType?(type: string, id: string): "drop" | "placeholder";
+  className?: string;
+  style?: CSSProperties;
+  ref?: Ref<WorkspaceHandle>;
+}
+
+export function Workspace(props: WorkspaceProps) {
+  const host = useRef<HTMLDivElement>(null);
+  const [ws, setWs] = useState<WorkspaceHandle | null>(null);
+  const parsed = parse(props.children);
+  const latest = useRef({ props, parsed });
+  latest.current = { props, parsed };
+
+  // Function props (title, menu, iframe, mount) are routed through stable wrappers that
+  // read the latest render, so changing their identity never remounts content.
+  const wrappers = useRef(new Map<string, (...args: any[]) => any>());
+  const wrap = (id: string, field: "title" | "iframe" | "mount" | "menu") => {
+    const key = `${id}\u0000${field}`;
+    let fn = wrappers.current.get(key);
+    if (!fn) {
+      fn = (...args: any[]) => {
+        const t = latest.current.parsed.types.find((x) => x.id === id) as any;
+        const value = t?.[field];
+        return typeof value === "function" ? value(...args) : value;
+      };
+      wrappers.current.set(key, fn);
+    }
+    return fn;
+  };
+  const toDefinition = (t: ViewTypeProps<any>): ViewTypeDefinition<any> => ({
+    placement: t.placement,
+    allow: t.allow,
+    singleton: t.singleton,
+    closable: t.closable,
+    minSize: t.minSize,
+    gestures: t.gestures,
+    className: t.className,
+    icon: isMarkup(t.icon) ? t.icon : undefined,
+    title: typeof t.title === "function" ? wrap(t.id, "title") : t.title,
+    iframe: typeof t.iframe === "function" ? wrap(t.id, "iframe") : t.iframe,
+    mount: t.mount ? wrap(t.id, "mount") : undefined,
+    menu: t.menu === undefined ? undefined : wrap(t.id, "menu"),
+  });
+  const typesKey = parsed.types
+    .map((t) =>
+      JSON.stringify([
+        t.id,
+        typeof t.title === "function" ? "ƒ" : t.title,
+        isMarkup(t.icon) ? t.icon : "",
+        typeof t.iframe === "function" ? "ƒ" : t.iframe,
+        !!t.mount,
+        t.menu === undefined,
+        t.placement,
+        t.allow,
+        t.singleton,
+        t.closable,
+        t.minSize,
+        t.gestures,
+        t.className,
+      ]),
+    )
+    .join("\n");
+  const buildTypes = () => {
+    const out: Record<string, ViewTypeDefinition> = {};
+    for (const t of latest.current.parsed.types) out[t.id] = toDefinition(t);
+    return out;
+  };
+
+  useIsomorphicLayoutEffect(() => {
+    const { props: p, parsed: initial } = latest.current;
+    const handle = createWorkspace(host.current!, {
+      types: buildTypes(),
+      floating: p.floating,
+      navigation: p.navigation,
+      motion: p.motion,
+      theme: p.theme,
+      tokens: p.tokens,
+      keymap: p.keymap,
+      panelMenu: p.panelMenu,
+      label: p.label,
+      document: p.document,
+      defaultLayout: initial.layout ?? p.defaultLayout ?? null,
+      persist: p.storageKey ? { key: p.storageKey, version: p.version } : undefined,
+      onMissingType: (type, id) => latest.current.props.onMissingType?.(type, id) ?? "placeholder",
+    });
+    const offs = [
+      handle.on("change", (doc) => {
+        lastEmitted.current = doc;
+        latest.current.props.onDocumentChange?.(doc);
+      }),
+      handle.on("open", (v) => latest.current.props.onOpen?.(v)),
+      handle.on("close", (v) => latest.current.props.onClose?.(v)),
+      handle.on("focus", (v) => latest.current.props.onFocus?.(v)),
+      handle.on("navigate", (v) => latest.current.props.onNavigate?.(v)),
+    ];
+    setWs(handle);
+    return () => {
+      offs.forEach((off) => off());
+      handle.destroy();
+      setWs(null);
+    };
+  }, []);
+
+  const lastEmitted = useRef<LayoutDocument | undefined>(undefined);
+  // Controlled document.
+  useIsomorphicLayoutEffect(() => {
+    if (!ws || !props.document) return;
+    if (props.document === lastEmitted.current) return;
+    lastEmitted.current = props.document;
+    ws.setDocument(props.document);
+  }, [ws, props.document]);
+
+  // Options that may change after mount.
+  const tokensKey = JSON.stringify(props.tokens ?? {});
+  const keymapKey = JSON.stringify(props.keymap ?? {});
+  useIsomorphicLayoutEffect(() => {
+    if (!ws) return;
+    ws.update({
+      floating: props.floating,
+      navigation: props.navigation,
+      motion: props.motion,
+      theme: props.theme,
+      tokens: props.tokens,
+      keymap: props.keymap,
+      panelMenu: props.panelMenu,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ws, props.floating, props.navigation, props.motion, props.theme, tokensKey, keymapKey, props.panelMenu]);
+  // Type registrations: data changes by key; functions refreshed every render through getters.
+  useIsomorphicLayoutEffect(() => {
+    if (ws) ws.update({ types: buildTypes() });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ws, typesKey]);
+
+  useImperativeHandle(props.ref, () => ws as WorkspaceHandle, [ws]);
+
+  const surfaces = useSyncExternalStore(
+    (notify) => (ws ? ws.on("surfaces", notify) : () => {}),
+    () => (ws ? ws.surfaces() : noSurfaces),
+    () => noSurfaces,
+  );
+
+  const typeById = new Map(parsed.types.map((t) => [t.id, t]));
+  return (
+    <WorkspaceContext.Provider value={ws}>
+      <div
+        ref={host}
+        className={props.className}
+        style={{ width: "100%", height: "100%", ...props.style }}
+        data-trellis-host=""
+      />
+      {ws &&
+        surfaces.map((surface) => (
+          <SurfacePortal key={surface.view.id} surface={surface} type={typeById.get(surface.view.type)} />
+        ))}
+      {ws && parsed.stage?.backdrop != null && createPortal(parsed.stage.backdrop, ws.slots.backdrop)}
+      {ws && parsed.stage?.empty != null && createPortal(parsed.stage.empty, ws.slots.stageEmpty)}
+      {ws && parsed.empty != null && createPortal(parsed.empty, ws.slots.empty)}
+      {ws && parsed.chrome != null && createPortal(parsed.chrome, ws.slots.chrome)}
+    </WorkspaceContext.Provider>
+  );
+}
+Workspace.Empty = Empty;
+Workspace.Chrome = Chrome;
+const noSurfaces: readonly Surface[] = [];
+
+function SurfacePortal({ surface, type }: { surface: Surface; type: ViewTypeProps<any> | undefined }) {
+  const view = surface.view;
+  return (
+    <ViewContext.Provider value={view}>
+      {type && !type.iframe && !type.mount && createPortal(<Content type={type} />, surface.content, view.id)}
+      {type && type.icon != null && !isMarkup(type.icon) && createPortal(type.icon, surface.icon)}
+      {type?.accessory != null && createPortal(<Accessory type={type} />, surface.accessory)}
+    </ViewContext.Provider>
+  );
+}
+function Content({ type }: { type: ViewTypeProps<any> }) {
+  if (type.render) return <RenderWithView render={type.render} />;
+  return <>{type.children}</>;
+}
+function RenderWithView({ render }: { render: (view: ViewApi<any>) => ReactNode }) {
+  const view = useView();
+  return <>{render(view)}</>;
+}
+function Accessory({ type }: { type: ViewTypeProps<any> }) {
+  if (typeof type.accessory === "function") return <RenderWithView render={type.accessory as any} />;
+  return <>{type.accessory}</>;
+}
+
+export type { Edge, Placement };

@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "paths": { "@danfessler/trellis": ["../core/src/index.ts"] } },
+  "include": ["src"]
+}
