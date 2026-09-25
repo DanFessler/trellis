@@ -109,7 +109,10 @@ function specFrom(el: Element): LayoutSpec | null {
  * Properties: `types` (merged over template types), `defaultLayout`, `document`, `options`, and `workspace` (the handle).
  * Events: trellis-ready, trellis-change, trellis-open, trellis-close, trellis-focus, trellis-navigate.
  */
-export class TrellisWorkspaceElement extends HTMLElement {
+// Importing on a server (SSR) must not throw; the element is only defined in browsers.
+const ElementBase = (typeof HTMLElement === "undefined" ? class {} : HTMLElement) as typeof HTMLElement;
+
+export class TrellisWorkspaceElement extends ElementBase {
   static observedAttributes = ["theme", "floating", "navigation", "motion", "panel-menu"];
   private handle: WorkspaceHandle | null = null;
   private pending = false;

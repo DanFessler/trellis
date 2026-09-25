@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@danfessler/trellis": ["../../packages/core/src/index.ts"],
+      "@danfessler/trellis-react": ["../../packages/react/src/index.ts"],
+      "@danfessler/trellis-element": ["../../packages/element/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

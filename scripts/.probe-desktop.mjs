@@ -1,11 +1,20 @@
 import { chromium } from "@playwright/test";
 const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
+p.on("pageerror", (e) => console.log("PAGEERROR", e.stack || String(e)));
+p.on("console", (m) => console.log("CONSOLE", m.type(), m.text()));
 await p.goto("http://localhost:5313", { waitUntil: "networkidle" });
 await p.waitForTimeout(800);
-console.log(await p.evaluate(() => {
-  const a = document.activeElement;
-  const cs = getComputedStyle(a);
-  return [a.outerHTML.slice(0, 200), cs.outline, cs.boxShadow, a.matches(":focus-visible")];
-}));
+await p.click('[data-dock-app="mail"]'); await p.waitForTimeout(700);
+const tab = p.locator('[data-trellis-part="tab-title"]:text-is("Notes")');
+const box = await tab.boundingBox();
+await p.mouse.move(box.x + 10, box.y + 5);
+await p.mouse.down();
+for (let i = 1; i <= 24; i++) { const t = i / 24; await p.mouse.move(box.x + (6 - box.x) * t, box.y + (420 - box.y) * t); await p.waitForTimeout(12); 
+  if (i % 6 === 0) console.log(i, await p.evaluate(() => { const r = document.querySelector('.trellis'); return [!!r, r && getComputedStyle(r).backgroundImage.slice(0,40), r?.getBoundingClientRect().height, document.querySelectorAll('[data-trellis-part=panel]').length, r?.getAttribute('data-drop')]; }));
+}
+await p.screenshot({ path: "notes/shots/desktop-probe.png" });
+await p.mouse.up();
+await p.waitForTimeout(700);
+await p.screenshot({ path: "notes/shots/desktop-probe2.png" });
 await b.close();

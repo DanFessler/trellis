@@ -48,6 +48,7 @@ import { Menu } from "./menu";
 import { lerpRect, LayoutTween, MOTION, RectSpring, sameRect } from "./motion";
 import type {
   MenuEntry,
+  MenuItem,
   OpenOptions,
   Surface,
   ViewInfo,
@@ -149,6 +150,7 @@ export function createWorkspace(
     "data-trellis-root": "",
     role: "region",
     "aria-label": options.label ?? "Workspace",
+    tabindex: "-1",
   });
   const backdrop = h("div", { "data-trellis-part": "backdrop" });
   const stageEmpty = h("div", { "data-trellis-part": "stage-empty" });
@@ -413,7 +415,7 @@ export function createWorkspace(
         record.cleanup = () => frameEl.remove();
       } else if (def.mount) {
         try {
-          const cleanup = def.mount(record.content, record.controller);
+          const cleanup = def.mount(record.content, record.controller, { icon: record.icon, accessory: record.accessory });
           record.cleanup = typeof cleanup === "function" ? cleanup : null;
         } catch (error) {
           console.error(error);
@@ -501,6 +503,20 @@ export function createWorkspace(
       openPanelMenu(d.id, null, { x: e.clientX - b.left, y: e.clientY - b.top });
     });
     lifetime.listen(tablist, "keydown", (e: KeyboardEvent) => tabKeydown(e, d.id));
+    // Vertical wheel scrolls overflowing tabs sideways.
+    lifetime.listen(
+      tablist,
+      "wheel",
+      (e: WheelEvent) => {
+        if (e.ctrlKey || e.metaKey || tablist.scrollWidth <= tablist.clientWidth) return;
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          tablist.scrollLeft += e.deltaY;
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      },
+      { passive: false },
+    );
     return dom;
   }
   function destroyPanelDom(panelId: string) {
@@ -560,7 +576,14 @@ export function createWorkspace(
       if (record.accessory.parentElement !== dom.accessories) dom.accessories.append(record.accessory);
       setAttr(record.shell, "aria-labelledby", tab.el.id);
     });
-    updateTabs();
+  }
+  /** Scroll an overflowing tab strip so a tab is visible, without scrolling the page. */
+  function revealTab(list: HTMLElement, tab: HTMLElement) {
+    if (list.scrollWidth <= list.clientWidth) return;
+    const left = tab.offsetLeft - list.offsetLeft;
+    if (left < list.scrollLeft) list.scrollLeft = left - 8;
+    else if (left + tab.offsetWidth > list.scrollLeft + list.clientWidth)
+      list.scrollLeft = left + tab.offsetWidth - list.clientWidth + 8;
   }
   function updateTabs() {
     for (const [panelId, dom] of panelDoms) {
@@ -576,6 +599,7 @@ export function createWorkspace(
         setAttr(tab.badge, "hidden", text ? null : "");
         setAttr(tab.el, "aria-selected", String(selected));
         setAttr(tab.el, "tabindex", selected ? "0" : "-1");
+        if (selected && !tab.el.hasAttribute("data-selected")) revealTab(dom.tablist, tab.el);
         setAttr(tab.el, "data-selected", selected ? "" : null);
         setAttr(tab.el, "data-focused", focusedView === viewId ? "" : null);
         const closable = typeOf(viewId).closable !== false;
@@ -1284,7 +1308,17 @@ export function createWorkspace(
     const record = records.get(viewId);
     if (!o.force && record && !(await record.controller.canClose())) return false;
     if (!doc.views[viewId]) return false;
+    // If keyboard focus was on this view or its tab, hand it to whatever gets selected next.
+    const active = document.activeElement;
+    const panelId = panelOfView(doc, viewId)?.id;
+    const tabEl = panelId ? panelDoms.get(panelId)?.tabs.get(viewId)?.el : undefined;
+    const hadFocus = !!active && (!!record?.shell.contains(active) || !!tabEl?.contains(active));
     commit(closeViewInDoc(doc, viewId));
+    if (hadFocus) {
+      const next = (panelId && locatePanel(doc, panelId)?.panel) || (focusedView ? panelOfView(doc, focusedView) : null);
+      if (next) panelDoms.get(next.id)?.tabs.get(next.selected)?.el.focus({ preventScroll: true });
+      else root.focus({ preventScroll: true });
+    }
     return true;
   }
   function resolvePanel(id: string): PanelNode | null {
@@ -1419,6 +1453,24 @@ export function createWorkspace(
       } else if (floatingLayer() && allowed(panel.views, "floating")) {
         builtIns.push({ label: "Float", run: () => float(panelId) });
       }
+      // Keyboard-accessible alternative to dragging a tab.
+      const viewId = panel.selected;
+      const targets = [...panelsOf(doc.root), ...doc.floating.map((f) => f.panel)].filter(
+        (p) => p.id !== panelId && allowed([viewId], regionOf(p.id)),
+      );
+      const moves: MenuEntry[] = targets.map((p) => ({
+        label: p.views.length > 1 ? `${titleOf(p.selected)} +${p.views.length - 1}` : titleOf(p.selected),
+        run: () => {
+          dock(viewId, { into: p.id });
+          focusView(viewId, false);
+        },
+      }));
+      if (panel.views.length > 1 && region !== "floating")
+        moves.push(
+          { label: "New split right", run: () => dock(viewId, { beside: panelId, edge: "right" }) },
+          { label: "New split below", run: () => dock(viewId, { beside: panelId, edge: "bottom" }) },
+        );
+      if (moves.length) builtIns.push({ label: `Move ${titleOf(viewId)} to`, items: moves as MenuItem[] });
       builtIns.push({ label: "Hide", run: () => hide(panelId) });
       if (entries.length && builtIns.length) entries.push("separator");
       entries.push(...builtIns);
@@ -1800,6 +1852,7 @@ export function createWorkspace(
           const next = reorderTabs(doc, d.panelId, order);
           doc = next;
           syncTabs(findPanel(d.panelId)!);
+          updateTabs();
         }
         return;
       }

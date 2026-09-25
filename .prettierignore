@@ -1,0 +1,5 @@
+dist
+node_modules
+test-results
+notes/shots
+package-lock.json

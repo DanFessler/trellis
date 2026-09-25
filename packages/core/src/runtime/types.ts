@@ -30,8 +30,9 @@ export interface ViewTypeDefinition<P extends Params = Params> extends ViewRules
   title?: string | ((view: ViewHandle<P>) => string);
   /** Trusted SVG/HTML markup for the tab icon. Adapters can render richer icons. */
   icon?: string;
-  /** Mount vanilla content. Called once per view; never again for moves. */
-  mount?(element: HTMLElement, view: ViewHandle<P>): Cleanup;
+  /** Mount vanilla content. Called once per view; never again for moves.
+   * `parts` holds the view's tab icon and tab-bar accessory containers. */
+  mount?(element: HTMLElement, view: ViewHandle<P>, parts: { icon: HTMLElement; accessory: HTMLElement }): Cleanup;
   /** Render an iframe with this URL. Its state survives docking and tabbing. */
   iframe?: string | ((view: ViewHandle<P>) => string);
   /** Items at the top of the panel menu while this view is selected. */

@@ -1,0 +1,12 @@
+import { chromium } from "@playwright/test";
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
+p.on("console", (m) => m.type()==="error" && console.log("ERR", m.text(), JSON.stringify(m.location())));
+await p.goto("http://localhost:5313", { waitUntil: "networkidle" });
+await p.waitForTimeout(800);
+console.log("-- loaded");
+await p.click('[data-dock-app="mail"]'); await p.waitForTimeout(700);
+console.log("-- mail");
+await p.click('[data-dock-app="spotify"]'); await p.waitForTimeout(700);
+console.log("-- spotify");
+await b.close();

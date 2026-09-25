@@ -138,6 +138,18 @@ test.describe("vanilla workspace", () => {
     expect((await doc(page)).floating).toHaveLength(1);
   });
 
+  test("moves a tab with the keyboard through the panel menu", async ({ page }) => {
+    await tab(page, "b").click();
+    await tab(page, "b").focus();
+    await page.keyboard.press("Shift+F10");
+    await expect(page.getByRole("menu")).toBeVisible();
+    await page.getByRole("menuitem", { name: "Move b.ts to" }).hover();
+    await page.getByRole("menuitem", { name: "New split right" }).click();
+    const stage = (await doc(page)).root.children[1];
+    expect(stage.child.kind).toBe("split");
+    expect(await panelOf(page, "b")).not.toBe("docs");
+  });
+
   test("hides and restores a panel with state", async ({ page }) => {
     await surface(page, "outline").locator("input").fill("still here");
     await page.evaluate(() => (window as any).ws.hide("right"));

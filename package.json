@@ -11,11 +11,12 @@
     "build": "npm run build -w @danfessler/trellis && npm run build -w @danfessler/trellis-react && npm run build -w @danfessler/trellis-element",
     "build:all": "npm run build && npm run build -w trellis-site",
     "dev": "npm run dev -w trellis-site",
-    "typecheck": "tsc -b",
+    "typecheck": "tsc -p packages/core && tsc -p packages/react && tsc -p packages/element && node scripts/typecheck-workspaces.mjs",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "check": "npm run typecheck && npm test && npm run build && npm run test:e2e"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

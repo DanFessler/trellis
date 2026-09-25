@@ -121,6 +121,9 @@
 :where(.trellis) :where(*:not([data-trellis-part="content"] *))::after {
   box-sizing: border-box;
 }
+:where(.trellis:focus) {
+  outline: none;
+}
 :where(.trellis[data-dragging]) {
   cursor: grabbing;
   user-select: none;
@@ -243,6 +246,7 @@
   -webkit-user-select: none;
   cursor: default;
   overflow: hidden;
+  touch-action: none;
 }
 :where(.trellis [data-trellis-part="tabs"]) {
   display: flex;
@@ -251,13 +255,19 @@
   min-width: 0;
   flex: 1 1 auto;
   padding-top: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+:where(.trellis [data-trellis-part="tabs"])::-webkit-scrollbar {
+  display: none;
 }
 :where(.trellis [data-trellis-part="tab"]) {
   position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
-  min-width: 36px;
+  min-width: 72px;
   max-width: var(--trellis-tab-max-width);
   flex: 0 1 auto;
   padding: 0 6px 0 10px;
