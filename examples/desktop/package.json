@@ -1,0 +1,17 @@
+{
+  "name": "trellis-example-desktop",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "verify": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "@danfessler/trellis": "*",
+    "@danfessler/trellis-react": "*",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  }
+}

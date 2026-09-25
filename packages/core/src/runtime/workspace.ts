@@ -727,6 +727,8 @@ export function createWorkspace(
       const panel = panelOfView(doc, focusedView);
       focusedPanel = panel?.id ?? focusedPanel;
     }
+    // Render now so the DOM matches the document synchronously after every change.
+    render();
     if (!o.silent) emitChange();
   }
   function lastFocusFallback(): string {
@@ -2000,7 +2002,7 @@ export function createWorkspace(
     doc = origin;
     if (rect && liftedId && !reduced()) tween.begin(new Map([...lastRects, [liftedId, rect]]), performance.now());
     sync();
-    schedule();
+    render();
   }
   function endDrag() {
     dragCleanup?.();

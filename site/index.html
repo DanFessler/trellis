@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trellis — Dockable, zoomable workspaces for web tools</title>
+    <meta name="description" content="Trellis gives art programs, IDEs, editors and dashboards dockable, zoomable workspaces. Content mounts once and survives every move." />
+    <meta name="theme-color" content="#0a0b0a" />
+    <meta property="og:title" content="Trellis — Dockable, zoomable workspaces for web tools" />
+    <meta property="og:description" content="Drag, dock, float and zoom. State-preserving panels with native-feeling motion. Framework-agnostic core with React bindings." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=Inter:wght@400..700&family=JetBrains+Mono:wght@400..600&display=swap" rel="stylesheet" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("trellis-site-theme");
+          if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

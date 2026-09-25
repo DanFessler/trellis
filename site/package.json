@@ -1,0 +1,22 @@
+{
+  "name": "trellis-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/postbuild.mjs && node scripts/build-examples.mjs",
+    "preview": "vite preview --port 5320",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@danfessler/trellis": "*",
+    "@danfessler/trellis-react": "*",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.2.0",
+    "marked": "^18.0.14",
+    "shiki": "^4.4.3"
+  }
+}

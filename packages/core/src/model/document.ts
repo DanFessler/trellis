@@ -301,11 +301,12 @@ export function restoreTargetFor(
     return { kind: "docked", beside: doc.root?.id ?? "", edge: "left", share: 0.5 };
   }
   const index = parent.children.findIndex((c) => c.id === panelId);
-  const total = parent.weights.reduce((a, b) => a + b, 0);
-  const share = parent.weights[index] / total;
-  const neighbour =
-    parent.children[index + 1] ?? parent.children[index - 1];
   const after = !!parent.children[index + 1];
+  const neighbourIndex = after ? index + 1 : index - 1;
+  const neighbour = parent.children[neighbourIndex];
+  // The neighbour absorbs this panel's space, so restore the same fraction of their combined size.
+  const own = parent.weights[index];
+  const share = own / (own + parent.weights[neighbourIndex]);
   const edge: Edge =
     parent.axis === "x" ? (after ? "left" : "right") : after ? "top" : "bottom";
   return { kind: "docked", beside: neighbour.id, edge, share };

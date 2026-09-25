@@ -104,13 +104,16 @@ export function hitTest(scene: HitScene, p: { x: number; y: number }): DropTarge
     return tabTarget(box, p, !inside(p, box.tabbar));
   }
 
+  // The workspace perimeter docks beside everything. Tab bars sit along the top edge,
+  // so they win there and the top band is thinner.
   const perimeter = scene.perimeter ?? 18;
-  if (scene.rootId && scene.allowed("side")) {
+  const overTabbar = scene.panels.some((b) => !b.floating && b.id !== scene.source && inside(p, b.tabbar));
+  if (scene.rootId && scene.allowed("side") && !overTabbar) {
     const v = scene.viewport;
     const distances: [Edge, number][] = [
       ["left", p.x - v.x],
       ["right", v.x + v.w - p.x],
-      ["top", p.y - v.y],
+      ["top", (p.y - v.y) * 2],
       ["bottom", v.y + v.h - p.y],
     ];
     distances.sort((a, b) => a[1] - b[1]);
@@ -127,7 +130,7 @@ export function hitTest(scene: HitScene, p: { x: number; y: number }): DropTarge
   }
 
   const stage = scene.stage;
-  if (stage && !stage.empty && inside(p, stage.rect) && scene.allowed("side") && scene.rootId !== stage.id) {
+  if (stage && !stage.empty && !overTabbar && inside(p, stage.rect) && scene.allowed("side") && scene.rootId !== stage.id) {
     // A thin band just inside the stage's boundary docks beside the whole stage.
     const band = Math.min(16, stage.rect.w * 0.08, stage.rect.h * 0.08);
     const s = stage.rect;

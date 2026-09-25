@@ -1,0 +1,819 @@
+/* Trellis · Desktop — a recreation of the spatial desktop prototype.
+ * Trellis is themed only through its public surface: custom properties on .trellis and
+ * [data-trellis-part] selectors. Everything else here is the host's own UI. */
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  overflow: hidden;
+  background: #19191b;
+  color: #e7e7e9;
+  font:
+    450 13px/1.35 "DM Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+button {
+  font: inherit;
+  color: inherit;
+}
+
+.shell {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 72px;
+  height: 100dvh;
+  min-height: 420px;
+  background: #19191b;
+}
+.shell-workspace {
+  position: relative;
+  min-height: 0;
+}
+
+/* ------------------------------------------------------------------ Trellis tokens */
+.trellis {
+  --trellis-gap: 8px;
+  --trellis-radius: 12px;
+  --trellis-tab-radius: 8px;
+  --trellis-tabbar-height: 46px;
+  --trellis-font: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --trellis-font-size: 13px;
+  --trellis-tab-max-width: 320px;
+  --trellis-bg: #19191b;
+  --trellis-panel: #1b1b1dcc;
+  --trellis-tabbar: #262628d9;
+  --trellis-tab-hover: #ffffff10;
+  --trellis-tab-active: #ffffff16;
+  --trellis-text: #e0e0e5;
+  --trellis-text-muted: #9999a2;
+  --trellis-border: #ffffff17;
+  --trellis-accent: #b9c4dc;
+  --trellis-accent-contrast: #161618;
+  --trellis-stage: transparent;
+  --trellis-drop: #ffffff14;
+  --trellis-menu: #2a2a2df2;
+  --trellis-menu-hover: #ffffff14;
+  --trellis-shadow-float: 0 14px 40px #0007, 0 2px 6px #0004;
+  --trellis-shadow-lifted: 0 30px 70px #000a, 0 4px 12px #0005;
+  --trellis-focus-ring: 0 0 0 2px #ffffff55;
+
+  /* The wallpaper is painted by the workspace, not the stage backdrop, so it stays put while
+   * the camera zooms and pans (the prototype does the same). */
+  background: #19191b var(--wallpaper) center / cover no-repeat;
+}
+
+/* ------------------------------------------------------------------ desktop (stage backdrop) */
+.trellis [data-trellis-part="backdrop"] {
+  background: transparent;
+  overflow: visible;
+  transition: box-shadow 200ms;
+}
+/* Once something is docked beside the desktop, outline the desktop so the split reads. */
+.trellis:has([data-trellis-part="panel"][data-region="side"]) [data-trellis-part="backdrop"] {
+  box-shadow:
+    inset 0 0 0 1px #ffffff1f,
+    0 0 0 100vmax #0000002e;
+  clip-path: inset(-100vmax);
+}
+.trellis[data-framed] [data-trellis-part="backdrop"] {
+  box-shadow: none;
+}
+.desktop {
+  position: absolute;
+  inset: 0;
+}
+.desktop-folders {
+  position: absolute;
+  top: 18px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.desktop-folder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 92px;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  text-shadow: 0 1px 4px #000b;
+  cursor: default;
+}
+.desktop-folder svg {
+  width: 64px;
+  height: 54px;
+  filter: drop-shadow(0 3px 5px #0004);
+}
+.desktop-folder span {
+  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.desktop-folder:hover {
+  background: #ffffff12;
+}
+.desktop-folder[data-chosen],
+.desktop-folder:focus-visible {
+  background: #ffffff20;
+  outline: 1px solid #ffffff40;
+}
+.desktop-folder[data-chosen] span {
+  background: #3d6fd6;
+  text-shadow: none;
+}
+
+/* ------------------------------------------------------------------ windows (panels) */
+/* Glass is painted once on the panel; the surface and iframe document stay transparent so
+ * translucent sidebars show the blurred wallpaper through them. */
+.trellis [data-trellis-part="panel"] {
+  background: var(--trellis-panel);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  backdrop-filter: blur(24px) saturate(1.2);
+  box-shadow:
+    0 0 0 1px #ffffff14,
+    0 0 5px #0007,
+    0 0 10px #0005;
+}
+.trellis [data-trellis-part="panel"][data-floating] {
+  box-shadow:
+    0 0 0 1px #ffffff17,
+    var(--trellis-shadow-float);
+}
+.trellis [data-trellis-part="panel"][data-focused] {
+  box-shadow:
+    0 0 0 1px #ffffff2e,
+    var(--trellis-shadow-float);
+}
+.trellis [data-trellis-part="panel"][data-lifted] {
+  box-shadow:
+    0 0 0 1px #ffffff2e,
+    var(--trellis-shadow-lifted);
+}
+/* Spotify is opaque in the prototype. Panels don't expose their view type, so match the icon. */
+.trellis [data-trellis-part="panel"]:has([data-trellis-part="tab"][data-selected] [data-app="spotify"]) {
+  background: #000;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.trellis [data-trellis-part="surface"] {
+  background: transparent;
+}
+.trellis [data-trellis-part="surface"]::after {
+  box-shadow: inset 0 -1px 0 #ffffff08;
+}
+.app-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  /* Match the embedded document's scheme so the browser doesn't paint an opaque canvas. */
+  color-scheme: normal;
+}
+
+/* ------------------------------------------------------------------ title bar (tab bar) */
+.trellis [data-trellis-part="tabbar"] {
+  gap: 10px;
+  padding: 0 14px 0 10px;
+  background: #202022d9;
+  box-shadow: inset 0 -1px 0 #ffffff0c;
+  transition: background-color 160ms;
+}
+.trellis [data-trellis-part="panel"][data-focused] [data-trellis-part="tabbar"] {
+  background: #303033e6;
+}
+.trellis [data-trellis-part="panel"]:has([data-app="spotify"]) [data-trellis-part="tabbar"] {
+  background: #000;
+}
+.trellis [data-trellis-part="tabs"] {
+  align-items: center;
+  padding: 0;
+  gap: 4px;
+}
+.trellis [data-trellis-part="tab"] {
+  height: 34px;
+  gap: 10px;
+  padding: 0 8px 0 6px;
+  border-radius: var(--trellis-tab-radius);
+  background: transparent;
+  box-shadow: none;
+  color: var(--trellis-text-muted);
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.3px;
+}
+.trellis [data-trellis-part="tab"]:hover {
+  background: transparent;
+}
+.trellis [data-trellis-part="tab"][data-selected] {
+  background: transparent;
+  box-shadow: none;
+  color: var(--trellis-text-muted);
+}
+.trellis [data-trellis-part="panel"][data-focused] [data-trellis-part="tab"][data-selected] {
+  color: #f0f0f3;
+}
+.trellis [data-trellis-part="tab"][data-selected]::after,
+.trellis [data-trellis-part="tab"]::before {
+  display: none;
+}
+.trellis [data-trellis-part="tab"]:focus-visible {
+  box-shadow: inset 0 0 0 1px #ffffff30;
+}
+.trellis [data-trellis-part="tab-icon"],
+.trellis [data-trellis-part="tab-icon"] svg {
+  width: 22px;
+  height: 22px;
+}
+.trellis [data-trellis-part="tab-close"] {
+  display: none;
+}
+/* Two or more windows dragged into one title bar become tabs. */
+.trellis [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"]) [data-trellis-part="tab"] {
+  height: 30px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  padding: 0 4px 0 8px;
+}
+.trellis [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"]) [data-trellis-part="tab"]:hover {
+  background: var(--trellis-tab-hover);
+}
+.trellis [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"]) [data-trellis-part="tab"][data-selected] {
+  background: var(--trellis-tab-active);
+  box-shadow: inset 0 1px 0 #ffffff0d;
+}
+.trellis [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"]) [data-trellis-part="tab-close"] {
+  display: inline-grid;
+}
+.trellis [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"]) [data-trellis-part="tab-icon"],
+.trellis [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"]) [data-trellis-part="tab-icon"] svg {
+  width: 18px;
+  height: 18px;
+}
+.trellis [data-trellis-part="tab-badge"] {
+  background: #e5484d;
+  color: #fff;
+}
+
+.tab-app-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 0 #ffffff55,
+    0 1px 3px #0005;
+  overflow: hidden;
+}
+.tab-app-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.trellis [data-trellis-part="accessories"] {
+  margin-left: auto;
+  min-width: 0;
+}
+.window-accessory {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.window-detail {
+  overflow: hidden;
+  font-size: 11px;
+  color: #85858d;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.trellis [data-trellis-part="panel"][data-focused] .window-detail {
+  color: #a3a3ab;
+}
+.traffic-lights {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+.light {
+  display: grid;
+  place-items: center;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 0.5px #0003;
+  background: #55555b;
+  cursor: default;
+  transition: background-color 120ms;
+}
+.light svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: #0000;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.traffic-lights[data-focused] .light-zoom,
+.trellis [data-trellis-part="panel"]:hover .light-zoom {
+  background: #28c840;
+}
+.traffic-lights[data-focused] .light-minimize,
+.trellis [data-trellis-part="panel"]:hover .light-minimize {
+  background: #febc2e;
+}
+.traffic-lights[data-focused] .light-close,
+.trellis [data-trellis-part="panel"]:hover .light-close {
+  background: #ff5f57;
+}
+.traffic-lights:hover .light svg {
+  stroke: #0009;
+}
+.light:focus-visible {
+  outline: 2px solid #ffffff88;
+  outline-offset: 1px;
+}
+/* Tiny windows (zoomed far out) keep only the icon. */
+.trellis [data-trellis-part="panel"][data-compact] [data-trellis-part="tab-icon"] {
+  margin: auto;
+}
+
+/* ------------------------------------------------------------------ Trellis feedback */
+.trellis [data-trellis-part="drop-preview"] {
+  border-radius: var(--trellis-radius);
+  background: #ffffff12;
+  box-shadow:
+    inset 0 0 0 1.5px #ffffff55,
+    0 0 0 1px #0003;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.trellis [data-trellis-part="drop-marker"] {
+  background: #fff;
+}
+.trellis [data-trellis-part="divider"]::after {
+  background: #d5d5de;
+}
+.trellis [data-trellis-part="panel-menu"] {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ minimap (Workspace.Chrome) */
+.minimap {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  padding: 10px;
+  border: 1px solid #ffffff14;
+  border-radius: 12px;
+  background: #202022dc;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 6px 24px #0003;
+  animation: fade-in 180ms ease-out;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+.minimap-label {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 3px 7px;
+  font-size: 9.5px;
+  color: #adadb5;
+}
+.minimap-label span + span {
+  color: #777780;
+}
+.minimap svg {
+  display: block;
+  overflow: visible;
+  cursor: pointer;
+}
+.minimap-bg {
+  fill: #2a2a2e;
+}
+.minimap-wallpaper {
+  opacity: 0.8;
+}
+.minimap-tile rect:first-of-type {
+  opacity: 0.55;
+  stroke: #0006;
+  stroke-width: 0.5;
+  transition: opacity 120ms;
+}
+.minimap-tile[data-focused] rect:first-of-type {
+  opacity: 0.95;
+  stroke: #fffa;
+}
+.minimap-tile:hover rect:first-of-type {
+  opacity: 0.85;
+}
+.minimap-tile-bar {
+  fill: #fff4;
+}
+.minimap-frame {
+  fill: #ffffff08;
+  stroke: #e6e6ee;
+  stroke-width: 1.25;
+  pointer-events: none;
+  transition:
+    x 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    y 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 380ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ------------------------------------------------------------------ bottom bar */
+.shell-bar {
+  position: relative;
+  z-index: 10;
+  min-width: 0;
+  background: #242426;
+  border-top: 1px solid #ffffff0d;
+}
+.bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  height: 100%;
+  padding: 0 12px;
+  gap: 16px;
+}
+.bar-side {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.bar-end {
+  justify-content: flex-end;
+}
+.bar svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.bar-button,
+.bar-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  flex: none;
+  height: 40px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #cfcfd6;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms,
+    opacity 150ms;
+}
+.bar-icon {
+  width: 32px;
+  padding: 0;
+}
+.bar-button:hover,
+.bar-icon:hover:not(:disabled) {
+  background: #ffffff12;
+  color: #f2f2f5;
+}
+.bar-button[data-current],
+.bar-button[aria-pressed="true"],
+.framing[data-current] {
+  background: #ffffff15;
+  color: #fff;
+}
+.bar-icon:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.bar-icon[aria-expanded="true"] {
+  background: #ffffff15;
+}
+.history {
+  display: flex;
+  gap: 0;
+}
+.history .bar-icon {
+  width: 26px;
+}
+.bar-count {
+  margin-left: 6px;
+  font-size: 11px;
+  color: #8a8a93;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.framings {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.framing {
+  position: relative;
+  display: flex;
+  flex: none;
+  border-radius: 10px;
+}
+.framing .bar-button {
+  max-width: 150px;
+  padding-right: 26px;
+}
+.framing .bar-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.framing[data-current] .bar-button {
+  background: transparent;
+}
+.framing-remove {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-top: -9px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #85858f;
+  opacity: 0;
+  cursor: pointer;
+}
+.framing:hover .framing-remove,
+.framing-remove:focus-visible {
+  opacity: 1;
+}
+.framing-remove:hover {
+  background: #ffffff18;
+  color: #eee;
+}
+.framing-remove svg {
+  width: 12px;
+  height: 12px;
+}
+.popover-anchor {
+  position: relative;
+  flex: none;
+}
+.popover {
+  position: absolute;
+  bottom: 52px;
+  left: -8px;
+  z-index: 20;
+  display: grid;
+  gap: 10px;
+  width: 260px;
+  padding: 16px;
+  border: 1px solid #ffffff25;
+  border-radius: 14px;
+  background: #29292df5;
+  -webkit-backdrop-filter: blur(28px);
+  backdrop-filter: blur(28px);
+  box-shadow: 0 24px 60px #0008;
+  animation: fade-in 140ms ease-out;
+}
+.popover label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #dedee3;
+}
+.popover input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  border: 1px solid #ffffff28;
+  border-radius: 8px;
+  background: #171719;
+  color: #eee;
+  font: inherit;
+  outline: none;
+}
+.popover input:focus {
+  border-color: #ffffff60;
+}
+.popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.popover-actions button {
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #ffffff10;
+  color: #eee;
+  font-size: 12px;
+  cursor: pointer;
+}
+.popover-actions .primary {
+  background: #5a5a66;
+}
+.popover-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ------------------------------------------------------------------ dock */
+.dock {
+  display: flex;
+  align-items: flex-end;
+  gap: 9px;
+  height: 68px;
+  padding: 0 4px;
+  align-self: end;
+}
+.dock-item {
+  --dock-size: 46px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: var(--dock-size);
+  padding: 0 0 4px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.dock-icon {
+  display: block;
+  width: var(--dock-size);
+  height: var(--dock-size);
+  border-radius: 23%;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 #ffffff55,
+    0 3px 6px #0004;
+  transition: filter 120ms;
+}
+.dock-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.dock-item:active .dock-icon {
+  filter: brightness(0.85);
+}
+.dock-item:focus-visible {
+  outline: none;
+}
+.dock-item:focus-visible .dock-icon {
+  outline: 2px solid #ffffffaa;
+  outline-offset: 2px;
+}
+.dock-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: transparent;
+}
+.dock-item[data-running] .dock-dot {
+  background: #ffffff70;
+}
+.dock-item[data-active] .dock-dot {
+  background: #fff;
+}
+.dock-label {
+  position: absolute;
+  bottom: calc(var(--dock-size) + 20px);
+  left: 50%;
+  translate: -50% 0;
+  padding: 5px 9px;
+  border: 1px solid #ffffff20;
+  border-radius: 7px;
+  background: #252527ee;
+  color: #eee;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.dock-item:hover .dock-label,
+.dock-item:focus-visible .dock-label {
+  opacity: 1;
+}
+.dock-separator {
+  align-self: stretch;
+  width: 1px;
+  margin: 14px 3px 10px;
+  background: #ffffff1f;
+}
+/* A minimized window: a little window card badged with its app. */
+.dock-window {
+  position: relative;
+  background: linear-gradient(#3a3a3e, #262628);
+  overflow: visible;
+  border-radius: 7px;
+  box-shadow:
+    inset 0 0 0 1px #ffffff1a,
+    0 3px 6px #0004;
+}
+.dock-window-bar {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 22%;
+  border-radius: 7px 7px 0 0;
+  background: #48484d;
+}
+.dock-window-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 48%;
+  height: 48%;
+  border-radius: 23%;
+  overflow: hidden;
+  box-shadow: 0 1px 3px #0006;
+}
+.dock-window-badge svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* App icon backgrounds (from the prototype's dock). */
+.dock-app-0 {
+  background: linear-gradient(#52baff, #147ddd);
+  color: #12375b;
+}
+.dock-app-1 {
+  background: linear-gradient(#ffdf60, #efb930);
+  color: #c5bba2;
+}
+.dock-app-2 {
+  background: linear-gradient(#59c7fa, #087fea);
+  color: white;
+}
+.dock-app-3 {
+  background: #f05d58;
+  color: #28282a;
+}
+.dock-app-4 {
+  background: #f5f5f5;
+  color: #28282a;
+}
+.dock-app-5 {
+  background: #151515;
+  color: #28282a;
+}
+
+@media (max-width: 900px) {
+  .bar-count,
+  .bar-button span,
+  .framings {
+    display: none;
+  }
+  .bar-button {
+    padding: 0 10px;
+  }
+  .minimap {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .minimap-frame {
+    transition: none;
+  }
+}

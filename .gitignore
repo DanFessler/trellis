@@ -6,3 +6,5 @@ playwright-report
 *.tgz
 .vite
 *.tsbuildinfo
+packages/*/dist
+packages/*/LICENSE*.md
