@@ -44,7 +44,7 @@ import { h, icons, place, setAttr, setStyle } from "./dom";
 import { DEFAULT_KEYMAP, formatCombo, matches, type Command } from "./keymap";
 import { Emitter, Lifetime } from "./lifetime";
 import { Menu } from "./menu";
-import { lerpRect, LayoutTween, MOTION, RectSpring, sameRect } from "./motion";
+import { DOCK_EASE, DOCK_MS, lerpRect, LayoutTween, MOTION, RectSpring, sameRect } from "./motion";
 import type {
   IframeOptions,
   MenuEntry,
@@ -77,6 +77,10 @@ interface PanelDom {
   menuButton: HTMLButtonElement;
   tabs: Map<string, TabDom>;
   handles: HTMLElement | null;
+  /** Shown instead of content when the panel is too small to use ("frame only"). */
+  frameIcon: HTMLElement;
+  /** Width the accessories and menu take at the end of an overlaid title bar. */
+  endInset: number;
 }
 interface SurfaceRecord {
   controller: ViewController;
@@ -112,7 +116,11 @@ const TYPE_PLACEHOLDER = (type: string): ViewTypeDefinition => ({
   },
 });
 
+const escapeHtml = (text: string) =>
+  text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const DEFAULT_FLOAT_SIZE = { w: 560, h: 400 };
+/** Below this size a panel shows only its icon (the prototype's "frame only" tiles). */
+const FRAME_ONLY = { w: 160, h: 64 };
 
 /** Create a workspace inside `host`. Returns an imperative handle. */
 export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOptions): WorkspaceHandle {
@@ -163,6 +171,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   const dividerEls = new Map<string, HTMLElement>();
   const lastRects = new Map<string, Rect>();
   const leaving = new Map<string, Leaving>();
+  /** Panels restoring out of a dock or button (the reverse of leaving). */
+  const entering = new Map<string, { from: Rect; start: number }>();
   const settling = new Set<string>();
   let surfacesList: Surface[] = [];
   let viewport = { w: host.clientWidth, h: host.clientHeight };
@@ -471,7 +481,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const tabbar = h("div", { "data-trellis-part": "tabbar" }, tablist, accessories, menuButton);
     el.append(tabbar);
     layer.append(el);
-    dom = { id: panelId, el, tabbar, tablist, accessories, menuButton, tabs: new Map(), handles: null };
+    const frameIcon = h("span", { "data-trellis-part": "frame-icon", "aria-hidden": "true" });
+    el.append(frameIcon);
+    dom = { id: panelId, el, tabbar, tablist, accessories, menuButton, tabs: new Map(), handles: null, frameIcon, endInset: 0 };
     panelDoms.set(panelId, dom);
     const d = dom;
     lifetime.listen(el, "pointerdown", (e: PointerEvent) => {
@@ -536,12 +548,19 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     lastRects.delete(panelId);
   }
   /** Tab bar height for a panel; 0 when its views ask for no tab bar. */
-  function barHeight(panel: PanelNode | null): number {
-    if (!panel || lifted()?.id === panel.id) return tabbarHeight;
+  /** How a panel shows its tab bar: above the content, over it (the content draws its own title
+   * bar underneath), or not at all. A tab group always gets a normal bar. */
+  function barMode(panel: PanelNode | null): "normal" | "overlay" | "hidden" {
+    if (!panel) return "normal";
     const modes = panel.views.map((v) => typeOf(v).tabbar ?? "always");
-    if (modes.every((m) => m === "never")) return 0;
-    if (panel.views.length === 1 && modes[0] === "auto") return 0;
-    return tabbarHeight;
+    if (modes.every((m) => m === "never")) return "hidden";
+    if (panel.views.length === 1 && modes[0] === "auto") return lifted()?.id === panel.id ? "normal" : "hidden";
+    if (panel.views.length === 1 && modes[0] === "overlay") return "overlay";
+    return "normal";
+  }
+  /** Space the tab bar takes above the content (0 when hidden or overlaid). */
+  function barHeight(panel: PanelNode | null): number {
+    return barMode(panel) === "normal" ? tabbarHeight : 0;
   }
   function findPanel(panelId: string): PanelNode | null {
     if (lifted()?.id === panelId) return lifted();
@@ -637,6 +656,10 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       }
       setAttr(dom.el, "data-focused", focusedPanel === panelId ? "" : null);
       setAttr(dom.el, "data-single", panel.views.length === 1 ? "" : null);
+      const iconSource = records.get(panel.selected)?.icon.innerHTML ?? "";
+      const icon = iconSource || `<b>${escapeHtml(titleOf(panel.selected).slice(0, 1).toUpperCase())}</b>`;
+      if (dom.frameIcon.innerHTML !== icon) dom.frameIcon.innerHTML = icon;
+      if (barMode(panel) === "overlay") dom.endInset = dom.accessories.offsetWidth + dom.menuButton.offsetWidth + 12;
       setAttr(dom.menuButton, "hidden", options.panelMenu === false && !menuFor(panel).length ? "" : null);
     }
     invalidate();
@@ -866,6 +889,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         destroyPanelDom(id);
         syncSilently();
       } else moving = true;
+    if (entering.size) moving = true;
     render(time);
     if (moving) schedule();
     else {
@@ -899,7 +923,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       record.controller.update({ interactive: !busy && scale >= 0.999 });
     }
   }
-  const moving = () => camera.moving || tween.active || !!dragActive() || gesture || leaving.size > 0;
+  const moving = () =>
+    camera.moving || tween.active || !!dragActive() || gesture || leaving.size > 0 || entering.size > 0;
 
   function render(time = performance.now()) {
     if (lifetime.disposed) return;
@@ -926,8 +951,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const overlayFloats = doc.floating.filter((f) => f.layer === "overlay").sort((a, b) => a.z - b.z);
     const zOf = new Map<string, number>();
     for (const p of panelsOf(doc.root)) zOf.set(p.id, settling.has(p.id) ? 2900 : 10);
-    stageFloats.forEach((f, i) => zOf.set(f.panel.id, settling.has(f.panel.id) ? 2900 : 30 + i * 2));
-    overlayFloats.forEach((f, i) => zOf.set(f.panel.id, settling.has(f.panel.id) ? 2900 : 1000 + i * 2));
+    stageFloats.forEach((f, i) => zOf.set(f.panel.id, settling.has(f.panel.id) ? 2900 : 30 + i * 3));
+    overlayFloats.forEach((f, i) => zOf.set(f.panel.id, settling.has(f.panel.id) ? 2900 : 1000 + i * 3));
     if (lifted()) zOf.set(lifted()!.id, 3100);
     for (const id of leaving.keys()) zOf.set(id, 2950);
 
@@ -938,11 +963,20 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       let r: Rect | null;
       let opacity = 1;
       const l = leaving.get(panelId);
+      const enter = entering.get(panelId);
       if (l) {
-        const t = Math.min(1, (time - l.start) / l.duration);
-        const e = 1 - (1 - t) ** 3;
+        // Minimize: the whole window flies into its target (prototype timing and curve).
+        const e = DOCK_EASE(Math.min(1, (time - l.start) / l.duration));
         r = lerpRect(l.from, l.to, e);
-        opacity = 1 - e;
+        opacity = 1 - 0.9 * e;
+      } else if (enter) {
+        const target = targetRect(panelId);
+        if (!target) continue;
+        const t = Math.min(1, (time - enter.start) / DOCK_MS.restore);
+        const e = DOCK_EASE(t);
+        r = lerpRect(enter.from, target, e);
+        opacity = 0.1 + 0.9 * e;
+        if (t >= 1) entering.delete(panelId);
       } else {
         const target = targetRect(panelId);
         if (!target) continue;
@@ -961,9 +995,17 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       const clip =
         float?.layer === "stage" && sScreen && lifted()?.id !== panelId ? clipInset(r, sScreen) : "";
       setStyle(dom.el, "clipPath", clip);
-      const bar = barHeight(panel);
+      const mode = barMode(panel);
+      const bar = mode === "normal" ? tabbarHeight : 0;
+      // Too small to use: show only the app icon; the whole frame is a drag handle (prototype).
+      const frameOnly =
+        lifted()?.id !== panelId && (r.w < FRAME_ONLY.w || r.h < FRAME_ONLY.h + (panel.views.length > 1 ? tabbarHeight : 0));
+      setAttr(dom.el, "data-frame-only", frameOnly ? "" : null);
+      if (frameOnly) setStyle(dom.el, "--trellis-frame-icon-size", `${Math.max(0, Math.min(40, r.w - 12, r.h - 12))}px`);
       setAttr(dom.el, "data-compact", r.w < 140 || r.h < bar + 24 ? "" : null);
-      setAttr(dom.el, "data-tabbar", bar ? null : "hidden");
+      setAttr(dom.el, "data-tabbar", mode === "normal" ? null : mode);
+      // An overlaid bar sits above the content it covers.
+      if (mode === "overlay") setStyle(dom.el, "zIndex", String(z + 2));
       if (!onscreen) continue;
       const body: Rect = { x: r.x, y: r.y + bar, w: r.w, h: Math.max(0, r.h - bar) };
       for (const viewId of panel.views) {
@@ -971,8 +1013,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         if (!record) continue;
         shown.add(viewId);
         const selected = panel.selected === viewId;
-        placeSurface(record, body, selected, z + 1, round, opacity, clip ? clipInset(body, sScreen!) : "");
-        setAttr(record.shell, "data-tabbar", bar ? null : "hidden");
+        placeSurface(record, body, selected, z + 1, round, opacity, clip ? clipInset(body, sScreen!) : "", frameOnly);
+        setAttr(record.shell, "data-tabbar", mode === "normal" ? null : mode);
+        const scale = record.controller.state.scale || 1;
+        setStyle(record.content, "--trellis-titlebar-height", mode === "overlay" ? `${tabbarHeight / scale}px` : "0px");
+        setStyle(record.content, "--trellis-titlebar-inset-end", mode === "overlay" ? `${dom.endInset / scale}px` : "0px");
       }
     }
     // Hide surfaces with no visible panel (hidden panels, offscreen).
@@ -1021,6 +1066,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     round: boolean,
     opacity: number,
     clip: string,
+    concealed = false,
   ) {
     const { shell, content, controller } = record;
     const min = minSizeOf(controller.id);
@@ -1028,7 +1074,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const safe = Math.max(scale, 0.05);
     place(shell, body, round);
     setStyle(shell, "zIndex", String(z));
-    setStyle(shell, "visibility", selected ? "" : "hidden");
+    setStyle(shell, "visibility", selected && !concealed ? "" : "hidden");
     setStyle(shell, "opacity", opacity === 1 ? "" : String(opacity));
     setStyle(shell, "clipPath", clip);
     const width = round ? Math.round(body.w / safe) : body.w / safe;
@@ -1037,14 +1083,14 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     setStyle(content, "height", `${height}px`);
     setStyle(content, "transform", safe < 0.999 ? `scale(${safe})` : "");
     setAttr(shell, "data-scaled", safe < 0.999 ? "" : null);
-    setAttr(shell, "inert", selected ? null : "");
+    setAttr(shell, "inert", selected && !concealed ? null : "");
     (record as any).__size = { width: Math.round(width), height: Math.round(height) };
     const panel =
       panelOfView(doc, controller.id) ?? (lifted()?.views.includes(controller.id) ? lifted() : null);
     const onscreen = body.x < viewport.w && body.y < viewport.h && body.x + body.w > 0 && body.y + body.h > 0;
     const busy = !!dragActive() || gesture;
     controller.update({
-      visible: selected && onscreen && body.w > 1 && body.h > 1,
+      visible: selected && !concealed && onscreen && body.w > 1 && body.h > 1,
       selected,
       focused: focusedView === controller.id,
       placement: placementOf(controller.id),
@@ -1384,7 +1430,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
           from,
           to: towardRect(o.toward, from),
           start: performance.now(),
-          duration: 300,
+          duration: DOCK_MS.hide,
         });
       commit({
         ...detached,
@@ -1398,7 +1444,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const next = hidePanel(doc, panel.id);
     if (from && !reduced()) {
       const to = towardRect(o.toward, from);
-      leaving.set(panel.id, { panel, from, to, start: performance.now(), duration: 300 });
+      leaving.set(panel.id, { panel, from, to, start: performance.now(), duration: DOCK_MS.hide });
     }
     commit(next);
   }
@@ -1417,16 +1463,47 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     leaving.delete(panelId);
     const fl = floatingLayer() || "overlay";
     const next = restorePanel(doc, panelId, fl);
-    const fromMap = new Map<string, Rect>();
-    if (o.from) fromMap.set(panelId, towardRect(o.from, { x: 0, y: 0, w: 0, h: 0 }));
-    else fromMap.delete(panelId);
     lastRects.delete(panelId);
-    commit(next, { from: fromMap });
+    if (o.from && !reduced()) entering.set(panelId, { from: towardRect(o.from, { x: 0, y: 0, w: 0, h: 0 }), start: performance.now() });
+    commit(next);
     if (!o.from) {
       const dom = panelDoms.get(panelId);
       if (dom) appear(dom.el, hidden.panel.views);
     }
     focusView(hidden.panel.selected, true);
+  }
+  /** Where a docked window floats back to (PLACEMENT-01). Not persisted. */
+  const rememberedFloats = new Map<string, Rect>();
+  /** The prototype's dock toggle: a float docks beside the stage (along its longer side) and the
+   * frame widens to show both; a docked window floats back at its remembered size. */
+  function toggleDock(id: string) {
+    const panel = resolvePanel(id);
+    if (!panel || doc.hidden.some((x) => x.panel.id === panel.id)) return;
+    const stage = findStage(doc.root);
+    const float = doc.floating.find((f) => f.panel.id === panel.id);
+    const from = new Map<string, Rect>();
+    const current = lastRects.get(panel.id);
+    if (current) from.set(panel.id, current);
+    const without = removePanel(doc, panel.id);
+    settling.add(panel.id);
+    if (float) {
+      if (!allowed(panel.views, "side")) return;
+      rememberedFloats.set(panel.id, float.rect);
+      const s = stageScreen();
+      const next =
+        stage && without.root && findNode(without.root, stage.id)
+          ? insertPanel(without, panel, { beside: stage.id, edge: !s || s.w >= s.h ? "right" : "bottom" })
+          : placePanel(without, panel, "side");
+      commit(next, { from });
+      nav.include(stage ? [stage.id, panel.id] : [panel.id]);
+    } else {
+      const layer = floatingLayer();
+      if (!layer || !allowed(panel.views, "floating")) return;
+      const rect = rememberedFloats.get(panel.id) ?? cascadeRect(layer);
+      commit(floatPanel(without, panel, rect, layer), { from });
+      if (stage) nav.include([stage.id]);
+    }
+    focusView(panel.selected, false);
   }
   function float(id: string, rect?: Rect) {
     const fl = floatingLayer();
@@ -1523,7 +1600,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
           shortcut: hint("frame.toggle"),
           run: () => toggleFrame(panelId),
         });
-      if (region === "floating") {
+      if (region === "floating" && floatingLayer() === "stage") {
+        builtIns.push({ label: "Dock beside stage", run: () => toggleDock(panelId) });
+      } else if (region === "floating") {
         builtIns.push({
           label: "Dock",
           run: () =>
@@ -1535,7 +1614,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
             ),
         });
       } else if (floatingLayer() && allowed(panel.views, "floating")) {
-        builtIns.push({ label: "Float", run: () => float(panelId) });
+        builtIns.push({ label: "Float", run: () => (floatingLayer() === "stage" ? toggleDock(panelId) : float(panelId)) });
       }
       // Keyboard-accessible alternative to dragging a tab.
       const viewId = panel.selected;
@@ -2064,6 +2143,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     restore,
     float,
     dock,
+    toggleDock,
     setTitle,
     setParams,
     navigation: {

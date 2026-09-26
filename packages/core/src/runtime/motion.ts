@@ -98,3 +98,26 @@ export class LayoutTween {
     return from && this.progress < 1 ? lerpRect(from, target, this.progress) : target;
   }
 }
+
+/** A CSS cubic-bezier timing function, for animations driven per frame. */
+export function cubicBezier(x1: number, y1: number, x2: number, y2: number): (t: number) => number {
+  const sample = (a: number, b: number, t: number) => ((1 - 3 * b + 3 * a) * t + (3 * b - 6 * a)) * t * t + 3 * a * t;
+  return (x: number) => {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    let lo = 0;
+    let hi = 1;
+    let t = x;
+    for (let i = 0; i < 24; i++) {
+      const v = sample(x1, x2, t);
+      if (Math.abs(v - x) < 1e-5) break;
+      if (v < x) lo = t;
+      else hi = t;
+      t = (lo + hi) / 2;
+    }
+    return sample(y1, y2, t);
+  };
+}
+/** The prototype's minimize/restore curve and durations (EXPERIENCE-07). */
+export const DOCK_EASE = cubicBezier(0.2, 0.75, 0.2, 1);
+export const DOCK_MS = { hide: 300, restore: 380 };

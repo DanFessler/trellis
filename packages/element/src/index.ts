@@ -32,7 +32,7 @@ function typeFromTemplate(template: HTMLTemplateElement): [string, ViewTypeDefin
     singleton: d.singleton !== undefined ? d.singleton !== "false" : undefined,
     closable: d.closable !== undefined ? d.closable !== "false" : undefined,
     gestures: d.gestures === "workspace" ? "workspace" : undefined,
-    tabbar: d.tabbar === "auto" || d.tabbar === "never" ? d.tabbar : undefined,
+    tabbar: d.tabbar === "auto" || d.tabbar === "never" || d.tabbar === "overlay" ? d.tabbar : undefined,
     className: d.class,
   };
   if (d.minWidth || d.minHeight)

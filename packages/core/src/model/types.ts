@@ -91,7 +91,9 @@ export interface ViewRules {
   closable?: boolean;
   /** Content lays out at no less than this size and scales down below it. */
   minSize?: { width: number; height: number };
-  /** Tab bar visibility: "auto" hides it while the view is alone in its panel, "never" always
-   * (the panel can then only be rearranged from its menu or the API). Default "always". */
-  tabbar?: "always" | "auto" | "never";
+  /** Tab bar: "always" (default) sits above the content; "auto" hides it while the view is alone
+   * in its panel; "never" always hides it (rearrange from the menu or API); "overlay" lays it over
+   * the top of a lone view, whose content extends underneath and draws its own title bar using
+   * `--trellis-titlebar-height` and `--trellis-titlebar-inset-end`. */
+  tabbar?: "always" | "auto" | "never" | "overlay";
 }

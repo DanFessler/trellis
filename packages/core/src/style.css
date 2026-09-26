@@ -458,6 +458,55 @@
   display: none;
 }
 
+/* ------------------------------------------------------------------ frame-only and overlay bars */
+/* Too small to use: the panel shows only its icon and the whole frame drags (prototype). */
+:where(.trellis [data-trellis-part="frame-icon"]) {
+  display: none;
+}
+:where(.trellis [data-trellis-part="panel"][data-frame-only]) {
+  cursor: grab;
+}
+:where(.trellis [data-trellis-part="panel"][data-frame-only] [data-trellis-part="tabbar"]),
+:where(.trellis [data-trellis-part="panel"][data-frame-only] .trellis-handles) {
+  display: none;
+}
+:where(.trellis [data-trellis-part="panel"][data-frame-only] [data-trellis-part="frame-icon"]) {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--trellis-text-muted);
+}
+:where(.trellis [data-trellis-part="frame-icon"] > *) {
+  width: var(--trellis-frame-icon-size, 24px);
+  height: var(--trellis-frame-icon-size, 24px);
+  font-size: calc(var(--trellis-frame-icon-size, 24px) * 0.6);
+  display: grid;
+  place-items: center;
+}
+/* An overlaid bar floats over content that draws its own title bar underneath. */
+:where(.trellis [data-trellis-part="panel"][data-tabbar="overlay"]) {
+  background: transparent;
+  pointer-events: none;
+}
+:where(.trellis [data-trellis-part="panel"][data-tabbar="overlay"] [data-trellis-part="tabbar"]),
+:where(.trellis [data-trellis-part="panel"][data-tabbar="overlay"] .trellis-handles) {
+  pointer-events: auto;
+}
+:where(.trellis [data-trellis-part="panel"][data-tabbar="overlay"] [data-trellis-part="tabbar"]) {
+  background: transparent;
+  box-shadow: none;
+}
+:where(.trellis [data-trellis-part="panel"][data-tabbar="overlay"] [data-trellis-part="tab"]) {
+  opacity: 0;
+}
+:where(.trellis [data-trellis-part="surface"][data-tabbar="overlay"]) {
+  border-radius: var(--trellis-radius);
+}
+:where(.trellis [data-trellis-part="surface"][data-tabbar="overlay"])::after {
+  box-shadow: inset 0 0 0 1px var(--trellis-border);
+}
+
 /* ------------------------------------------------------------------ surfaces */
 :where(.trellis [data-trellis-part="surface"]) {
   position: absolute;

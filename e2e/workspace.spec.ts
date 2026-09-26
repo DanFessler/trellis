@@ -414,6 +414,33 @@ test.describe("prototype navigation", () => {
     await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).toBe("docs");
   });
 
+  test("toggleDock docks a float beside the stage and restores its size (PLACEMENT-01)", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&floating=stage&navigation=free");
+    await expect(tab(page, "a")).toBeVisible();
+    const id = await page.evaluate(() =>
+      (window as any).ws.open("files", { placement: { float: { x: 0.1, y: 0.1, w: 0.37, h: 0.41 } } }).panelId,
+    );
+    await page.evaluate((p) => (window as any).ws.toggleDock(p), id);
+    let d = await doc(page);
+    expect(d.floating).toHaveLength(0);
+    await page.evaluate((p) => (window as any).ws.toggleDock(p), id);
+    d = await doc(page);
+    expect(d.floating[0].rect).toEqual({ x: 0.1, y: 0.1, w: 0.37, h: 0.41 });
+  });
+
+  test("tiny panels show only their icon (frame only)", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&navigation=free");
+    await expect(tab(page, "a")).toBeVisible();
+    await page.evaluate(() => {
+      const ws = (window as any).ws;
+      const root = ws.getDocument().root;
+      ws.setDocument({ ...ws.getDocument(), root: { ...root, weights: [0.1, 0.8, 0.1] } }, { animate: false });
+    });
+    await expect(panel(page, "left")).toHaveAttribute("data-frame-only", "");
+    await expect(panel(page, "left").locator("[data-trellis-part=frame-icon]")).toBeVisible();
+    await expect(panel(page, "docs")).not.toHaveAttribute("data-frame-only", "");
+  });
+
   test("maximize restores the exact prior framing (NAV-07); Escape steps out one level", async ({ page }) => {
     await page.goto("/?scenario=vanilla&navigation=free");
     await expect(tab(page, "a")).toBeVisible();

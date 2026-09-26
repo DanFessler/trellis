@@ -227,6 +227,8 @@ export interface WorkspaceHandle {
     panelOrViewId: string,
     target: { beside: string; edge: Edge; share?: number } | { into: string; index?: number } | "stage",
   ): void;
+  /** Dock a floating window beside the stage, or float a docked one back at its previous size. */
+  toggleDock(panelOrViewId: string): void;
   setTitle(viewId: string, title: string): void;
   setParams(viewId: string, patch: object): void;
   navigation: {
