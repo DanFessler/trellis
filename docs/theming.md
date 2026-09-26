@@ -199,10 +199,10 @@ Both are `0px` for views without an overlaid bar. In a tab group, the bar sits a
 
 The `tabs` option has two independent settings. The defaults give tabs that fit their titles, with 4px of space around them.
 
-| Setting | Default | Effect                                                                                                                   |
-| ------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `fill`  | `false` | Tabs grow to share the tab row's width. Nothing else about them changes, whether there's one tab or many.                |
-| `inset` | `4`     | Space in pixels between the tabs and the bar's top and sides. At `0` the tabs meet the bar's edges, with square corners. |
+| Setting | Default | Effect                                                                                                    |
+| ------- | ------- | --------------------------------------------------------------------------------------------------------- |
+| `fill`  | `false` | Tabs grow to share the tab row's width. Nothing else about them changes, whether there's one tab or many. |
+| `inset` | `4`     | Space in pixels between the tabs and the bar's top and sides. At `0` the tabs meet the bar's edges.       |
 
 ```tsx
 <Workspace tabs={{ fill: true }} />

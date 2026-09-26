@@ -356,14 +356,6 @@
   flex: 1 1 0;
   max-width: none;
 }
-/* No inset: tabs meet the bar's top and sides, so their corners are square and the flares go. */
-:where(.trellis[data-tab-bleed] [data-trellis-part="tab"]) {
-  border-radius: 0;
-}
-:where(.trellis[data-tab-bleed] [data-trellis-part="tab"][data-selected])::before,
-:where(.trellis[data-tab-bleed] [data-trellis-part="tab"][data-selected])::after {
-  display: none;
-}
 :where(.trellis [data-trellis-part="tab-icon"]) {
   display: inline-grid;
   place-items: center;
