@@ -34,7 +34,10 @@ const expect = (ok, message) => {
   if (!ok) throw Error(message);
 };
 const settle = () => page.waitForTimeout(700);
-const panelFor = (title) => page.locator('[data-trellis-part="panel"]', { has: page.locator(`[data-trellis-part="tab-title"]:text-is("${title}")`) });
+const panelFor = (title) =>
+  page.locator('[data-trellis-part="panel"]', {
+    has: page.locator(`[data-trellis-part="tab-title"]:text-is("${title}")`),
+  });
 const notesText = () => page.frameLocator('iframe[title^="Notes"]').locator("textarea").inputValue();
 const TYPED = " Typed before docking and hiding.";
 
@@ -42,7 +45,10 @@ await page.goto(url, { waitUntil: "networkidle" });
 await settle();
 
 await check("boots with Finder and Notes floating on the desktop", async () => {
-  expect((await page.locator('[data-trellis-part="panel"][data-floating]').count()) === 2, "expected two floating windows");
+  expect(
+    (await page.locator('[data-trellis-part="panel"][data-floating]').count()) === 2,
+    "expected two floating windows",
+  );
   expect(await panelFor("Studio").isVisible(), "Finder (Studio) window missing");
   expect(await panelFor("Notes").isVisible(), "Notes window missing");
 });
@@ -59,7 +65,10 @@ await check("launch Mail from the dock (second app)", async () => {
   await page.click('[data-dock-app="mail"]');
   await settle();
   expect(await panelFor("Inbox").isVisible(), "Mail window did not open");
-  expect((await page.locator('[data-dock-app="mail"][data-running]').count()) === 1, "Mail has no running indicator");
+  expect(
+    (await page.locator('[data-dock-app="mail"][data-running]').count()) === 1,
+    "Mail has no running indicator",
+  );
 });
 
 await check("drag Notes to the desktop's left edge to dock it", async () => {
@@ -77,7 +86,10 @@ await check("drag Notes to the desktop's left edge to dock it", async () => {
     await page.waitForTimeout(12);
   }
   await page.waitForTimeout(150);
-  expect((await page.locator('[data-trellis-part="drop-preview"][data-visible]').count()) === 1, "no dock preview near the edge");
+  expect(
+    (await page.locator('[data-trellis-part="drop-preview"][data-visible]').count()) === 1,
+    "no dock preview near the edge",
+  );
   await page.screenshot({ path: `${shots}desktop-verify-1-dragging.png` });
   await page.mouse.up();
   await settle();
@@ -101,7 +113,10 @@ await check("restore Notes from the dock; iframe state survived", async () => {
   await page.click(".dock-minimized");
   await settle();
   expect(await panelFor("Notes").isVisible(), "Notes did not come back");
-  expect((await panelFor("Notes").getAttribute("data-region")) === "side", "Notes did not return to its docked spot");
+  expect(
+    (await panelFor("Notes").getAttribute("data-region")) === "side",
+    "Notes did not return to its docked spot",
+  );
   const text = await notesText();
   expect(text.includes(TYPED), `typed text lost after hide/restore: …${text.slice(-40)}`);
   expect((await page.locator(".dock-minimized").count()) === 0, "minimized tile not removed");

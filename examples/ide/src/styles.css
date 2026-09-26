@@ -968,7 +968,8 @@ button.status-item:hover {
   position: absolute;
   height: 4px;
   --c: var(--ide-warning);
-  background: linear-gradient(135deg, transparent 45%, var(--c) 45% 55%, transparent 55%) 0 0 / 4px 4px repeat-x,
+  background:
+    linear-gradient(135deg, transparent 45%, var(--c) 45% 55%, transparent 55%) 0 0 / 4px 4px repeat-x,
     linear-gradient(45deg, transparent 45%, var(--c) 45% 55%, transparent 55%) 0 0 / 4px 4px repeat-x;
 }
 .squiggle.error {
@@ -988,7 +989,9 @@ button.status-item:hover {
   padding: 6px 10px;
   border-radius: 7px;
   background: var(--ide-raised);
-  box-shadow: var(--ide-shadow), inset 0 0 0 1px var(--ide-border);
+  box-shadow:
+    var(--ide-shadow),
+    inset 0 0 0 1px var(--ide-border);
   font: 12px/1.35 var(--ide-font);
   color: var(--ide-text);
   pointer-events: none;
@@ -1180,7 +1183,9 @@ button.status-item:hover {
   flex-direction: column;
   border-radius: 12px;
   background: var(--ide-raised);
-  box-shadow: var(--ide-shadow), inset 0 0 0 1px var(--ide-border);
+  box-shadow:
+    var(--ide-shadow),
+    inset 0 0 0 1px var(--ide-border);
   overflow: hidden;
   animation: drop 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -1258,7 +1263,9 @@ button.status-item:hover {
   padding: 20px 20px 16px;
   border-radius: 14px;
   background: var(--ide-raised);
-  box-shadow: var(--ide-shadow), inset 0 0 0 1px var(--ide-border);
+  box-shadow:
+    var(--ide-shadow),
+    inset 0 0 0 1px var(--ide-border);
   animation: drop 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .dialog h2 {
@@ -1318,7 +1325,9 @@ button.status-item:hover {
   padding: 7px 14px;
   border-radius: 8px;
   background: var(--ide-raised);
-  box-shadow: var(--ide-shadow), inset 0 0 0 1px var(--ide-border);
+  box-shadow:
+    var(--ide-shadow),
+    inset 0 0 0 1px var(--ide-border);
   color: var(--ide-text);
   font-size: 12px;
   pointer-events: none;
@@ -1344,7 +1353,6 @@ button.status-item:hover {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--ide-text) 14%, transparent) transparent;
 }
-
 
 /* Tab bars are size containers so accessories can shed detail in narrow panels. */
 .ide .trellis [data-trellis-part="tabbar"] {

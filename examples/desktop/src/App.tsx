@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { Stage, ViewType, Workspace, WorkspaceProvider, useOptionalWorkspace, useWorkspace, type ViewHandle } from "@danfessler/trellis-react";
+import {
+  Stage,
+  ViewType,
+  Workspace,
+  WorkspaceProvider,
+  useOptionalWorkspace,
+  useWorkspace,
+  type ViewHandle,
+} from "@danfessler/trellis-react";
 import type { MenuEntry, WorkspaceHandle } from "@danfessler/trellis";
 import { APPS, DEFAULT_FOLDER, STAGE_ID, pageFor, type AppDefinition, type AppParams } from "./apps";
 import { AppFrame, AppIcon, WindowControls } from "./AppWindow";
@@ -22,7 +30,10 @@ function windowMenu(view: ViewHandle<AppParams>): MenuEntry[] {
     { label: "Minimize to Dock", run: () => minimize(ws, view.id) },
     { label: zoomed ? "Restore Size" : floating ? "Fill Desktop" : "Maximize", run: () => zoom(ws, view.id) },
     floating
-      ? { label: "Dock Beside Desktop", run: () => ws.dock(view.id, { beside: STAGE_ID, edge: "left", share: 0.3 }) }
+      ? {
+          label: "Dock Beside Desktop",
+          run: () => ws.dock(view.id, { beside: STAGE_ID, edge: "left", share: 0.3 }),
+        }
       : { label: "Float on Desktop", run: () => floatOnDesktop(ws, view.id) },
     "separator",
     { label: `Close ${name}`, run: () => void view.close() },

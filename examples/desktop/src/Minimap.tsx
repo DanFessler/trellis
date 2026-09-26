@@ -97,7 +97,13 @@ export function Minimap({ wallpaper }: { wallpaper: string }) {
         <span>Workspace</span>
         <span>{state.framed ? (state.framed === STAGE_ID ? "Desktop" : "Framed") : "Overview"}</span>
       </div>
-      <svg viewBox={`0 0 ${WIDTH} ${H}`} width={WIDTH} height={H} onClick={() => ws.navigation.overview()} role="img">
+      <svg
+        viewBox={`0 0 ${WIDTH} ${H}`}
+        width={WIDTH}
+        height={H}
+        onClick={() => ws.navigation.overview()}
+        role="img"
+      >
         <defs>
           <clipPath id="minimap-stage">
             <rect {...stageMap} rx={3} />
@@ -119,7 +125,11 @@ export function Minimap({ wallpaper }: { wallpaper: string }) {
         <g clipPath="url(#minimap-stage)">
           {floats.map((f) => {
             const c = f.layer === "stage" ? stage : { x: 0, y: 0, w: 1, h: 1 };
-            return tile(f.panel, { x: c.x + f.rect.x * c.w, y: c.y + f.rect.y * c.h, w: f.rect.w * c.w, h: f.rect.h * c.h }, true);
+            return tile(
+              f.panel,
+              { x: c.x + f.rect.x * c.w, y: c.y + f.rect.y * c.h, w: f.rect.w * c.w, h: f.rect.h * c.h },
+              true,
+            );
           })}
         </g>
         <rect ref={cameraEl} className="minimap-frame" rx={3.5} />

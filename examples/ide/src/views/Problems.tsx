@@ -30,7 +30,11 @@ export function Problems() {
     <div className="problems">
       <div className="problems-bar">
         {(["error", "warning", "info"] as Severity[]).map((s) => (
-          <button key={s} className={"chip" + (filter[s] ? " on" : "")} onClick={() => setFilter({ ...filter, [s]: !filter[s] })}>
+          <button
+            key={s}
+            className={"chip" + (filter[s] ? " on" : "")}
+            onClick={() => setFilter({ ...filter, [s]: !filter[s] })}
+          >
             <SeverityIcon severity={s} size={13} />
             {counts[s]} {s === "info" ? "info" : s + (counts[s] === 1 ? "" : "s")}
           </button>
@@ -58,7 +62,9 @@ export function Problems() {
                     })
                   }
                 >
-                  <span className="tree-chevron">{open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}</span>
+                  <span className="tree-chevron">
+                    {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                  </span>
                   <FileIcon path={path} />
                   <span className="tree-name">{basename(path)}</span>
                   <span className="result-dir">{dirname(path)}</span>

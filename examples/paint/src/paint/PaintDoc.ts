@@ -1,7 +1,17 @@
 import { StrokeEngine, type BrushSettings, type Point } from "./brush";
 import type { RGB } from "./color";
 
-export type Blend = "source-over" | "multiply" | "screen" | "overlay" | "darken" | "lighten" | "color-dodge" | "soft-light" | "difference" | "color";
+export type Blend =
+  | "source-over"
+  | "multiply"
+  | "screen"
+  | "overlay"
+  | "darken"
+  | "lighten"
+  | "color-dodge"
+  | "soft-light"
+  | "difference"
+  | "color";
 export const BLEND_MODES: { value: Blend; label: string }[] = [
   { value: "source-over", label: "Normal" },
   { value: "multiply", label: "Multiply" },
@@ -56,7 +66,9 @@ export function createCanvas(w: number, h: number) {
 }
 const ctx2d = (c: HTMLCanvasElement) => c.getContext("2d", { willReadFrequently: false })!;
 
-const ZOOM_STEPS = [0.05, 0.083, 0.125, 0.167, 0.25, 0.333, 0.5, 0.667, 1, 1.5, 2, 3, 4, 6, 8, 12, 16, 24, 32];
+const ZOOM_STEPS = [
+  0.05, 0.083, 0.125, 0.167, 0.25, 0.333, 0.5, 0.667, 1, 1.5, 2, 3, 4, 6, 8, 12, 16, 24, 32,
+];
 const MAX_HISTORY = 60;
 
 export class PaintDoc {
@@ -84,7 +96,13 @@ export class PaintDoc {
   private scratch: HTMLCanvasElement;
   private compositeCanvas: HTMLCanvasElement;
   private compositeFor = -1;
-  private stroke: { engine: StrokeEngine; layer: Layer; erase: boolean; opacity: number; label: string } | null = null;
+  private stroke: {
+    engine: StrokeEngine;
+    layer: Layer;
+    erase: boolean;
+    opacity: number;
+    label: string;
+  } | null = null;
 
   constructor(id: string, name: string, width: number, height: number, background: string) {
     this.id = id;
@@ -134,7 +152,13 @@ export class PaintDoc {
   push(entry: Omit<HistoryEntry, "time">) {
     const now = performance.now();
     const top = this.history[this.index - 1];
-    if (entry.key && top && top.key === entry.key && this.index === this.history.length && now - top.time < 1500) {
+    if (
+      entry.key &&
+      top &&
+      top.key === entry.key &&
+      this.index === this.history.length &&
+      now - top.time < 1500
+    ) {
       top.redo = entry.redo;
       top.time = now;
       if (this.savedIndex === this.index) this.savedIndex = -1;
@@ -170,7 +194,15 @@ export class PaintDoc {
 
   // ------------------------------------------------------------ layers
   makeLayer(name: string): Layer {
-    return { id: uid("layer"), name, canvas: createCanvas(this.width, this.height), visible: true, opacity: 1, blend: "source-over", rev: 0 };
+    return {
+      id: uid("layer"),
+      name,
+      canvas: createCanvas(this.width, this.height),
+      visible: true,
+      opacity: 1,
+      blend: "source-over",
+      rev: 0,
+    };
   }
   private layerIndex(id: string) {
     return this.layers.findIndex((l) => l.id === id);
@@ -201,7 +233,12 @@ export class PaintDoc {
   duplicateLayer(id = this.activeLayerId) {
     const src = this.layers[this.layerIndex(id)];
     if (!src) return;
-    const copy = { ...this.makeLayer(`${src.name} copy`), visible: src.visible, opacity: src.opacity, blend: src.blend };
+    const copy = {
+      ...this.makeLayer(`${src.name} copy`),
+      visible: src.visible,
+      opacity: src.opacity,
+      blend: src.blend,
+    };
     ctx2d(copy.canvas).drawImage(src.canvas, 0, 0);
     this.insert(copy, this.layerIndex(id) + 1, "Duplicate Layer");
   }
@@ -235,7 +272,12 @@ export class PaintDoc {
       this.layers.splice(b, 0, l);
     };
     move(from, to);
-    this.push({ label: "Reorder Layers", kind: "layer", undo: () => move(to, from), redo: () => move(from, to) });
+    this.push({
+      label: "Reorder Layers",
+      kind: "layer",
+      undo: () => move(to, from),
+      redo: () => move(from, to),
+    });
   }
   selectLayer(id: string) {
     if (this.layerIndex(id) < 0) return;
@@ -250,7 +292,12 @@ export class PaintDoc {
     for (const k of Object.keys(patch) as (keyof typeof patch)[]) (before as any)[k] = layer[k];
     Object.assign(layer, patch);
     const field = Object.keys(patch)[0];
-    const labels: Record<string, string> = { name: "Rename Layer", visible: patch.visible ? "Show Layer" : "Hide Layer", opacity: "Layer Opacity", blend: "Blend Mode" };
+    const labels: Record<string, string> = {
+      name: "Rename Layer",
+      visible: patch.visible ? "Show Layer" : "Hide Layer",
+      opacity: "Layer Opacity",
+      blend: "Blend Mode",
+    };
     const key = field === "visible" ? undefined : `${field}:${id}`;
     this.push({
       label: labels[field] ?? "Layer Properties",
@@ -318,7 +365,13 @@ export class PaintDoc {
 
   // ------------------------------------------------------------ pixel edits
   /** Record a pixel change to `layer` within `rect`, given the pixels before it. */
-  private recordPixels(layer: Layer, rect: { x: number; y: number; w: number; h: number }, before: ImageData, label: string, kind: HistoryKind) {
+  private recordPixels(
+    layer: Layer,
+    rect: { x: number; y: number; w: number; h: number },
+    before: ImageData,
+    label: string,
+    kind: HistoryKind,
+  ) {
     const after = ctx2d(layer.canvas).getImageData(rect.x, rect.y, rect.w, rect.h);
     layer.rev++;
     this.push({
@@ -388,7 +441,12 @@ export class PaintDoc {
   }
 
   /** Paint programmatically (sample art, brush previews in tests). */
-  paintPath(settings: BrushSettings, rgb: RGB, points: Point[], opts: { erase?: boolean; record?: boolean } = {}) {
+  paintPath(
+    settings: BrushSettings,
+    rgb: RGB,
+    points: Point[],
+    opts: { erase?: boolean; record?: boolean } = {},
+  ) {
     if (!points.length) return;
     if (!this.beginStroke(settings, rgb, !!opts.erase, points[0])) return;
     this.strokeTo(points.slice(1));
@@ -447,7 +505,10 @@ export class PaintDoc {
     };
     const mask = new Uint8Array(W * H);
     const stack: number[] = [x0, y0];
-    let minX = x0, maxX = x0, minY = y0, maxY = y0;
+    let minX = x0,
+      maxX = x0,
+      minY = y0,
+      maxY = y0;
     while (stack.length) {
       const y = stack.pop()!;
       let x = stack.pop()!;
@@ -543,7 +604,9 @@ export class PaintDoc {
   }
 
   toBlob(): Promise<Blob> {
-    return new Promise((resolve, reject) => this.composite().toBlob((b) => (b ? resolve(b) : reject(Error("export failed"))), "image/png"));
+    return new Promise((resolve, reject) =>
+      this.composite().toBlob((b) => (b ? resolve(b) : reject(Error("export failed"))), "image/png"),
+    );
   }
 
   /** Copy another document's layers (Duplicate). */
@@ -573,11 +636,19 @@ export class PaintDoc {
   }
   fitZoom() {
     const pad = Math.min(56, Math.min(this.viewport.w, this.viewport.h) * 0.08);
-    return Math.max(0.02, Math.min((this.viewport.w - pad * 2) / this.width, (this.viewport.h - pad * 2) / this.height, 8));
+    return Math.max(
+      0.02,
+      Math.min((this.viewport.w - pad * 2) / this.width, (this.viewport.h - pad * 2) / this.height, 8),
+    );
   }
   fit(emit = true) {
     const z = this.fitZoom();
-    this.view = { zoom: z, x: (this.viewport.w - this.width * z) / 2, y: (this.viewport.h - this.height * z) / 2, fit: true };
+    this.view = {
+      zoom: z,
+      x: (this.viewport.w - this.width * z) / 2,
+      y: (this.viewport.h - this.height * z) / 2,
+      fit: true,
+    };
     if (emit) this.emit();
   }
   zoomTo(zoom: number, anchor = { x: this.viewport.w / 2, y: this.viewport.h / 2 }) {
@@ -590,7 +661,8 @@ export class PaintDoc {
   }
   zoomStep(dir: 1 | -1) {
     const z = this.view.zoom;
-    const next = dir > 0 ? ZOOM_STEPS.find((s) => s > z * 1.01) : [...ZOOM_STEPS].reverse().find((s) => s < z * 0.99);
+    const next =
+      dir > 0 ? ZOOM_STEPS.find((s) => s > z * 1.01) : [...ZOOM_STEPS].reverse().find((s) => s < z * 0.99);
     this.zoomTo(next ?? z);
   }
   panBy(dx: number, dy: number) {
@@ -600,7 +672,12 @@ export class PaintDoc {
   }
   /** Center the view on a document point. */
   centerOn(x: number, y: number) {
-    this.view = { ...this.view, x: this.viewport.w / 2 - x * this.view.zoom, y: this.viewport.h / 2 - y * this.view.zoom, fit: false };
+    this.view = {
+      ...this.view,
+      x: this.viewport.w / 2 - x * this.view.zoom,
+      y: this.viewport.h / 2 - y * this.view.zoom,
+      fit: false,
+    };
     this.clampView();
     this.emit();
   }

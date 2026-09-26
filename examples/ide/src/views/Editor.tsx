@@ -60,7 +60,8 @@ function changedLines(base: string, next: string): Set<number> {
   const m = b.length;
   const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
   for (let i = n - 1; i >= 0; i--)
-    for (let j = m - 1; j >= 0; j--) dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    for (let j = m - 1; j >= 0; j--)
+      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
   const out = new Set<number>();
   let i = 0;
   let j = 0;
@@ -143,7 +144,8 @@ export function Editor() {
 
   useLayoutEffect(() => {
     const measureNow = () => {
-      if (measure.current) charWidth.current = measure.current.getBoundingClientRect().width / 10 || charWidth.current;
+      if (measure.current)
+        charWidth.current = measure.current.getBoundingClientRect().width / 10 || charWidth.current;
     };
     measureNow();
     document.fonts?.ready.then(measureNow);
@@ -168,7 +170,9 @@ export function Editor() {
     if (!ta) return;
     const at = cursorAt(ta.value, ta.selectionEnd);
     const next = { ...at, selected: Math.abs(ta.selectionEnd - ta.selectionStart) };
-    setCursor((prev) => (prev.line === next.line && prev.col === next.col && prev.selected === next.selected ? prev : next));
+    setCursor((prev) =>
+      prev.line === next.line && prev.col === next.col && prev.selected === next.selected ? prev : next,
+    );
     ide.setCursor(view.id, next);
     if (document.activeElement === ta) ensureVisible(at.line, at.col);
   }, [view.id, ensureVisible]);
@@ -207,7 +211,11 @@ export function Editor() {
     if (view.focused && area.current && document.activeElement !== area.current) {
       const active = document.activeElement as HTMLElement | null;
       // Don't steal focus from the tab bar during keyboard navigation of tabs.
-      if (!active || active === document.body || active.closest?.(`[data-trellis-content="${CSS.escape(view.id)}"]`))
+      if (
+        !active ||
+        active === document.body ||
+        active.closest?.(`[data-trellis-content="${CSS.escape(view.id)}"]`)
+      )
         area.current.focus({ preventScroll: true });
     }
   }, [view.focused, view.id]);
@@ -243,7 +251,13 @@ export function Editor() {
       const allCommented = block.every((l) => !l.trim() || /^\s*\/\//.test(l));
       const indent = Math.min(...block.filter((l) => l.trim()).map((l) => l.length - l.trimStart().length));
       const next = block
-        .map((l) => (!l.trim() ? l : allCommented ? l.replace(/^(\s*)\/\/ ?/, "$1") : l.slice(0, indent) + "// " + l.slice(indent)))
+        .map((l) =>
+          !l.trim()
+            ? l
+            : allCommented
+              ? l.replace(/^(\s*)\/\/ ?/, "$1")
+              : l.slice(0, indent) + "// " + l.slice(indent),
+        )
         .join("\n");
       ta.setSelectionRange(from, to);
       insert(next, from, from + next.length);
@@ -272,10 +286,20 @@ export function Editor() {
     if (e.key === "Enter" && !mod && !e.altKey && !e.shiftKey) {
       e.preventDefault();
       const from = lineStart(value, s);
-      const indent = value.slice(from).match(/^[ \t]*/)![0].slice(0, Math.max(0, s - from));
+      const indent = value
+        .slice(from)
+        .match(/^[ \t]*/)![0]
+        .slice(0, Math.max(0, s - from));
       const before = value[s - 1];
       const after = value[end];
-      const opens = before === "{" || before === "(" || before === "[" || (lang === "html" && before === ">" && value.slice(from, s).match(/<([a-z][\w-]*)[^>]*>$/i) && after === "<");
+      const opens =
+        before === "{" ||
+        before === "(" ||
+        before === "[" ||
+        (lang === "html" &&
+          before === ">" &&
+          value.slice(from, s).match(/<([a-z][\w-]*)[^>]*>$/i) &&
+          after === "<");
       if (opens) {
         const inner = "\n" + indent + "  ";
         const closes = after === "}" || after === ")" || after === "]" || after === "<";
@@ -356,13 +380,17 @@ export function Editor() {
           <div className="gutter" style={{ width: gutter }} aria-hidden="true">
             {lines.map((_, i) => (
               <div key={i} className={"gutter-line" + (i === cursor.line - 1 ? " active" : "")}>
-                {changes.has(i) && <span className={"change-bar" + (i >= (file.saved.split("\n").length) ? " added" : "")} />}
+                {changes.has(i) && (
+                  <span className={"change-bar" + (i >= file.saved.split("\n").length ? " added" : "")} />
+                )}
                 {i + 1}
               </div>
             ))}
           </div>
           <div className="code" style={{ minWidth: `calc(${maxLen}ch + ${PAD_X * 2 + 40}px)` }}>
-            {cursor.selected === 0 && <div className="active-line" style={{ top: PAD_Y + (cursor.line - 1) * LH }} />}
+            {cursor.selected === 0 && (
+              <div className="active-line" style={{ top: PAD_Y + (cursor.line - 1) * LH }} />
+            )}
             <pre className="hl" aria-hidden="true">
               {lines.map((tokens, i) => (
                 <Line key={i} tokens={tokens} />
@@ -373,7 +401,11 @@ export function Editor() {
                 <div
                   key={i}
                   className={`squiggle ${d.severity}`}
-                  style={{ top: PAD_Y + d.line * LH + LH - 3, left: `calc(${d.col}ch + ${PAD_X}px)`, width: `${Math.max(1, d.len)}ch` }}
+                  style={{
+                    top: PAD_Y + d.line * LH + LH - 3,
+                    left: `calc(${d.col}ch + ${PAD_X}px)`,
+                    width: `${Math.max(1, d.len)}ch`,
+                  }}
                 />
               ))}
             </div>

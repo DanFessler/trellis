@@ -57,7 +57,8 @@ const JS: Rule[] = [
     if (JS_CONSTANTS.has(m)) return "constant";
     if (JS_KEYWORDS.has(m)) {
       // `type`, `get`, `set`, `from`, `as`, `of` are contextual; treat them as identifiers when used as values.
-      if ((m === "type" || m === "get" || m === "set") && nextNonSpace(s.text, end) === "(") return "function";
+      if ((m === "type" || m === "get" || m === "set") && nextNonSpace(s.text, end) === "(")
+        return "function";
       return "keyword";
     }
     if (TS_PRIMITIVES.has(m)) return "type";
@@ -118,7 +119,15 @@ const JSON_RULES: Rule[] = [
   rule(/[{}[\],:]/, "punct"),
 ];
 
-const RULES: Record<Language, Rule[]> = { ts: JS, js: JS, css: CSS, html: HTML, md: MD, json: JSON_RULES, text: [] };
+const RULES: Record<Language, Rule[]> = {
+  ts: JS,
+  js: JS,
+  css: CSS,
+  html: HTML,
+  md: MD,
+  json: JSON_RULES,
+  text: [],
+};
 
 export function tokenize(text: string, lang: Language): Token[][] {
   const rules = RULES[lang];

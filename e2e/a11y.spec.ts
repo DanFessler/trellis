@@ -10,7 +10,9 @@ for (const scenario of ["vanilla", "react", "element"]) {
       // Fixture content (bare inputs, test buttons) is not part of the library under test.
       .exclude("[data-trellis-part=content]")
       .analyze();
-    expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+    expect(
+      results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
+    ).toEqual([]);
   });
 }
 

@@ -153,7 +153,9 @@ export const RedoIcon = make(
     <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />
   </>,
 );
-export const FitIcon = make(<path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3" />);
+export const FitIcon = make(
+  <path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3" />,
+);
 export const DownloadIcon = make(
   <>
     <path d="M12 3v12M7 10l5 5 5-5" />
@@ -186,7 +188,13 @@ export function Logo({ size = 20 }: { size?: number }) {
         </linearGradient>
       </defs>
       <rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="url(#logo-g)" />
-      <path d="M7 16.5c1.8-.2 2.6-1.3 3-2.6.5-1.6 1.6-2.4 3-2.1l4.5-4.4" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path
+        d="M7 16.5c1.8-.2 2.6-1.3 3-2.6.5-1.6 1.6-2.4 3-2.1l4.5-4.4"
+        stroke="#fff"
+        strokeWidth="2"
+        fill="none"
+        strokeLinecap="round"
+      />
       <circle cx="7.2" cy="16.4" r="1.6" fill="#fff" />
     </svg>
   );

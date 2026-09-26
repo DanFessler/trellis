@@ -213,7 +213,9 @@
     var(--trellis-shadow-float);
 }
 :where(.trellis[data-dragging] [data-trellis-part="panel"][data-floating]) {
-  box-shadow: 0 0 0 1px var(--trellis-border), var(--trellis-shadow-float);
+  box-shadow:
+    0 0 0 1px var(--trellis-border),
+    var(--trellis-shadow-float);
 }
 :where(.trellis [data-trellis-part="panel"][data-lifted]) {
   box-shadow:
@@ -286,7 +288,9 @@
   transition: none !important;
   background: var(--trellis-tab-active);
   color: var(--trellis-text);
-  box-shadow: 0 0 0 1px var(--trellis-border), 0 4px 12px -4px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 0 0 1px var(--trellis-border),
+    0 4px 12px -4px rgba(0, 0, 0, 0.25);
 }
 :where(.trellis [data-trellis-part="tab"]:hover) {
   background: var(--trellis-tab-hover);
@@ -397,10 +401,17 @@
 :where(.trellis [data-trellis-part="tab-close"]) {
   opacity: 0;
 }
-:where(.trellis [data-trellis-part="tab"]:hover [data-trellis-part="tab-close"], .trellis [data-trellis-part="tab"][data-selected] [data-trellis-part="tab-close"]) {
+:where(
+  .trellis [data-trellis-part="tab"]:hover [data-trellis-part="tab-close"],
+  .trellis [data-trellis-part="tab"][data-selected] [data-trellis-part="tab-close"]
+) {
   opacity: 0.55;
 }
-:where(.trellis [data-trellis-part="tab-close"]:hover, .trellis [data-trellis-part="panel-menu"]:hover, .trellis [data-trellis-part="panel-menu"][aria-expanded="true"]) {
+:where(
+  .trellis [data-trellis-part="tab-close"]:hover,
+  .trellis [data-trellis-part="panel-menu"]:hover,
+  .trellis [data-trellis-part="panel-menu"][aria-expanded="true"]
+) {
   opacity: 1;
   background: var(--trellis-tab-hover);
 }
@@ -561,14 +572,62 @@
   pointer-events: auto;
   touch-action: none;
 }
-:where(.trellis [data-trellis-part="resize"][data-dir="n"]) { top: -4px; left: 8px; right: 8px; height: 8px; cursor: ns-resize; }
-:where(.trellis [data-trellis-part="resize"][data-dir="s"]) { bottom: -4px; left: 8px; right: 8px; height: 8px; cursor: ns-resize; }
-:where(.trellis [data-trellis-part="resize"][data-dir="e"]) { right: -4px; top: 8px; bottom: 8px; width: 8px; cursor: ew-resize; }
-:where(.trellis [data-trellis-part="resize"][data-dir="w"]) { left: -4px; top: 8px; bottom: 8px; width: 8px; cursor: ew-resize; }
-:where(.trellis [data-trellis-part="resize"][data-dir="ne"]) { right: -5px; top: -5px; width: 14px; height: 14px; cursor: nesw-resize; }
-:where(.trellis [data-trellis-part="resize"][data-dir="nw"]) { left: -5px; top: -5px; width: 14px; height: 14px; cursor: nwse-resize; }
-:where(.trellis [data-trellis-part="resize"][data-dir="se"]) { right: -5px; bottom: -5px; width: 14px; height: 14px; cursor: nwse-resize; }
-:where(.trellis [data-trellis-part="resize"][data-dir="sw"]) { left: -5px; bottom: -5px; width: 14px; height: 14px; cursor: nesw-resize; }
+:where(.trellis [data-trellis-part="resize"][data-dir="n"]) {
+  top: -4px;
+  left: 8px;
+  right: 8px;
+  height: 8px;
+  cursor: ns-resize;
+}
+:where(.trellis [data-trellis-part="resize"][data-dir="s"]) {
+  bottom: -4px;
+  left: 8px;
+  right: 8px;
+  height: 8px;
+  cursor: ns-resize;
+}
+:where(.trellis [data-trellis-part="resize"][data-dir="e"]) {
+  right: -4px;
+  top: 8px;
+  bottom: 8px;
+  width: 8px;
+  cursor: ew-resize;
+}
+:where(.trellis [data-trellis-part="resize"][data-dir="w"]) {
+  left: -4px;
+  top: 8px;
+  bottom: 8px;
+  width: 8px;
+  cursor: ew-resize;
+}
+:where(.trellis [data-trellis-part="resize"][data-dir="ne"]) {
+  right: -5px;
+  top: -5px;
+  width: 14px;
+  height: 14px;
+  cursor: nesw-resize;
+}
+:where(.trellis [data-trellis-part="resize"][data-dir="nw"]) {
+  left: -5px;
+  top: -5px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+}
+:where(.trellis [data-trellis-part="resize"][data-dir="se"]) {
+  right: -5px;
+  bottom: -5px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+}
+:where(.trellis [data-trellis-part="resize"][data-dir="sw"]) {
+  left: -5px;
+  bottom: -5px;
+  width: 14px;
+  height: 14px;
+  cursor: nesw-resize;
+}
 
 /* ------------------------------------------------------------------ drop feedback */
 :where(.trellis [data-trellis-part="drop-preview"]) {
@@ -655,7 +714,11 @@
   cursor: default;
   outline: none;
 }
-:where(.trellis .trellis-menu-item:hover, .trellis .trellis-menu-item:focus-visible, .trellis .trellis-menu-item:focus) {
+:where(
+  .trellis .trellis-menu-item:hover,
+  .trellis .trellis-menu-item:focus-visible,
+  .trellis .trellis-menu-item:focus
+) {
   background: var(--trellis-menu-hover);
 }
 :where(.trellis .trellis-menu-item[aria-disabled="true"]) {

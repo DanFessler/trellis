@@ -39,7 +39,8 @@ export function togglePanel(ws: WorkspaceHandle, type: string, anchor?: Element 
     return;
   }
   const handle = ws.view(info.id);
-  if (handle && handle.selected && handle.visible) ws.hide(info.panelId, anchor ? { toward: anchor } : undefined);
+  if (handle && handle.selected && handle.visible)
+    ws.hide(info.panelId, anchor ? { toward: anchor } : undefined);
   else ws.focus(info.id);
 }
 
@@ -80,7 +81,13 @@ const THEMES: { id: IdeTheme; title: string }[] = [
 
 export function buildCommands(): Command[] {
   const commands: Command[] = [
-    { id: "file.quickOpen", title: "Go to File…", category: "File", shortcut: `${mod}P`, run: () => ide.openPalette("files") },
+    {
+      id: "file.quickOpen",
+      title: "Go to File…",
+      category: "File",
+      shortcut: `${mod}P`,
+      run: () => ide.openPalette("files"),
+    },
     { id: "file.save", title: "Save", category: "File", shortcut: `${mod}S`, run: saveActive },
     {
       id: "file.saveAll",
@@ -124,7 +131,9 @@ export function buildCommands(): Command[] {
       run: (ws) => {
         // Open next to the existing terminal, as another tab in its panel.
         const snap = ws.getSnapshot();
-        const existing = snap.views.find((v) => v.type === "terminal" && !snap.hidden.some((h) => h.panelId === v.panelId));
+        const existing = snap.views.find(
+          (v) => v.type === "terminal" && !snap.hidden.some((h) => h.panelId === v.panelId),
+        );
         ws.open("terminal", { placement: existing ? { into: existing.panelId } : undefined, focus: true });
       },
     },

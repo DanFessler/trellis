@@ -81,8 +81,17 @@ export function Bar({ map, onToggleMap, onReset }: { map: boolean; onToggleMap()
         </button>
         <div className="framings" aria-label="Saved framings">
           {state.framings.map((f) => (
-            <div key={f.id} className="framing" data-current={f.frame.length && f.frame[0] === state.framed ? "" : undefined}>
-              <button type="button" className="bar-button" title={`Go to “${f.name}”`} onClick={() => ws.navigation.framings.go(f.id)}>
+            <div
+              key={f.id}
+              className="framing"
+              data-current={f.frame.length && f.frame[0] === state.framed ? "" : undefined}
+            >
+              <button
+                type="button"
+                className="bar-button"
+                title={`Go to “${f.name}”`}
+                onClick={() => ws.navigation.framings.go(f.id)}
+              >
                 <Icon d={icons.framing} />
                 <span>{f.name}</span>
               </button>
@@ -139,11 +148,23 @@ export function Bar({ map, onToggleMap, onReset }: { map: boolean; onToggleMap()
       </div>
       <Dock />
       <div className="bar-side bar-end">
-        <button type="button" className="bar-button" aria-pressed={map} title="Show or hide the minimap" onClick={onToggleMap}>
+        <button
+          type="button"
+          className="bar-button"
+          aria-pressed={map}
+          title="Show or hide the minimap"
+          onClick={onToggleMap}
+        >
           <Icon d={icons.map} />
           <span>Map</span>
         </button>
-        <button type="button" className="bar-icon" aria-label="Reset desktop" title="Reset desktop" onClick={onReset}>
+        <button
+          type="button"
+          className="bar-icon"
+          aria-label="Reset desktop"
+          title="Reset desktop"
+          onClick={onReset}
+        >
           <Icon d={icons.reset} />
         </button>
       </div>

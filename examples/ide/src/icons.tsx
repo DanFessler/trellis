@@ -165,10 +165,18 @@ export const FloatIcon = make(
   </>,
   "FloatIcon",
 );
-export const PlayIcon = make(<path d="M4.75 2.9v10.2a.6.6 0 0 0 .9.52l8.4-5.1a.6.6 0 0 0 0-1.04l-8.4-5.1a.6.6 0 0 0-.9.52Z" />, "PlayIcon");
-export const SymbolIcon = make(<path d="M5 2.5c-1.5 0-2 .75-2 2v1.5c0 .9-.5 1.5-1.25 2 .75.5 1.25 1.1 1.25 2v1.5c0 1.25.5 2 2 2M11 2.5c1.5 0 2 .75 2 2v1.5c0 .9.5 1.5 1.25 2-.75.5-1.25 1.1-1.25 2v1.5c0 1.25-.5 2-2 2" />, "SymbolIcon");
+export const PlayIcon = make(
+  <path d="M4.75 2.9v10.2a.6.6 0 0 0 .9.52l8.4-5.1a.6.6 0 0 0 0-1.04l-8.4-5.1a.6.6 0 0 0-.9.52Z" />,
+  "PlayIcon",
+);
+export const SymbolIcon = make(
+  <path d="M5 2.5c-1.5 0-2 .75-2 2v1.5c0 .9-.5 1.5-1.25 2 .75.5 1.25 1.1 1.25 2v1.5c0 1.25.5 2 2 2M11 2.5c1.5 0 2 .75 2 2v1.5c0 .9.5 1.5 1.25 2-.75.5-1.25 1.1-1.25 2v1.5c0 1.25-.5 2-2 2" />,
+  "SymbolIcon",
+);
 export const CaseIcon = ({ active }: { active?: boolean }) => (
-  <span style={{ fontWeight: 600, fontSize: 11, letterSpacing: "-0.02em", opacity: active ? 1 : 0.8 }}>Aa</span>
+  <span style={{ fontWeight: 600, fontSize: 11, letterSpacing: "-0.02em", opacity: active ? 1 : 0.8 }}>
+    Aa
+  </span>
 );
 
 export function TrellisMark({ size = 18 }: { size?: number }) {

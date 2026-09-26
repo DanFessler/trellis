@@ -67,7 +67,9 @@ export const app = {
   },
   /** Remember a color once it has actually been used. */
   pushRecent(hex: string) {
-    app.set((s) => (s.recent[0] === hex ? {} : { recent: [hex, ...s.recent.filter((x) => x !== hex)].slice(0, 10) }));
+    app.set((s) =>
+      s.recent[0] === hex ? {} : { recent: [hex, ...s.recent.filter((x) => x !== hex)].slice(0, 10) },
+    );
   },
   swapColors() {
     app.set((s) => ({ color: s.secondary, secondary: s.color }));
@@ -77,7 +79,11 @@ export const app = {
 };
 
 export function useApp<T>(select: (s: AppState) => T): T {
-  return useSyncExternalStore(app.subscribe, () => select(state), () => select(state));
+  return useSyncExternalStore(
+    app.subscribe,
+    () => select(state),
+    () => select(state),
+  );
 }
 
 // ------------------------------------------------------------------ documents
@@ -102,23 +108,34 @@ export const documents = {
   ensure(id: string, params: DocParams): PaintDoc {
     const existing = docs.get(id);
     if (existing) return existing;
-    const doc = new PaintDoc(id, params.name ?? "Untitled", params.width ?? 1600, params.height ?? 1000, params.background ?? "#ffffff");
+    const doc = new PaintDoc(
+      id,
+      params.name ?? "Untitled",
+      params.width ?? 1600,
+      params.height ?? 1000,
+      params.background ?? "#ffffff",
+    );
     docs.set(id, doc);
     const source = documents.get(params.cloneOf);
     if (source && source.width === doc.width && source.height === doc.height) doc.copyFrom(source);
     else if (params.sample) paintSample(doc);
     // Restore pixels saved from a previous session (layout comes back via Trellis persistence).
-    void loadDoc(id).then((stored) => (stored ? hydrate(doc, stored) : false)).finally(() => {
-      let lastPixels = doc.pixels;
-      let lastName = doc.name;
-      doc.subscribe(() => {
-        if (doc.painting || (doc.pixels === lastPixels && doc.name === lastName)) return;
-        lastPixels = doc.pixels;
-        lastName = doc.name;
-        clearTimeout(saveTimers.get(id));
-        saveTimers.set(id, setTimeout(() => docs.has(id) && void saveDoc(doc), 700));
+    void loadDoc(id)
+      .then((stored) => (stored ? hydrate(doc, stored) : false))
+      .finally(() => {
+        let lastPixels = doc.pixels;
+        let lastName = doc.name;
+        doc.subscribe(() => {
+          if (doc.painting || (doc.pixels === lastPixels && doc.name === lastName)) return;
+          lastPixels = doc.pixels;
+          lastName = doc.name;
+          clearTimeout(saveTimers.get(id));
+          saveTimers.set(
+            id,
+            setTimeout(() => docs.has(id) && void saveDoc(doc), 700),
+          );
+        });
       });
-    });
     // May be called while rendering a view: notify other subscribers afterwards.
     queueMicrotask(notifyDocs);
     return doc;

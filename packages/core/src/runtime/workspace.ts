@@ -138,10 +138,7 @@ const TYPE_PLACEHOLDER = (type: string): ViewTypeDefinition => ({
 const DEFAULT_FLOAT_SIZE = { w: 560, h: 400 };
 
 /** Create a workspace inside `host`. Returns an imperative handle. */
-export function createWorkspace(
-  host: HTMLElement,
-  initialOptions: WorkspaceOptions,
-): WorkspaceHandle {
+export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOptions): WorkspaceHandle {
   let options: WorkspaceOptions = { ...initialOptions };
   const lifetime = new Lifetime();
   const events = new Emitter<WorkspaceEvents>();
@@ -404,7 +401,11 @@ export function createWorkspace(
     const def = typeOf(record.controller.id);
     record.mountedWith = def;
     setAttr(record.shell, "class", def.className ?? null);
-    const raw = def.iframe ? (typeof def.iframe === "function" ? def.iframe(record.controller) : def.iframe) : null;
+    const raw = def.iframe
+      ? typeof def.iframe === "function"
+        ? def.iframe(record.controller)
+        : def.iframe
+      : null;
     const frame: IframeOptions | null = raw === null ? null : typeof raw === "string" ? { src: raw } : raw;
     const key: unknown = frame ? `iframe:${JSON.stringify(frame)}` : (def.mount ?? null);
     if (key !== record.mountKey) {
@@ -432,7 +433,10 @@ export function createWorkspace(
         record.cleanup = () => frameEl.remove();
       } else if (def.mount) {
         try {
-          const cleanup = def.mount(record.content, record.controller, { icon: record.icon, accessory: record.accessory });
+          const cleanup = def.mount(record.content, record.controller, {
+            icon: record.icon,
+            accessory: record.accessory,
+          });
           record.cleanup = typeof cleanup === "function" ? cleanup : null;
         } catch (error) {
           console.error(error);
@@ -468,7 +472,11 @@ export function createWorkspace(
     let dom = panelDoms.get(panelId);
     if (dom) return dom;
     const el = h("div", { "data-trellis-part": "panel", "data-panel": panelId });
-    const tablist = h("div", { "data-trellis-part": "tabs", role: "tablist", "aria-orientation": "horizontal" });
+    const tablist = h("div", {
+      "data-trellis-part": "tabs",
+      role: "tablist",
+      "aria-orientation": "horizontal",
+    });
     const accessories = h("div", { "data-trellis-part": "accessories" });
     const menuButton = h("button", {
       "data-trellis-part": "panel-menu",
@@ -595,7 +603,8 @@ export function createWorkspace(
         tab = { el, title, badge, close: closeButton };
         dom.tabs.set(viewId, tab);
       } else if (tab.el.firstChild !== record.icon) tab.el.prepend(record.icon);
-      if (dom.tablist.children[index] !== tab.el) dom.tablist.insertBefore(tab.el, dom.tablist.children[index] ?? null);
+      if (dom.tablist.children[index] !== tab.el)
+        dom.tablist.insertBefore(tab.el, dom.tablist.children[index] ?? null);
       if (record.accessory.parentElement !== dom.accessories) dom.accessories.append(record.accessory);
       setAttr(record.shell, "aria-labelledby", tab.el.id);
     });
@@ -618,7 +627,10 @@ export function createWorkspace(
         if (tab.title.textContent !== title) tab.title.textContent = title;
         const badge = badges.get(viewId);
         const dot = badge === true;
-        const text = badge === null || badge === undefined || badge === "" || typeof badge === "boolean" ? "" : String(badge);
+        const text =
+          badge === null || badge === undefined || badge === "" || typeof badge === "boolean"
+            ? ""
+            : String(badge);
         if (tab.badge.textContent !== text) tab.badge.textContent = text;
         setAttr(tab.badge, "hidden", text || dot ? null : "");
         setAttr(tab.badge, "data-dot", dot ? "" : null);
@@ -759,7 +771,7 @@ export function createWorkspace(
         if (info) events.emit("open", info);
       }
     for (const id of before)
-      if (!after.has(id) && !(drag?.lifted?.views.includes(id))) {
+      if (!after.has(id) && !drag?.lifted?.views.includes(id)) {
         const record = previous.views[id];
         if (record)
           events.emit("close", {
@@ -773,7 +785,8 @@ export function createWorkspace(
           });
       }
     if (focusedView && !after.has(focusedView) && !drag?.lifted?.views.includes(focusedView)) {
-      const fallback = panelOfView(doc, lastFocusFallback()) ?? panelsOf(doc.root)[0] ?? doc.floating[0]?.panel ?? null;
+      const fallback =
+        panelOfView(doc, lastFocusFallback()) ?? panelsOf(doc.root)[0] ?? doc.floating[0]?.panel ?? null;
       setFocus(fallback?.selected ?? null, false);
     } else if (focusedView) {
       const panel = panelOfView(doc, focusedView);
@@ -955,7 +968,8 @@ export function createWorkspace(
         r = drag?.lifted?.id === panelId ? liftedRect(time) : tween.apply(panelId, target);
       }
       lastRects.set(panelId, r);
-      const onscreen = r.x < viewport.w && r.y < viewport.h && r.x + r.w > 0 && r.y + r.h > 0 && r.w > 2 && r.h > 2;
+      const onscreen =
+        r.x < viewport.w && r.y < viewport.h && r.x + r.w > 0 && r.y + r.h > 0 && r.w > 2 && r.h > 2;
       setStyle(dom.el, "display", onscreen ? "" : "none");
       setStyle(dom.el, "opacity", opacity === 1 ? "" : String(opacity));
       const z = zOf.get(panelId) ?? 10;
@@ -963,7 +977,8 @@ export function createWorkspace(
       setAttr(dom.el, "data-lifted", drag?.lifted?.id === panelId ? "" : null);
       place(dom.el, r, round);
       const float = doc.floating.find((f) => f.panel.id === panelId);
-      const clip = float?.layer === "stage" && sScreen && drag?.lifted?.id !== panelId ? clipInset(r, sScreen) : "";
+      const clip =
+        float?.layer === "stage" && sScreen && drag?.lifted?.id !== panelId ? clipInset(r, sScreen) : "";
       setStyle(dom.el, "clipPath", clip);
       const bar = barHeight(panel);
       setAttr(dom.el, "data-compact", r.w < 140 || r.h < bar + 24 ? "" : null);
@@ -1038,7 +1053,8 @@ export function createWorkspace(
     setAttr(shell, "data-scaled", safe < 0.999 ? "" : null);
     setAttr(shell, "inert", selected ? null : "");
     (record as any).__size = { width: Math.round(width), height: Math.round(height) };
-    const panel = panelOfView(doc, controller.id) ?? (drag?.lifted?.views.includes(controller.id) ? drag.lifted : null);
+    const panel =
+      panelOfView(doc, controller.id) ?? (drag?.lifted?.views.includes(controller.id) ? drag.lifted : null);
     const onscreen = body.x < viewport.w && body.y < viewport.h && body.x + body.w > 0 && body.y + body.h > 0;
     const busy = !!drag?.active || gesture;
     controller.update({
@@ -1070,7 +1086,8 @@ export function createWorkspace(
         split.axis === "x"
           ? { x: r.x + r.w * boundary - size / 2, y: r.y + pad(), w: size, h: r.h - gap }
           : { x: r.x + pad(), y: r.y + r.h * boundary - size / 2, w: r.w - gap, h: size };
-      const visible = rect.x < viewport.w && rect.y < viewport.h && rect.x + rect.w > 0 && rect.y + rect.h > 0;
+      const visible =
+        rect.x < viewport.w && rect.y < viewport.h && rect.x + rect.w > 0 && rect.y + rect.h > 0;
       setStyle(el, "display", visible ? "" : "none");
       place(el, rect, round);
       setAttr(el, "aria-valuenow", String(Math.round(boundary * 100)));
@@ -1108,7 +1125,8 @@ export function createWorkspace(
     focusedPanel = nextPanel;
     if (nextPanel && regionOf(nextPanel) === "stage") lastStagePanel = nextPanel;
     updateTabs();
-    for (const record of records.values()) record.controller.update({ focused: record.controller.id === viewId });
+    for (const record of records.values())
+      record.controller.update({ focused: record.controller.id === viewId });
     if (emit) events.emit("focus", viewId);
   }
   function focusView(viewId: string, moveDom: boolean) {
@@ -1131,7 +1149,11 @@ export function createWorkspace(
       "[autofocus], iframe, input, textarea, select, button, [tabindex]:not([tabindex='-1'])",
     );
     if (target) target.focus({ preventScroll: true });
-    else panelDoms.get(panelOfView(doc, viewId)?.id ?? "")?.tabs.get(viewId)?.el.focus({ preventScroll: true });
+    else
+      panelDoms
+        .get(panelOfView(doc, viewId)?.id ?? "")
+        ?.tabs.get(viewId)
+        ?.el.focus({ preventScroll: true });
   }
   function selectAndFocus(viewId: string) {
     const next = selectView(doc, viewId);
@@ -1297,7 +1319,8 @@ export function createWorkspace(
     if (appeared && !from) appear(appeared.el, panel.views);
     if (o.focus !== false) {
       const target = panelOfView(doc, id);
-      if (target && doc.floating.some((f) => f.panel.id === target.id)) commit(raiseFloat(doc, target.id), { silent: true, animate: false });
+      if (target && doc.floating.some((f) => f.panel.id === target.id))
+        commit(raiseFloat(doc, target.id), { silent: true, animate: false });
       focusView(id, true);
       ensureFramedVisible(id);
     }
@@ -1342,7 +1365,12 @@ export function createWorkspace(
       // A window floating in the stage is visible when the frame contains the stage (or is the window).
       const stage = findStage(doc.root);
       const frameNode = findNode(doc.root, framed);
-      if (float.layer === "overlay" || framed === panel.id || (stage && frameNode && findNode(frameNode, stage.id))) return;
+      if (
+        float.layer === "overlay" ||
+        framed === panel.id ||
+        (stage && frameNode && findNode(frameNode, stage.id))
+      )
+        return;
       frameTo(null);
       return;
     }
@@ -1364,7 +1392,8 @@ export function createWorkspace(
     const hadFocus = !!active && (!!record?.shell.contains(active) || !!tabEl?.contains(active));
     commit(closeViewInDoc(doc, viewId));
     if (hadFocus) {
-      const next = (panelId && locatePanel(doc, panelId)?.panel) || (focusedView ? panelOfView(doc, focusedView) : null);
+      const next =
+        (panelId && locatePanel(doc, panelId)?.panel) || (focusedView ? panelOfView(doc, focusedView) : null);
       if (next) panelDoms.get(next.id)?.tabs.get(next.selected)?.el.focus({ preventScroll: true });
       else root.focus({ preventScroll: true });
     }
@@ -1381,8 +1410,17 @@ export function createWorkspace(
       const detached = detachView(doc, id);
       const from = lastRects.get(owner.id);
       if (from && !reduced())
-        leaving.set(alone.id, { panel: alone, from, to: towardRect(o.toward, from), start: performance.now(), duration: 300 });
-      commit({ ...detached, hidden: [...detached.hidden, { panel: alone, restore: { kind: "tab", panel: owner.id } }] });
+        leaving.set(alone.id, {
+          panel: alone,
+          from,
+          to: towardRect(o.toward, from),
+          start: performance.now(),
+          duration: 300,
+        });
+      commit({
+        ...detached,
+        hidden: [...detached.hidden, { panel: alone, restore: { kind: "tab", panel: owner.id } }],
+      });
       return;
     }
     const panel = resolvePanel(id);
@@ -1443,7 +1481,10 @@ export function createWorkspace(
       const base = current ?? floatScreen(cascadeRect(fl), fl);
       const w = Math.min(base.w, DEFAULT_FLOAT_SIZE.w);
       const hh = Math.min(base.h, DEFAULT_FLOAT_SIZE.h);
-      target = screenToFloat({ x: base.x + (base.w - w) / 2 + 24, y: base.y + (base.h - hh) / 2 + 24, w, h: hh }, fl);
+      target = screenToFloat(
+        { x: base.x + (base.w - w) / 2 + 24, y: base.y + (base.h - hh) / 2 + 24, w, h: hh },
+        fl,
+      );
     }
     const from = new Map<string, Rect>();
     if (current) from.set(panel.id, current);
@@ -1458,8 +1499,7 @@ export function createWorkspace(
       d = detachView(doc, id);
       panel = { kind: "panel", id: uid("panel"), views: [id], selected: id };
     } else d = removePanel(doc, panel.id);
-    const t: DockTarget =
-      target === "stage" ? { into: findStage(d.root)?.id ?? d.root?.id ?? "" } : target;
+    const t: DockTarget = target === "stage" ? { into: findStage(d.root)?.id ?? d.root?.id ?? "" } : target;
     const from = new Map<string, Rect>();
     const current = lastRects.get(panel.id);
     if (current) from.set(panel.id, current);
@@ -1480,8 +1520,13 @@ export function createWorkspace(
   function setParams(viewId: string, patch: object) {
     const record = doc.views[viewId];
     if (!record) return;
-    doc = { ...doc, views: { ...doc.views, [viewId]: { ...record, params: { ...(record.params ?? {}), ...patch } } } };
-    records.get(viewId)?.controller.update({ params: doc.views[viewId].params ?? {}, title: titleOf(viewId) });
+    doc = {
+      ...doc,
+      views: { ...doc.views, [viewId]: { ...record, params: { ...(record.params ?? {}), ...patch } } },
+    };
+    records
+      .get(viewId)
+      ?.controller.update({ params: doc.views[viewId].params ?? {}, title: titleOf(viewId) });
     updateTabs();
     emitChange();
   }
@@ -1490,7 +1535,8 @@ export function createWorkspace(
   function menuFor(panel: PanelNode): MenuEntry[] {
     const def = typeOf(panel.selected);
     const controller = records.get(panel.selected)?.controller;
-    const custom = typeof def.menu === "function" ? (controller ? def.menu(controller) : []) : (def.menu ?? []);
+    const custom =
+      typeof def.menu === "function" ? (controller ? def.menu(controller) : []) : (def.menu ?? []);
     return custom;
   }
   function openPanelMenu(panelId: string, button: HTMLElement | null, at?: { x: number; y: number }) {
@@ -1509,7 +1555,16 @@ export function createWorkspace(
           run: () => toggleFrame(panelId),
         });
       if (region === "floating") {
-        builtIns.push({ label: "Dock", run: () => dock(panelId, findStage(doc.root) && allowed(panel.views, "stage") ? "stage" : { beside: doc.root?.id ?? "", edge: "right", share: 0.3 }) });
+        builtIns.push({
+          label: "Dock",
+          run: () =>
+            dock(
+              panelId,
+              findStage(doc.root) && allowed(panel.views, "stage")
+                ? "stage"
+                : { beside: doc.root?.id ?? "", edge: "right", share: 0.3 },
+            ),
+        });
       } else if (floatingLayer() && allowed(panel.views, "floating")) {
         builtIns.push({ label: "Float", run: () => float(panelId) });
       }
@@ -1541,9 +1596,16 @@ export function createWorkspace(
       if (closable.length) {
         entries.push("separator");
         if (typeOf(panel.selected).closable !== false)
-          entries.push({ label: `Close ${titleOf(panel.selected)}`, shortcut: hint("view.close"), run: () => void close(panel.selected) });
+          entries.push({
+            label: `Close ${titleOf(panel.selected)}`,
+            shortcut: hint("view.close"),
+            run: () => void close(panel.selected),
+          });
         if (panel.views.length > 1)
-          entries.push({ label: "Close other tabs", run: () => panel.views.filter((v) => v !== panel.selected).forEach((v) => void close(v)) });
+          entries.push({
+            label: "Close other tabs",
+            run: () => panel.views.filter((v) => v !== panel.selected).forEach((v) => void close(v)),
+          });
       }
     }
     if (!entries.length) return;
@@ -1645,7 +1707,8 @@ export function createWorkspace(
       case "tab.previous": {
         if (!panel) return;
         const i = panel.views.indexOf(panel.selected);
-        const viewId = panel.views[(i + (command === "tab.next" ? 1 : -1) + panel.views.length) % panel.views.length];
+        const viewId =
+          panel.views[(i + (command === "tab.next" ? 1 : -1) + panel.views.length) % panel.views.length];
         selectAndFocus(viewId);
         return;
       }
@@ -1718,7 +1781,12 @@ export function createWorkspace(
     const float = doc.floating.find((f) => f.panel.id === id);
     if (!float || float.layer !== "stage") return null;
     const s = stageWorld();
-    return { x: s.x + float.rect.x * s.w, y: s.y + float.rect.y * s.h, w: float.rect.w * s.w, h: float.rect.h * s.h };
+    return {
+      x: s.x + float.rect.x * s.w,
+      y: s.y + float.rect.y * s.h,
+      w: float.rect.w * s.w,
+      h: float.rect.h * s.h,
+    };
   }
   function toggleFrame(id: string): boolean {
     if (!navigationMode()) return false;
@@ -1807,8 +1875,11 @@ export function createWorkspace(
     const c = camera.value;
     let best: string | null = null;
     let score = Infinity;
-    const candidates: [string, Rect][] = [...entries].filter(([, e]) => !(e.node.kind === "stage" && e.node.child)).map(([id, e]) => [id, e.rect]);
-    for (const f of doc.floating) if (f.layer === "stage") candidates.push([f.panel.id, frameRect(f.panel.id)!]);
+    const candidates: [string, Rect][] = [...entries]
+      .filter(([, e]) => !(e.node.kind === "stage" && e.node.child))
+      .map(([id, e]) => [id, e.rect]);
+    for (const f of doc.floating)
+      if (f.layer === "stage") candidates.push([f.panel.id, frameRect(f.panel.id)!]);
     for (const [id, r] of candidates) {
       const size = Math.abs(Math.log(r.w / c.w)) + Math.abs(Math.log(r.h / c.h));
       const distance = Math.hypot(
@@ -1868,27 +1939,37 @@ export function createWorkspace(
       cancelDrag();
     };
     const controller = new AbortController();
-    const signal = AbortSignal.any ? AbortSignal.any([controller.signal, lifetime.signal]) : controller.signal;
+    const signal = AbortSignal.any
+      ? AbortSignal.any([controller.signal, lifetime.signal])
+      : controller.signal;
     window.addEventListener("pointermove", move, { signal });
     window.addEventListener("pointerup", up, { signal });
     window.addEventListener("pointercancel", cancel, { signal });
-    window.addEventListener("keydown", (ev) => {
-      if (ev.key === "Escape" && drag?.active) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        cancelDrag();
-      }
-      if (drag?.active) {
-        drag.alt = ev.altKey;
-        updateDropTarget();
-      }
-    }, { signal, capture: true });
-    window.addEventListener("keyup", (ev) => {
-      if (drag?.active) {
-        drag.alt = ev.altKey;
-        updateDropTarget();
-      }
-    }, { signal, capture: true });
+    window.addEventListener(
+      "keydown",
+      (ev) => {
+        if (ev.key === "Escape" && drag?.active) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          cancelDrag();
+        }
+        if (drag?.active) {
+          drag.alt = ev.altKey;
+          updateDropTarget();
+        }
+      },
+      { signal, capture: true },
+    );
+    window.addEventListener(
+      "keyup",
+      (ev) => {
+        if (drag?.active) {
+          drag.alt = ev.altKey;
+          updateDropTarget();
+        }
+      },
+      { signal, capture: true },
+    );
     dragCleanup = () => controller.abort();
   }
   let dragCleanup: (() => void) | null = null;
@@ -1929,7 +2010,8 @@ export function createWorkspace(
       const dom = panelDoms.get(d.panelId);
       const r = lastRects.get(d.panelId);
       if (!dom || !r) return;
-      const withinBar = p.y > r.y - 24 && p.y < r.y + tabbarHeight + 24 && p.x > r.x - 24 && p.x < r.x + r.w + 24;
+      const withinBar =
+        p.y > r.y - 24 && p.y < r.y + tabbarHeight + 24 && p.x > r.x - 24 && p.x < r.x + r.w + 24;
       if (!withinBar) {
         resetTabDrag(dom);
         lift(p);
@@ -1989,7 +2071,8 @@ export function createWorkspace(
   function lift(p: { x: number; y: number }) {
     const d = drag!;
     const panel = findPanel(d.panelId)!;
-    const current = lastRects.get(d.panelId) ?? targetRect(d.panelId) ?? { x: p.x - 150, y: p.y - 10, w: 300, h: 200 };
+    const current = lastRects.get(d.panelId) ??
+      targetRect(d.panelId) ?? { x: p.x - 150, y: p.y - 10, w: 300, h: 200 };
     const float = doc.floating.find((f) => f.panel.id === d.panelId);
     let next = doc;
     let lifted: PanelNode;
@@ -2006,8 +2089,12 @@ export function createWorkspace(
     d.fromRect = { ...current };
     d.rect = { ...current };
     const floatingMove = !!d.wasFloating;
-    const pickW = floatingMove ? current.w : Math.min(current.w, Math.max(240, Math.min(420, viewport.w * 0.32)));
-    const pickH = floatingMove ? current.h : Math.min(current.h, Math.max(160, Math.min(300, viewport.h * 0.36)));
+    const pickW = floatingMove
+      ? current.w
+      : Math.min(current.w, Math.max(240, Math.min(420, viewport.w * 0.32)));
+    const pickH = floatingMove
+      ? current.h
+      : Math.min(current.h, Math.max(160, Math.min(300, viewport.h * 0.36)));
     d.pickupSize = { w: pickW, h: pickH };
     d.grab = {
       x: current.w ? Math.min(1, Math.max(0, (p.x - current.x) / current.w)) : 0.5,
@@ -2034,7 +2121,10 @@ export function createWorkspace(
     if (d.wasFloating || reduced()) return d.rect;
     const t = Math.min(1, (time - d.pickupStart) / MOTION.pickupMs);
     const e = 1 - (1 - t) ** 3;
-    const size = { w: d.fromRect.w + (d.rect.w - d.fromRect.w) * e, h: d.fromRect.h + (d.rect.h - d.fromRect.h) * e };
+    const size = {
+      w: d.fromRect.w + (d.rect.w - d.fromRect.w) * e,
+      h: d.fromRect.h + (d.rect.h - d.fromRect.h) * e,
+    };
     return { x: d.last.x - d.grab.x * size.w, y: d.last.y - d.grab.y, w: size.w, h: size.h };
   }
   function hitScene(): HitScene {
@@ -2056,7 +2146,9 @@ export function createWorkspace(
         tabbar: { x: r.x, y: r.y, w: r.w, h: barHeight(panel) },
         tabs: panel.views.map((v) => {
           const el = dom.tabs.get(v)?.el;
-          return el ? { x: r.x + el.offsetLeft, y: r.y, w: el.offsetWidth, h: tabbarHeight } : { x: r.x, y: r.y, w: 0, h: 0 };
+          return el
+            ? { x: r.x + el.offsetLeft, y: r.y, w: el.offsetWidth, h: tabbarHeight }
+            : { x: r.x, y: r.y, w: 0, h: 0 };
         }),
         region: float ? "floating" : regionOf(panel.id),
         floating: !!float,
@@ -2092,8 +2184,10 @@ export function createWorkspace(
       const scene = hitScene();
       target = hitTest(scene, d.last);
       // Moving a floating panel: its body passes over panels freely; only bars and edges dock.
-      if (d.wasFloating && target?.kind === "tab" && target.marker && !pointInBar(target.panel, d.last)) target = canFloat ? { kind: "float" } : target;
-      if (d.wasFloating && target?.kind === "split" && !nearEdgeStrict(target.beside, d.last)) target = canFloat ? { kind: "float" } : target;
+      if (d.wasFloating && target?.kind === "tab" && target.marker && !pointInBar(target.panel, d.last))
+        target = canFloat ? { kind: "float" } : target;
+      if (d.wasFloating && target?.kind === "split" && !nearEdgeStrict(target.beside, d.last))
+        target = canFloat ? { kind: "float" } : target;
       // An empty stage accepts floats when floats live in the stage.
       if (target?.kind === "stage" && fl === "stage" && canFloat) target = { kind: "float" };
     }
@@ -2143,7 +2237,12 @@ export function createWorkspace(
     let next: LayoutDocument | null = null;
     const fl = floatingLayer();
     if (target?.kind === "tab") next = insertPanel(doc, lifted, { into: target.panel, index: target.index });
-    else if (target?.kind === "split") next = insertPanel(doc, lifted, { beside: target.beside, edge: target.edge, share: target.beside === doc.root?.id ? 0.25 : 0.5 });
+    else if (target?.kind === "split")
+      next = insertPanel(doc, lifted, {
+        beside: target.beside,
+        edge: target.edge,
+        share: target.beside === doc.root?.id ? 0.25 : 0.5,
+      });
     else if (target?.kind === "stage") next = insertPanel(doc, lifted, { into: target.stage });
     else if (target?.kind === "float" && fl) {
       const layerName = d.wasFloating?.layer ?? fl;
@@ -2178,7 +2277,8 @@ export function createWorkspace(
     const liftedId = d.lifted?.id;
     endDrag();
     doc = origin;
-    if (rect && liftedId && !reduced()) tween.begin(new Map([...lastRects, [liftedId, rect]]), performance.now());
+    if (rect && liftedId && !reduced())
+      tween.begin(new Map([...lastRects, [liftedId, rect]]), performance.now());
     sync();
     render();
   }
@@ -2205,7 +2305,8 @@ export function createWorkspace(
       return floor;
     }
     const mins = node.children.map((c) => minExtent(c, axis));
-    const inner = node.axis === axis ? mins.reduce((a, b) => a + b, 0) + gap * (mins.length - 1) : Math.max(...mins);
+    const inner =
+      node.axis === axis ? mins.reduce((a, b) => a + b, 0) + gap * (mins.length - 1) : Math.max(...mins);
     return inner;
   }
   function beginDivider(e: PointerEvent, el: HTMLElement) {
@@ -2229,7 +2330,12 @@ export function createWorkspace(
       const position = split.axis === "x" ? (p.x - r.x) / r.w : (p.y - r.y) / r.h;
       const current = findNode(doc.root, splitId) as SplitNode | null;
       if (!current) return;
-      const resized = resizeBoundary(current, index, position, (i) => minExtent(current.children[i], split.axis) / size);
+      const resized = resizeBoundary(
+        current,
+        index,
+        position,
+        (i) => minExtent(current.children[i], split.axis) / size,
+      );
       doc = { ...doc, root: replaceNode(doc.root, splitId, resized) };
       entries = layoutRects(doc.root);
       render();
@@ -2271,7 +2377,12 @@ export function createWorkspace(
     const step = e.shiftKey ? 0.1 : 0.02;
     const entry = entries.get(split.id)!;
     const size = split.axis === "x" ? toScreen(entry.rect).w : toScreen(entry.rect).h;
-    const resized = resizeBoundary(split, index, boundary + (e.key === increase ? step : -step), (i) => minExtent(split.children[i], split.axis) / size);
+    const resized = resizeBoundary(
+      split,
+      index,
+      boundary + (e.key === increase ? step : -step),
+      (i) => minExtent(split.children[i], split.axis) / size,
+    );
     commit({ ...doc, root: replaceNode(doc.root, split.id, resized) }, { animate: false });
   }
 
@@ -2353,7 +2464,10 @@ export function createWorkspace(
       focusedPanel,
       focusedView,
       views,
-      hidden: doc.hidden.map((x) => ({ panelId: x.panel.id, views: x.panel.views.map((v) => infoOf(v)!).filter(Boolean) })),
+      hidden: doc.hidden.map((x) => ({
+        panelId: x.panel.id,
+        views: x.panel.views.map((v) => infoOf(v)!).filter(Boolean),
+      })),
       framed,
       canGoBack: historyIndex > 0 || !!framed,
       canGoForward: historyIndex < history.length - 1,
@@ -2500,7 +2614,8 @@ export function createWorkspace(
       if ("navigation" in patch && !navigationMode()) frameTo(null, false);
       if (typesChanged) {
         for (const record of records.values()) mountContent(record);
-        for (const record of records.values()) record.controller.update({ title: titleOf(record.controller.id) });
+        for (const record of records.values())
+          record.controller.update({ title: titleOf(record.controller.id) });
       }
       sync();
       render();
@@ -2530,4 +2645,3 @@ function stableJson(value: unknown): string {
     .map((k) => `${JSON.stringify(k)}:${stableJson((value as any)[k])}`)
     .join(",")}}`;
 }
-

@@ -29,7 +29,9 @@ function NewDocForm({ initialName, close }: { initialName: string; close(v: NewD
   const [h, setH] = useState(1000);
   const [bg, setBg] = useState("#ffffff");
   const valid = w >= 16 && h >= 16 && w <= 4096 && h <= 4096;
-  const submit = () => valid && close({ name: name.trim() || initialName, width: Math.round(w), height: Math.round(h), background: bg });
+  const submit = () =>
+    valid &&
+    close({ name: name.trim() || initialName, width: Math.round(w), height: Math.round(h), background: bg });
   const ratio = w / h;
   const pw = ratio >= 1 ? 44 : 44 * ratio;
   const ph = ratio >= 1 ? 44 / ratio : 44;
@@ -48,12 +50,23 @@ function NewDocForm({ initialName, close }: { initialName: string; close(v: NewD
         <h2 className="dialog-title">New Document</h2>
         <label className="field field-block">
           <span>Name</span>
-          <input value={name} autoFocus onFocus={(e) => e.target.select()} onChange={(e) => setName(e.target.value)} />
+          <input
+            value={name}
+            autoFocus
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => setName(e.target.value)}
+          />
         </label>
         <div className="field-label">Size</div>
         <div className="size-presets">
           {SIZES.map((s) => (
-            <button key={s.label} type="button" className="size-preset" aria-pressed={s.w === w && s.h === h} onClick={() => (setW(s.w), setH(s.h))}>
+            <button
+              key={s.label}
+              type="button"
+              className="size-preset"
+              aria-pressed={s.w === w && s.h === h}
+              onClick={() => (setW(s.w), setH(s.h))}
+            >
               <span className="size-shape" style={{ aspectRatio: `${s.w} / ${s.h}` }} />
               <span>{s.label}</span>
               <span className="muted small">
@@ -65,24 +78,49 @@ function NewDocForm({ initialName, close }: { initialName: string; close(v: NewD
         <div className="size-row">
           <label className="field">
             <span>W</span>
-            <input type="number" min={16} max={4096} value={w} onChange={(e) => setW(Number(e.target.value))} />
+            <input
+              type="number"
+              min={16}
+              max={4096}
+              value={w}
+              onChange={(e) => setW(Number(e.target.value))}
+            />
           </label>
           <span className="muted">×</span>
           <label className="field">
             <span>H</span>
-            <input type="number" min={16} max={4096} value={h} onChange={(e) => setH(Number(e.target.value))} />
+            <input
+              type="number"
+              min={16}
+              max={4096}
+              value={h}
+              onChange={(e) => setH(Number(e.target.value))}
+            />
           </label>
           <span className="muted small">px</span>
-          <span className="size-glyph" style={{ width: pw, height: ph, background: bg === "transparent" ? undefined : bg }} data-transparent={bg === "transparent" || undefined} />
+          <span
+            className="size-glyph"
+            style={{ width: pw, height: ph, background: bg === "transparent" ? undefined : bg }}
+            data-transparent={bg === "transparent" || undefined}
+          />
         </div>
         <div className="field-label">Background</div>
         <div className="bg-options">
           {BACKGROUNDS.map((b) => (
-            <button key={b.value} type="button" className="bg-option" aria-pressed={bg === b.value} onClick={() => setBg(b.value)}>
+            <button
+              key={b.value}
+              type="button"
+              className="bg-option"
+              aria-pressed={bg === b.value}
+              onClick={() => setBg(b.value)}
+            >
               <span
                 className="bg-dot"
                 data-transparent={b.value === "transparent" || undefined}
-                style={{ background: b.value === "transparent" ? undefined : b.value, borderColor: hexToRgb(b.value) ? undefined : "transparent" }}
+                style={{
+                  background: b.value === "transparent" ? undefined : b.value,
+                  borderColor: hexToRgb(b.value) ? undefined : "transparent",
+                }}
               />
               {b.label}
             </button>
@@ -102,5 +140,8 @@ function NewDocForm({ initialName, close }: { initialName: string; close(v: NewD
 }
 
 export function newDocumentDialog(initialName: string) {
-  return openDialog<NewDocOptions | null>((close) => <NewDocForm initialName={initialName} close={close} />, null);
+  return openDialog<NewDocOptions | null>(
+    (close) => <NewDocForm initialName={initialName} close={close} />,
+    null,
+  );
 }

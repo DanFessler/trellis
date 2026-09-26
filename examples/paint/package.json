@@ -2,7 +2,11 @@
   "name": "trellis-example-paint",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview" },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
     "@danfessler/trellis": "*",
     "@danfessler/trellis-react": "*",

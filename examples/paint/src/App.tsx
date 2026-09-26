@@ -14,7 +14,17 @@ import {
   type WorkspaceHandle,
 } from "@danfessler/trellis-react";
 import { useEffect, useRef } from "react";
-import { activeDoc, alt, duplicateDocument, exportDocument, mod, newDocument, openSample, resetLayout, shift } from "./actions";
+import {
+  activeDoc,
+  alt,
+  duplicateDocument,
+  exportDocument,
+  mod,
+  newDocument,
+  openSample,
+  resetLayout,
+  shift,
+} from "./actions";
 import type { DocParams } from "./paint/PaintDoc";
 import { BrushPanel } from "./panels/BrushPanel";
 import { ColorPanel } from "./panels/ColorPanel";
@@ -58,7 +68,12 @@ const THEMES: { id: ThemeName; label: string; swatch: string }[] = [
   { id: "darker", label: "Darker", swatch: "#070708" },
 ];
 
-const ACCENT: Record<ThemeName, string> = { light: "#6a4ff0", medium: "#8f7cff", dark: "#8b7bff", darker: "#8b7bff" };
+const ACCENT: Record<ThemeName, string> = {
+  light: "#6a4ff0",
+  medium: "#8f7cff",
+  dark: "#8b7bff",
+  darker: "#8b7bff",
+};
 
 function documentMenu(ws: () => WorkspaceHandle | null) {
   return (view: ViewHandle): MenuEntry[] => {
@@ -125,22 +140,64 @@ function Shell() {
           >
             <DocumentView />
           </ViewType>
-          <ViewType id="tools" title="Tools" icon={<ToolsIcon size={14} />} singleton allow={{ stage: false }} placement="side">
+          <ViewType
+            id="tools"
+            title="Tools"
+            icon={<ToolsIcon size={14} />}
+            singleton
+            allow={{ stage: false }}
+            placement="side"
+          >
             <ToolsPanel />
           </ViewType>
-          <ViewType id="brush" title="Brush" icon={<SlidersIcon size={14} />} singleton allow={{ stage: false }} placement="side">
+          <ViewType
+            id="brush"
+            title="Brush"
+            icon={<SlidersIcon size={14} />}
+            singleton
+            allow={{ stage: false }}
+            placement="side"
+          >
             <BrushPanel />
           </ViewType>
-          <ViewType id="color" title="Color" icon={<PaletteIcon size={14} />} singleton allow={{ stage: false }} placement="side">
+          <ViewType
+            id="color"
+            title="Color"
+            icon={<PaletteIcon size={14} />}
+            singleton
+            allow={{ stage: false }}
+            placement="side"
+          >
             <ColorPanel />
           </ViewType>
-          <ViewType id="layers" title="Layers" icon={<LayersIcon size={14} />} singleton allow={{ stage: false }} placement="side">
+          <ViewType
+            id="layers"
+            title="Layers"
+            icon={<LayersIcon size={14} />}
+            singleton
+            allow={{ stage: false }}
+            placement="side"
+          >
             <LayersPanel />
           </ViewType>
-          <ViewType id="history" title="History" icon={<HistoryIcon size={14} />} singleton allow={{ stage: false }} placement="side">
+          <ViewType
+            id="history"
+            title="History"
+            icon={<HistoryIcon size={14} />}
+            singleton
+            allow={{ stage: false }}
+            placement="side"
+          >
             <HistoryPanel />
           </ViewType>
-          <ViewType id="navigator" title="Navigator" icon={<CompassIcon size={14} />} singleton allow={{ stage: false }} placement="float">
+          <ViewType
+            id="navigator"
+            title="Navigator"
+            icon={<CompassIcon size={14} />}
+            singleton
+            allow={{ stage: false }}
+            placement="float"
+          >
             <NavigatorPanel />
           </ViewType>
 
@@ -151,8 +208,16 @@ function Shell() {
             </Split>
             <Stage empty={<StageEmpty />}>
               <Panel selected={0}>
-                <View type="document" id="doc-dusk" params={{ name: "Dusk Study", width: 1600, height: 1000, sample: "dusk" }} />
-                <View type="document" id="doc-untitled" params={{ name: "Untitled-1", width: 1600, height: 1000, background: "#ffffff" }} />
+                <View
+                  type="document"
+                  id="doc-dusk"
+                  params={{ name: "Dusk Study", width: 1600, height: 1000, sample: "dusk" }}
+                />
+                <View
+                  type="document"
+                  id="doc-untitled"
+                  params={{ name: "Untitled-1", width: 1600, height: 1000, background: "#ffffff" }}
+                />
               </Panel>
             </Stage>
             <Split axis="y" weights={[0.37, 0.4, 0.23]}>
@@ -223,19 +288,47 @@ function AppBar() {
         { label: "New Document…", shortcut: `${alt}N`, run: () => ws && newDocument(ws) },
         { label: "Open Sample", run: () => ws && openSample(ws) },
         "separator",
-        { label: "Duplicate", disabled: !docViewId, run: () => ws && docViewId && duplicateDocument(ws, docViewId) },
-        { label: "Export PNG…", shortcut: `${shift}${mod}E`, disabled: !docViewId, run: () => exportDocument(docViewId) },
+        {
+          label: "Duplicate",
+          disabled: !docViewId,
+          run: () => ws && docViewId && duplicateDocument(ws, docViewId),
+        },
+        {
+          label: "Export PNG…",
+          shortcut: `${shift}${mod}E`,
+          disabled: !docViewId,
+          run: () => exportDocument(docViewId),
+        },
         "separator",
-        { label: "Close Document", disabled: !docViewId, run: () => ws && docViewId && void ws.close(docViewId) },
+        {
+          label: "Close Document",
+          disabled: !docViewId,
+          run: () => ws && docViewId && void ws.close(docViewId),
+        },
       ],
     },
     {
       label: "Edit",
       items: (): MenuDef[] => [
-        { label: doc?.history[doc.index - 1] ? `Undo ${doc.history[doc.index - 1].label}` : "Undo", shortcut: `${mod}Z`, disabled: !doc || doc.index === 0, run: () => doc?.undo() },
-        { label: doc?.history[doc.index] ? `Redo ${doc.history[doc.index].label}` : "Redo", shortcut: `${shift}${mod}Z`, disabled: !doc || doc.index >= doc.history.length, run: () => doc?.redo() },
+        {
+          label: doc?.history[doc.index - 1] ? `Undo ${doc.history[doc.index - 1].label}` : "Undo",
+          shortcut: `${mod}Z`,
+          disabled: !doc || doc.index === 0,
+          run: () => doc?.undo(),
+        },
+        {
+          label: doc?.history[doc.index] ? `Redo ${doc.history[doc.index].label}` : "Redo",
+          shortcut: `${shift}${mod}Z`,
+          disabled: !doc || doc.index >= doc.history.length,
+          run: () => doc?.redo(),
+        },
         "separator",
-        { label: "Fill with Color", shortcut: `${alt}⌫`, disabled: !doc, run: () => doc?.fillLayer(app.colorRgb()) },
+        {
+          label: "Fill with Color",
+          shortcut: `${alt}⌫`,
+          disabled: !doc,
+          run: () => doc?.fillLayer(app.colorRgb()),
+        },
         { label: "Clear Layer", shortcut: "⌫", disabled: !doc, run: () => doc?.clearLayer() },
       ],
     },
@@ -246,7 +339,12 @@ function AppBar() {
         { label: "Duplicate Layer", disabled: !doc, run: () => doc?.duplicateLayer() },
         { label: "Delete Layer", disabled: !doc || doc.layers.length <= 1, run: () => doc?.deleteLayer() },
         "separator",
-        { label: "Merge Down", shortcut: `${mod}E`, disabled: !doc || doc.layers.indexOf(doc.activeLayer) <= 0, run: () => doc?.mergeDown() },
+        {
+          label: "Merge Down",
+          shortcut: `${mod}E`,
+          disabled: !doc || doc.layers.indexOf(doc.activeLayer) <= 0,
+          run: () => doc?.mergeDown(),
+        },
         { label: "Flatten Image", disabled: !doc || doc.layers.length <= 1, run: () => doc?.flatten() },
       ],
     },
@@ -262,7 +360,8 @@ function AppBar() {
           label: snap.framed ? "Exit Focus" : "Focus Document",
           shortcut: `${shift}${mod}↩`,
           disabled: !docViewId && !snap.framed,
-          run: () => (snap.framed ? ws?.navigation.back() : ws && docViewId && ws.navigation.toggle(docViewId)),
+          run: () =>
+            snap.framed ? ws?.navigation.back() : ws && docViewId && ws.navigation.toggle(docViewId),
         },
       ],
     },
@@ -270,10 +369,19 @@ function AppBar() {
       label: "Window",
       buttonRef: windowButton,
       items: (): MenuDef[] => [
-        ...TOOL_PANELS.map(({ type, label }) => ({ label, checked: panelState(type).shown, run: () => togglePanel(type) })),
+        ...TOOL_PANELS.map(({ type, label }) => ({
+          label,
+          checked: panelState(type).shown,
+          run: () => togglePanel(type),
+        })),
         "separator",
         { section: "Theme" },
-        ...THEMES.map((t) => ({ label: t.label, checked: theme === t.id, radio: true, run: () => app.set({ theme: t.id }) })),
+        ...THEMES.map((t) => ({
+          label: t.label,
+          checked: theme === t.id,
+          radio: true,
+          run: () => app.set({ theme: t.id }),
+        })),
         "separator",
         { label: "Reset Layout…", run: () => ws && void resetLayout(ws) },
       ],
@@ -301,10 +409,22 @@ function AppBar() {
         )}
       </div>
       <div className="appbar-actions">
-        <button type="button" className="icon-btn" title={`Undo (${mod}Z)`} disabled={!doc || doc.index === 0} onClick={() => doc?.undo()}>
+        <button
+          type="button"
+          className="icon-btn"
+          title={`Undo (${mod}Z)`}
+          disabled={!doc || doc.index === 0}
+          onClick={() => doc?.undo()}
+        >
           <UndoIcon />
         </button>
-        <button type="button" className="icon-btn" title={`Redo (${shift}${mod}Z)`} disabled={!doc || doc.index >= doc.history.length} onClick={() => doc?.redo()}>
+        <button
+          type="button"
+          className="icon-btn"
+          title={`Redo (${shift}${mod}Z)`}
+          disabled={!doc || doc.index >= doc.history.length}
+          onClick={() => doc?.redo()}
+        >
           <RedoIcon />
         </button>
         <span className="appbar-sep" />
@@ -323,7 +443,12 @@ function AppBar() {
           ))}
         </div>
         <span className="appbar-sep" />
-        <button type="button" className="btn btn-primary btn-sm" disabled={!doc} onClick={() => exportDocument(docViewId)}>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          disabled={!doc}
+          onClick={() => exportDocument(docViewId)}
+        >
           <DownloadIcon size={14} /> Export
         </button>
       </div>
@@ -351,7 +476,11 @@ function useShortcuts(ws: WorkspaceHandle | null) {
   useEffect(() => {
     const typing = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      return !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) && (t as HTMLInputElement).type !== "checkbox";
+      return (
+        !!t &&
+        (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) &&
+        (t as HTMLInputElement).type !== "checkbox"
+      );
     };
     const modal = () => !!document.querySelector(".dialog-scrim");
     const onDown = (e: KeyboardEvent) => {
@@ -375,7 +504,7 @@ function useShortcuts(ws: WorkspaceHandle | null) {
         if (k === "n" && e.shiftKey) return run(() => doc?.addLayer());
         return;
       }
-      if (e.altKey && (e.code === "KeyN")) return ws && run(() => void newDocument(ws));
+      if (e.altKey && e.code === "KeyN") return ws && run(() => void newDocument(ws));
       if (e.altKey && (k === "backspace" || k === "delete")) return run(() => doc?.fillLayer(app.colorRgb()));
       if (e.altKey) return;
       if (k === " " && !e.repeat) {
@@ -406,4 +535,3 @@ function useShortcuts(ws: WorkspaceHandle | null) {
     };
   }, [ws]);
 }
-

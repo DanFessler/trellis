@@ -1,12 +1,4 @@
-import type {
-  Axis,
-  Edge,
-  LayoutNode,
-  PanelNode,
-  Rect,
-  SplitNode,
-  StageNode,
-} from "./types";
+import type { Axis, Edge, LayoutNode, PanelNode, Rect, SplitNode, StageNode } from "./types";
 
 export const UNIT: Rect = { x: 0, y: 0, w: 1, h: 1 };
 
@@ -54,10 +46,7 @@ export function sum(values: readonly number[]): number {
   return values.reduce((a, b) => a + b, 0);
 }
 
-export function findNode(
-  node: LayoutNode | null | undefined,
-  id: string,
-): LayoutNode | null {
+export function findNode(node: LayoutNode | null | undefined, id: string): LayoutNode | null {
   if (!node) return null;
   if (node.id === id) return node;
   if (node.kind === "stage") return findNode(node.child, id);
@@ -130,9 +119,7 @@ export function normalize(node: LayoutNode): LayoutNode | null {
   if (
     children.length === node.children.length &&
     children.every(
-      (child, i) =>
-        child === node.children[i] &&
-        Math.abs(normalized[i] - node.weights[i]) < 1e-12,
+      (child, i) => child === node.children[i] && Math.abs(normalized[i] - node.weights[i]) < 1e-12,
     )
   )
     return node;
@@ -215,11 +202,7 @@ export function insertBeside(
   return changed ? normalize({ ...root, children })! : root;
 }
 
-export function replaceNode(
-  root: LayoutNode | null,
-  id: string,
-  replacement: LayoutNode,
-): LayoutNode | null {
+export function replaceNode(root: LayoutNode | null, id: string, replacement: LayoutNode): LayoutNode | null {
   if (!root) return root;
   if (root.id === id) return replacement;
   if (root.kind === "panel") return root;

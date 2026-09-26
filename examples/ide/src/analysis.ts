@@ -46,13 +46,21 @@ function scriptSymbols(text: string): DocSymbol[] {
     }
     if (classIndent !== null && indent > classIndent) {
       if (indent !== classIndent + 2) return;
-      if ((m = s.match(/^(?:(?:private|public|protected|static|readonly|async|get|set|override)\s+)*([\w$]+)\s*\(/))) {
+      if (
+        (m = s.match(
+          /^(?:(?:private|public|protected|static|readonly|async|get|set|override)\s+)*([\w$]+)\s*\(/,
+        ))
+      ) {
         if (NOT_METHODS.has(m[1])) return;
         const getter = /^(?:\w+\s+)*get\s/.test(s);
         out.push({ name: m[1], kind: getter ? "property" : "method", line, col: col(m[1]), depth: 1 });
         return;
       }
-      if ((m = s.match(/^(?:(?:private|public|protected|static|readonly|declare|override)\s+)+([\w$]+)\s*[?!]?\s*[:=]/))) {
+      if (
+        (m = s.match(
+          /^(?:(?:private|public|protected|static|readonly|declare|override)\s+)+([\w$]+)\s*[?!]?\s*[:=]/,
+        ))
+      ) {
         out.push({ name: m[1], kind: "property", line, col: col(m[1]), depth: 1 });
       }
       return;
@@ -71,7 +79,8 @@ function scriptSymbols(text: string): DocSymbol[] {
       return;
     }
     if ((m = s.match(/^(?:export\s+)?(?:const|let|var)\s+([\w$]+)(.*)$/))) {
-      const isFn = /=\s*(?:async\s*)?(?:\([^)]*\)|[\w$]+)\s*(?::[^=]+)?=>/.test(m[2]) || /=\s*function\b/.test(m[2]);
+      const isFn =
+        /=\s*(?:async\s*)?(?:\([^)]*\)|[\w$]+)\s*(?::[^=]+)?=>/.test(m[2]) || /=\s*function\b/.test(m[2]);
       out.push({ name: m[1], kind: isFn ? "function" : "const", line, col: col(m[1]), depth: 0 });
     }
   });
@@ -94,7 +103,14 @@ function cssSymbols(text: string): DocSymbol[] {
     }
     if (s.includes("{") && depth === 0) {
       const name = s.slice(0, s.indexOf("{")).trim();
-      if (name) out.push({ name, kind: name.startsWith("@") ? "at-rule" : "selector", line, col: raw.indexOf(name[0]), depth: 0 });
+      if (name)
+        out.push({
+          name,
+          kind: name.startsWith("@") ? "at-rule" : "selector",
+          line,
+          col: raw.indexOf(name[0]),
+          depth: 0,
+        });
     }
     for (const ch of s) {
       if (ch === "{") depth++;
@@ -137,7 +153,13 @@ function htmlSymbols(text: string): DocSymbol[] {
     const id = m[3].match(/\bid="([^"]+)"/)?.[1];
     const cls = m[3].match(/\bclass="([^"]+)"/)?.[1];
     const name = m[2] + (id ? `#${id}` : "") + (cls ? "." + cls.split(/\s+/).join(".") : "");
-    out.push({ name, kind: "element", line, col: m[1].length, depth: Math.max(0, Math.floor(m[1].length / 2) - 1) });
+    out.push({
+      name,
+      kind: "element",
+      line,
+      col: m[1].length,
+      depth: Math.max(0, Math.floor(m[1].length / 2) - 1),
+    });
   });
   return out;
 }
@@ -146,7 +168,8 @@ function jsonSymbols(text: string): DocSymbol[] {
   const out: DocSymbol[] = [];
   text.split("\n").forEach((raw, line) => {
     const m = raw.match(/^(\s*)"([^"]+)"\s*:/);
-    if (m) out.push({ name: m[2], kind: "key", line, col: m[1].length, depth: Math.max(0, m[1].length / 2 - 1) });
+    if (m)
+      out.push({ name: m[2], kind: "key", line, col: m[1].length, depth: Math.max(0, m[1].length / 2 - 1) });
   });
   return out;
 }
@@ -233,7 +256,16 @@ function braceBalance(path: string, text: string, source: string): Diagnostic[] 
   if (open) {
     const close = { "{": "}", "(": ")", "[": "]" }[open.ch]!;
     return [
-      { path, line: open.line, col: open.col, len: 1, severity: "error", message: `'${close}' expected.`, code: "ts(1005)", source },
+      {
+        path,
+        line: open.line,
+        col: open.col,
+        len: 1,
+        severity: "error",
+        message: `'${close}' expected.`,
+        code: "ts(1005)",
+        source,
+      },
     ];
   }
   return [];
@@ -247,7 +279,16 @@ function scriptDiagnostics(path: string, text: string, ts: boolean): Diagnostic[
     let m: RegExpExecArray | null;
     const re = /console\.(log|debug)\b/g;
     while ((m = re.exec(code)))
-      out.push({ path, line, col: m.index, len: m[0].length, severity: "warning", message: "Unexpected console statement.", code: "no-console", source: "eslint" });
+      out.push({
+        path,
+        line,
+        col: m.index,
+        len: m[0].length,
+        severity: "warning",
+        message: "Unexpected console statement.",
+        code: "no-console",
+        source: "eslint",
+      });
     if (ts) {
       const anyRe = /:\s*(any)\b/g;
       while ((m = anyRe.exec(code)))
@@ -264,10 +305,28 @@ function scriptDiagnostics(path: string, text: string, ts: boolean): Diagnostic[
     }
     const eqRe = /[^=!<>]==(?!=)/g;
     while ((m = eqRe.exec(code)))
-      out.push({ path, line, col: m.index + 1, len: 2, severity: "warning", message: "Expected '===' and instead saw '=='.", code: "eqeqeq", source: "eslint" });
+      out.push({
+        path,
+        line,
+        col: m.index + 1,
+        len: 2,
+        severity: "warning",
+        message: "Expected '===' and instead saw '=='.",
+        code: "eqeqeq",
+        source: "eslint",
+      });
     const todo = raw.match(/\/\/\s*(TODO|FIXME)\b:?\s*(.*)$/);
     if (todo)
-      out.push({ path, line, col: raw.indexOf(todo[1]), len: todo[1].length, severity: "info", message: `${todo[1]}: ${todo[2]}`, code: "todo", source: "todo" });
+      out.push({
+        path,
+        line,
+        col: raw.indexOf(todo[1]),
+        len: todo[1].length,
+        severity: "info",
+        message: `${todo[1]}: ${todo[2]}`,
+        code: "todo",
+        source: "todo",
+      });
   });
   return [...braceBalance(path, text, source), ...out];
 }
@@ -277,9 +336,28 @@ function cssDiagnostics(path: string, text: string): Diagnostic[] {
   text.split("\n").forEach((raw, line) => {
     const i = raw.indexOf("!important");
     if (i >= 0)
-      out.push({ path, line, col: i, len: 10, severity: "warning", message: "Avoid using !important.", code: "declaration-no-important", source: "stylelint" });
+      out.push({
+        path,
+        line,
+        col: i,
+        len: 10,
+        severity: "warning",
+        message: "Avoid using !important.",
+        code: "declaration-no-important",
+        source: "stylelint",
+      });
     const empty = raw.match(/^\s*([^{}]+)\{\s*\}\s*$/);
-    if (empty) out.push({ path, line, col: raw.indexOf(empty[1].trim()), len: empty[1].trim().length, severity: "warning", message: "Do not use empty rulesets.", code: "emptyRules", source: "css" });
+    if (empty)
+      out.push({
+        path,
+        line,
+        col: raw.indexOf(empty[1].trim()),
+        len: empty[1].trim().length,
+        severity: "warning",
+        message: "Do not use empty rulesets.",
+        code: "emptyRules",
+        source: "css",
+      });
   });
   return [...braceBalance(path, text, "css"), ...out];
 }
@@ -294,7 +372,18 @@ function jsonDiagnostics(path: string, text: string): Diagnostic[] {
     const before = text.slice(0, pos);
     const line = before.split("\n").length - 1;
     const col = pos - (before.lastIndexOf("\n") + 1);
-    return [{ path, line, col, len: 1, severity: "error", message: msg.replace(/^JSON\.parse: /, ""), code: "json", source: "json" }];
+    return [
+      {
+        path,
+        line,
+        col,
+        len: 1,
+        severity: "error",
+        message: msg.replace(/^JSON\.parse: /, ""),
+        code: "json",
+        source: "json",
+      },
+    ];
   }
 }
 

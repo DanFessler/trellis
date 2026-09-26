@@ -1,7 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { BLEND_MODES, type Blend, type Layer, type PaintDoc } from "../paint/PaintDoc";
 import { useActiveDoc } from "../store";
-import { ArrowDownIcon, ArrowUpIcon, CopyIcon, EyeIcon, EyeOffIcon, ImageIcon, MergeIcon, PlusIcon, TrashIcon } from "../ui/icons";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CopyIcon,
+  EyeIcon,
+  EyeOffIcon,
+  ImageIcon,
+  MergeIcon,
+  PlusIcon,
+  TrashIcon,
+} from "../ui/icons";
 import { Slider } from "../ui/Slider";
 
 export function NoDocument({ what }: { what: string }) {
@@ -101,7 +111,9 @@ function LayerRow({ doc, layer, index }: { doc: PaintDoc; layer: Layer; index: n
         </span>
       )}
       <span className="layer-meta">
-        {layer.blend !== "source-over" && <span className="layer-blend">{BLEND_MODES.find((b) => b.value === layer.blend)?.label}</span>}
+        {layer.blend !== "source-over" && (
+          <span className="layer-blend">{BLEND_MODES.find((b) => b.value === layer.blend)?.label}</span>
+        )}
         {layer.opacity < 1 && <span>{Math.round(layer.opacity * 100)}%</span>}
       </span>
     </div>
@@ -129,7 +141,14 @@ export function LayersPanel() {
           ))}
         </select>
         <div className="layer-opacity">
-          <Slider label="Opacity" value={active.opacity} min={0} max={1} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => doc.setLayer(active.id, { opacity: v })} />
+          <Slider
+            label="Opacity"
+            value={active.opacity}
+            min={0}
+            max={1}
+            format={(v) => `${Math.round(v * 100)}%`}
+            onChange={(v) => doc.setLayer(active.id, { opacity: v })}
+          />
         </div>
       </div>
       <div className="layer-list" role="listbox" aria-label="Layers">
@@ -141,20 +160,49 @@ export function LayersPanel() {
         <button type="button" className="icon-btn" title="New layer (⇧⌘N)" onClick={() => doc.addLayer()}>
           <PlusIcon />
         </button>
-        <button type="button" className="icon-btn" title="Duplicate layer" onClick={() => doc.duplicateLayer()}>
+        <button
+          type="button"
+          className="icon-btn"
+          title="Duplicate layer"
+          onClick={() => doc.duplicateLayer()}
+        >
           <CopyIcon />
         </button>
-        <button type="button" className="icon-btn" title="Merge down" disabled={index <= 0} onClick={() => doc.mergeDown()}>
+        <button
+          type="button"
+          className="icon-btn"
+          title="Merge down"
+          disabled={index <= 0}
+          onClick={() => doc.mergeDown()}
+        >
           <MergeIcon />
         </button>
         <span className="spacer" />
-        <button type="button" className="icon-btn" title="Move up" disabled={index >= doc.layers.length - 1} onClick={() => doc.moveLayer(active.id, index + 1)}>
+        <button
+          type="button"
+          className="icon-btn"
+          title="Move up"
+          disabled={index >= doc.layers.length - 1}
+          onClick={() => doc.moveLayer(active.id, index + 1)}
+        >
           <ArrowUpIcon />
         </button>
-        <button type="button" className="icon-btn" title="Move down" disabled={index <= 0} onClick={() => doc.moveLayer(active.id, index - 1)}>
+        <button
+          type="button"
+          className="icon-btn"
+          title="Move down"
+          disabled={index <= 0}
+          onClick={() => doc.moveLayer(active.id, index - 1)}
+        >
           <ArrowDownIcon />
         </button>
-        <button type="button" className="icon-btn danger" title="Delete layer" disabled={doc.layers.length <= 1} onClick={() => doc.deleteLayer()}>
+        <button
+          type="button"
+          className="icon-btn danger"
+          title="Delete layer"
+          disabled={doc.layers.length <= 1}
+          onClick={() => doc.deleteLayer()}
+        >
           <TrashIcon />
         </button>
       </div>

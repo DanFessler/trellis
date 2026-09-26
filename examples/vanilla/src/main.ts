@@ -32,7 +32,9 @@ const token = (name: string) =>
 const icon = (path: string) =>
   `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
 const ICONS = {
-  kpis: icon('<rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>'),
+  kpis: icon(
+    '<rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>',
+  ),
   chart: icon('<path d="M2 13l4-5 3 3 5-7"/>'),
   log: icon('<path d="M3 4h10M3 8h10M3 12h6"/>'),
   table: icon('<rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 7h12M6 7v6"/>'),
@@ -258,7 +260,10 @@ const ws = createWorkspace(document.getElementById("app")!, {
         L.column(
           [
             L.view("kpis"),
-            L.panel(L.view("chart", { params: { metric: "requests" } }), L.view("chart", { params: { metric: "latency" } })),
+            L.panel(
+              L.view("chart", { params: { metric: "requests" } }),
+              L.view("chart", { params: { metric: "latency" } }),
+            ),
           ],
           [1, 2.2],
         ),

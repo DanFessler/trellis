@@ -24,7 +24,11 @@ const result = await page.evaluate(async () => {
   const zoom = await measure(() => ws.navigation.frame(panel));
   const back = await measure(() => ws.navigation.overview());
   const close = await measure(() => ws.close(ws.views()[40].id));
-  const stats = (f) => ({ frames: f.length, avg: +(f.reduce((a, b) => a + b, 0) / f.length).toFixed(1), max: +Math.max(...f).toFixed(1) });
+  const stats = (f) => ({
+    frames: f.length,
+    avg: +(f.reduce((a, b) => a + b, 0) / f.length).toFixed(1),
+    max: +Math.max(...f).toFixed(1),
+  });
   return { zoom: stats(zoom), back: stats(back), close: stats(close) };
 });
 console.log(JSON.stringify(result, null, 2));

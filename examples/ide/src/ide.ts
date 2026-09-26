@@ -55,7 +55,11 @@ const subscribe = (l: () => void) => {
 };
 
 export function useIde<T>(select: (s: IdeState) => T): T {
-  return useSyncExternalStore(subscribe, () => select(state), () => select(state));
+  return useSyncExternalStore(
+    subscribe,
+    () => select(state),
+    () => select(state),
+  );
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -66,7 +70,8 @@ export const ide = {
   },
   setCursor(viewId: string, cursor: Cursor) {
     const prev = state.cursors[viewId];
-    if (prev && prev.line === cursor.line && prev.col === cursor.col && prev.selected === cursor.selected) return;
+    if (prev && prev.line === cursor.line && prev.col === cursor.col && prev.selected === cursor.selected)
+      return;
     set({ cursors: { ...state.cursors, [viewId]: cursor } });
   },
   setTheme(theme: IdeTheme) {
@@ -126,7 +131,11 @@ export const editorRegistry = {
 };
 
 /** Open a file in the stage (once per path) and optionally move the caret to a 0-based line/col. */
-export function openFile(ws: WorkspaceHandle, path: string, at?: { line: number; col?: number; length?: number }) {
+export function openFile(
+  ws: WorkspaceHandle,
+  path: string,
+  at?: { line: number; col?: number; length?: number },
+) {
   const info = ws.open("editor", { params: { path }, reuse: "params" });
   if (at) {
     const target = { line: at.line, col: at.col ?? 0, length: at.length ?? 0 };
@@ -140,6 +149,7 @@ export function openFile(ws: WorkspaceHandle, path: string, at?: { line: number;
   return info;
 }
 
-export const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+export const isMac =
+  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 export const mod = isMac ? "⌘" : "Ctrl+";
 export const shift = isMac ? "⇧" : "Shift+";

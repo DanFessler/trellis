@@ -72,13 +72,25 @@ export function Search() {
               }
             }}
           />
-          <button className={"toggle" + (matchCase ? " on" : "")} title="Match Case" onClick={() => setMatchCase(!matchCase)}>
+          <button
+            className={"toggle" + (matchCase ? " on" : "")}
+            title="Match Case"
+            onClick={() => setMatchCase(!matchCase)}
+          >
             Aa
           </button>
-          <button className={"toggle" + (wholeWord ? " on" : "")} title="Match Whole Word" onClick={() => setWholeWord(!wholeWord)}>
+          <button
+            className={"toggle" + (wholeWord ? " on" : "")}
+            title="Match Whole Word"
+            onClick={() => setWholeWord(!wholeWord)}
+          >
             <u>ab</u>
           </button>
-          <button className={"toggle" + (useRegex ? " on" : "")} title="Use Regular Expression" onClick={() => setUseRegex(!useRegex)}>
+          <button
+            className={"toggle" + (useRegex ? " on" : "")}
+            title="Use Regular Expression"
+            onClick={() => setUseRegex(!useRegex)}
+          >
             .*
           </button>
         </div>
@@ -108,7 +120,9 @@ export function Search() {
                   })
                 }
               >
-                <span className="tree-chevron">{open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}</span>
+                <span className="tree-chevron">
+                  {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                </span>
                 <FileIcon path={r.path} />
                 <span className="tree-name">{basename(r.path)}</span>
                 <span className="result-dir">{dirname(r.path)}</span>

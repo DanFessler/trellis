@@ -6,20 +6,41 @@
   "license": "SEE LICENSE IN LICENSE.md",
   "author": "Dan Fessler",
   "homepage": "https://github.com/DanFessler/trellis",
-  "repository": { "type": "git", "url": "git+https://github.com/DanFessler/trellis.git", "directory": "packages/element" },
-  "keywords": ["web-components", "custom-element", "docking", "layout", "tabs", "panels", "workspace"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DanFessler/trellis.git",
+    "directory": "packages/element"
+  },
+  "keywords": [
+    "web-components",
+    "custom-element",
+    "docking",
+    "layout",
+    "tabs",
+    "panels",
+    "workspace"
+  ],
   "sideEffects": true,
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./standalone": "./dist/trellis-element.standalone.js",
     "./style.css": "./dist/style.css",
     "./package.json": "./package.json"
   },
-  "files": ["dist", "LICENSE*.md", "README.md"],
-  "peerDependencies": { "@danfessler/trellis": "^0.1.0" },
+  "files": [
+    "dist",
+    "LICENSE*.md",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@danfessler/trellis": "^0.1.0"
+  },
   "scripts": {
     "build": "tsup && cp ../core/src/style.css dist/style.css && cp ../../LICENSE*.md .",
     "prepack": "npm run build"

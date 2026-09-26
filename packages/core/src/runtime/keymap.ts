@@ -28,8 +28,7 @@ export const DEFAULT_KEYMAP: Record<Command, string | null> = {
 };
 
 const isMac = () =>
-  typeof navigator !== "undefined" &&
-  /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 const CODES: Record<string, string> = {
   "[": "BracketLeft",
@@ -60,8 +59,7 @@ export function parseCombo(combo: string): Combo {
   // "Mod++" style: a trailing empty part means the key is "+".
   let key = parts.pop() || "+";
   if (key === "" && parts.length) key = "+";
-  const has = (name: string) =>
-    parts.some((p) => p.toLowerCase() === name.toLowerCase());
+  const has = (name: string) => parts.some((p) => p.toLowerCase() === name.toLowerCase());
   const result: Combo = {
     key,
     mod: has("Mod"),
@@ -70,8 +68,7 @@ export function parseCombo(combo: string): Combo {
     alt: has("Alt") || has("Option"),
     shift: has("Shift"),
   };
-  if (/^[a-z0-9]$/i.test(key))
-    result.code = /\d/.test(key) ? `Digit${key}` : `Key${key.toUpperCase()}`;
+  if (/^[a-z0-9]$/i.test(key)) result.code = /\d/.test(key) ? `Digit${key}` : `Key${key.toUpperCase()}`;
   else if (CODES[key]) result.code = CODES[key];
   return result;
 }
@@ -101,7 +98,13 @@ export function formatCombo(combo: string): string {
   const key = arrows[c.key] ?? (c.key.length === 1 ? c.key.toUpperCase() : c.key);
   if (mac)
     return `${c.ctrl ? "⌃" : ""}${c.alt ? "⌥" : ""}${c.shift ? "⇧" : ""}${c.mod || c.meta ? "⌘" : ""}${key}`;
-  return [c.mod || c.ctrl ? "Ctrl" : "", c.meta ? "Meta" : "", c.alt ? "Alt" : "", c.shift ? "Shift" : "", key]
+  return [
+    c.mod || c.ctrl ? "Ctrl" : "",
+    c.meta ? "Meta" : "",
+    c.alt ? "Alt" : "",
+    c.shift ? "Shift" : "",
+    key,
+  ]
     .filter(Boolean)
     .join("+");
 }

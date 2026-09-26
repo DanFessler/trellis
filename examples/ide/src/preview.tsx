@@ -52,17 +52,21 @@ function resolve(from: string, href: string) {
 }
 
 export function composePreview(entry = "index.html") {
-  const html = vfs.read(entry) ?? "<p style='font:14px system-ui;color:#888;padding:24px'>No index.html in this project.</p>";
+  const html =
+    vfs.read(entry) ??
+    "<p style='font:14px system-ui;color:#888;padding:24px'>No index.html in this project.</p>";
   let css = "";
   let js = "";
   const head = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? "";
-  for (const m of head.matchAll(/<link[^>]+href="([^"]+)"[^>]*>/gi)) if (/stylesheet/.test(m[0])) css += (vfs.read(resolve(entry, m[1])) ?? "") + "\n";
+  for (const m of head.matchAll(/<link[^>]+href="([^"]+)"[^>]*>/gi))
+    if (/stylesheet/.test(m[0])) css += (vfs.read(resolve(entry, m[1])) ?? "") + "\n";
   for (const m of head.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)) css += m[1] + "\n";
   const title = head.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? "Preview";
   let body = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] ?? html;
   body = body.replace(/<script([^>]*)>([\s\S]*?)<\/script>/gi, (_, attrs: string, inline: string) => {
     const src = attrs.match(/src="([^"]+)"/)?.[1];
-    js += (src ? (vfs.read(resolve(entry, src)) ?? `console.error("Missing script: ${src}")`) : inline) + "\n;\n";
+    js +=
+      (src ? (vfs.read(resolve(entry, src)) ?? `console.error("Missing script: ${src}")`) : inline) + "\n;\n";
     return "";
   });
   return { type: "pulse:render", css, body, js, title };
@@ -119,7 +123,10 @@ export function PreviewAccessory() {
   return (
     <span className="accessory-text">
       <span className="live-dot" />
-      <span className="collapsible" title="Time since this iframe last loaded. Move the panel around — it keeps counting.">
+      <span
+        className="collapsible"
+        title="Time since this iframe last loaded. Move the panel around — it keeps counting."
+      >
         {bootedAt ? `live · up ${uptime(Date.now() - bootedAt)}` : "loading…"}
       </span>
       <button

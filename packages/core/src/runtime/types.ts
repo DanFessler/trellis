@@ -32,7 +32,11 @@ export interface ViewTypeDefinition<P extends object = Params> extends ViewRules
   icon?: string;
   /** Mount vanilla content. Called once per view; never again for moves.
    * `parts` holds the view's tab icon and tab-bar accessory containers. */
-  mount?(element: HTMLElement, view: ViewHandle<P>, parts: { icon: HTMLElement; accessory: HTMLElement }): Cleanup;
+  mount?(
+    element: HTMLElement,
+    view: ViewHandle<P>,
+    parts: { icon: HTMLElement; accessory: HTMLElement },
+  ): Cleanup;
   /** Render an iframe: a URL, or attributes such as `srcdoc` and `sandbox`. Its state survives
    * docking and tabbing; changing what this returns (e.g. via params) reloads it. */
   iframe?: string | IframeOptions | ((view: ViewHandle<P>) => string | IframeOptions);

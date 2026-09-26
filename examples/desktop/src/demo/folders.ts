@@ -1,9 +1,6 @@
 /** In-memory example folders; no access to the host filesystem. */
 export const desktopFolders = ["studio", "projects", "reference"] as const;
-export const folders: Record<
-  string,
-  { name: string; items: { name: string; folder?: string }[] }
-> = {
+export const folders: Record<string, { name: string; items: { name: string; folder?: string }[] }> = {
   studio: {
     name: "Studio",
     items: [

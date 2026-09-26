@@ -11,7 +11,9 @@ import { Workspace, ViewType, Split, Stage, View } from "@danfessler/trellis-rea
 import "@danfessler/trellis/style.css";
 
 <Workspace theme="dark">
-  <ViewType id="notes" title="Notes"><Notes /></ViewType>
+  <ViewType id="notes" title="Notes">
+    <Notes />
+  </ViewType>
   <Split weights={[1, 3]}>
     <View type="notes" />
     <Stage />

@@ -8,8 +8,11 @@ import { join, resolve } from "node:path";
 const run = (cmd, cwd) => execSync(cmd, { cwd, stdio: "pipe", encoding: "utf8" });
 const root = resolve(".");
 const out = mkdtempSync(join(tmpdir(), "trellis-pack-"));
-for (const pkg of ["core", "react", "element"]) run(`npm pack --pack-destination ${out}`, join(root, "packages", pkg));
-const tarballs = readdirSync(out).filter((f) => f.endsWith(".tgz")).map((f) => join(out, f));
+for (const pkg of ["core", "react", "element"])
+  run(`npm pack --pack-destination ${out}`, join(root, "packages", pkg));
+const tarballs = readdirSync(out)
+  .filter((f) => f.endsWith(".tgz"))
+  .map((f) => join(out, f));
 console.log("packed", tarballs.map((t) => t.split("/").pop()).join(", "));
 
 for (const react of ["18", "19"]) {
@@ -19,11 +22,22 @@ for (const react of ["18", "19"]) {
   writeFileSync(
     join(app, "tsconfig.json"),
     JSON.stringify({
-      compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "bundler", jsx: "react-jsx", strict: true, lib: ["ES2023", "DOM"], noEmit: true },
+      compilerOptions: {
+        target: "ES2022",
+        module: "ESNext",
+        moduleResolution: "bundler",
+        jsx: "react-jsx",
+        strict: true,
+        lib: ["ES2023", "DOM"],
+        noEmit: true,
+      },
       include: ["src"],
     }),
   );
-  writeFileSync(join(app, "index.html"), `<div id="root"></div><script type="module" src="/src/main.tsx"></script>`);
+  writeFileSync(
+    join(app, "index.html"),
+    `<div id="root"></div><script type="module" src="/src/main.tsx"></script>`,
+  );
   writeFileSync(
     join(app, "src/main.tsx"),
     `import { createRoot } from "react-dom/client";

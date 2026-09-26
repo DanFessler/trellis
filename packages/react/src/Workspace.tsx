@@ -72,7 +72,8 @@ export function useOptionalWorkspace(): WorkspaceHandle | null {
  * anywhere under a `<WorkspaceProvider>` once the workspace has mounted. */
 export function useWorkspace(): WorkspaceHandle {
   const ws = useOptionalWorkspace();
-  if (!ws) throw Error("Trellis: useWorkspace() must be used inside <Workspace> or <WorkspaceProvider> after mount");
+  if (!ws)
+    throw Error("Trellis: useWorkspace() must be used inside <Workspace> or <WorkspaceProvider> after mount");
   return ws;
 }
 
@@ -106,7 +107,10 @@ export function useWorkspaceState(): WorkspaceSnapshot {
   return useSyncExternalStore(subscribe, get, get);
 }
 /** Select part of the workspace state; re-renders only when the selection changes. */
-export function useWorkspaceSelector<T>(select: (s: WorkspaceSnapshot) => T, equal: (a: T, b: T) => boolean = Object.is): T {
+export function useWorkspaceSelector<T>(
+  select: (s: WorkspaceSnapshot) => T,
+  equal: (a: T, b: T) => boolean = Object.is,
+): T {
   const { subscribe, get: getSnapshot } = useStore();
   const last = useRef<{ value: T } | null>(null);
   const get = () => {
@@ -306,7 +310,8 @@ function parse(children: ReactNode): Parsed {
   const layouts: LayoutSpec[] = [];
   const toSpec = (el: ReactElement): LayoutSpec | null => {
     const props = el.props as any;
-    if (el.type === View) return { kind: "view", type: props.type, id: props.id, params: props.params, title: props.title };
+    if (el.type === View)
+      return { kind: "view", type: props.type, id: props.id, params: props.params, title: props.title };
     if (el.type === Panel)
       return {
         kind: "panel",
@@ -317,12 +322,16 @@ function parse(children: ReactNode): Parsed {
           .map((c) => toSpec(c) as Extract<LayoutSpec, { kind: "view" }>),
       };
     if (el.type === Split) {
-      const kids = flatten(props.children).map(toSpec).filter((x): x is LayoutSpec => !!x);
+      const kids = flatten(props.children)
+        .map(toSpec)
+        .filter((x): x is LayoutSpec => !!x);
       return { kind: "split", axis: props.axis ?? "x", weights: props.weights, id: props.id, children: kids };
     }
     if (el.type === Stage) {
       parsed.stage = props;
-      const kids = flatten(props.children).map(toSpec).filter((x): x is LayoutSpec => !!x);
+      const kids = flatten(props.children)
+        .map(toSpec)
+        .filter((x): x is LayoutSpec => !!x);
       const child = kids.length > 1 ? ({ kind: "split", axis: "x", children: kids } as LayoutSpec) : kids[0];
       return { kind: "stage", id: props.id, child };
     }
@@ -512,7 +521,17 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       label: props.label,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ws, props.floating, props.navigation, props.motion, props.theme, tokensKey, keymapKey, props.panelMenu, props.label]);
+  }, [
+    ws,
+    props.floating,
+    props.navigation,
+    props.motion,
+    props.theme,
+    tokensKey,
+    keymapKey,
+    props.panelMenu,
+    props.label,
+  ]);
   // Type registrations: data changes by key; functions refreshed every render through getters.
   useIsomorphicLayoutEffect(() => {
     if (ws) ws.update({ types: buildTypes() });
@@ -547,16 +566,20 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
         surfaces.map((surface) => (
           <SurfacePortal key={surface.view.id} surface={surface} type={typeById.get(surface.view.type)} />
         ))}
-      {ws && (parsed.stage?.backdrop ?? parsed.backdrop) != null &&
+      {ws &&
+        (parsed.stage?.backdrop ?? parsed.backdrop) != null &&
         createPortal(parsed.stage?.backdrop ?? parsed.backdrop, ws.slots.backdrop)}
-      {ws && (parsed.stage?.empty ?? parsed.stageEmpty) != null &&
+      {ws &&
+        (parsed.stage?.empty ?? parsed.stageEmpty) != null &&
         createPortal(parsed.stage?.empty ?? parsed.stageEmpty, ws.slots.stageEmpty)}
       {ws && parsed.empty != null && createPortal(parsed.empty, ws.slots.empty)}
       {ws && parsed.chrome != null && createPortal(parsed.chrome, ws.slots.chrome)}
     </WorkspaceContext.Provider>
   );
 }
-type WorkspaceComponent = ForwardRefExoticComponent<Omit<WorkspaceProps, "ref"> & RefAttributes<WorkspaceHandle>> & {
+type WorkspaceComponent = ForwardRefExoticComponent<
+  Omit<WorkspaceProps, "ref"> & RefAttributes<WorkspaceHandle>
+> & {
   /** Rendered when the workspace has nothing in it. */
   Empty: typeof Empty;
   /** Behind the stage's panels (like `<Stage backdrop>`, but usable with data layouts). */

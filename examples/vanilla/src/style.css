@@ -243,7 +243,10 @@ body {
   margin: 0;
   padding: 6px 0;
   list-style: none;
-  font: 12px/1.5 "JetBrains Mono", ui-monospace, monospace;
+  font:
+    12px/1.5 "JetBrains Mono",
+    ui-monospace,
+    monospace;
 }
 .log li {
   display: grid;
@@ -339,5 +342,9 @@ body {
   outline: none;
   background: var(--trellis-tabbar);
   color: var(--trellis-text);
-  font: 13px/1.6 Inter, ui-sans-serif, system-ui, sans-serif;
+  font:
+    13px/1.6 Inter,
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
 }

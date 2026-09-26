@@ -6,7 +6,17 @@ import { Slider } from "../ui/Slider";
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
-function StrokePreview({ settings, rgb, maxSize, height }: { settings: BrushSettings; rgb: RGB; maxSize: number; height: number }) {
+function StrokePreview({
+  settings,
+  rgb,
+  maxSize,
+  height,
+}: {
+  settings: BrushSettings;
+  rgb: RGB;
+  maxSize: number;
+  height: number;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const c = ref.current!;
@@ -73,22 +83,74 @@ export function BrushPanel() {
         <StrokePreview settings={brush} rgb={rgb} maxSize={40} height={56} />
       </div>
       <div className="sliders">
-        <Slider label="Size" value={brush.size} min={1} max={400} curve={2.6} format={(v) => `${Math.round(v)} px`} onChange={(v) => set({ size: Math.max(1, Math.round(v)) })} />
-        <Slider label="Opacity" value={brush.opacity} min={0.01} max={1} format={pct} onChange={(v) => set({ opacity: v })} />
-        <Slider label="Flow" value={brush.flow} min={0.01} max={1} format={pct} onChange={(v) => set({ flow: v })} />
-        <Slider label="Hardness" value={brush.hardness} min={0} max={1} format={pct} onChange={(v) => set({ hardness: v })} />
-        <Slider label="Spacing" value={brush.spacing} min={0.02} max={1} curve={1.8} format={pct} onChange={(v) => set({ spacing: v })} />
-        <Slider label="Smoothing" value={brush.smoothing} min={0} max={1} format={pct} onChange={(v) => set({ smoothing: v })} />
+        <Slider
+          label="Size"
+          value={brush.size}
+          min={1}
+          max={400}
+          curve={2.6}
+          format={(v) => `${Math.round(v)} px`}
+          onChange={(v) => set({ size: Math.max(1, Math.round(v)) })}
+        />
+        <Slider
+          label="Opacity"
+          value={brush.opacity}
+          min={0.01}
+          max={1}
+          format={pct}
+          onChange={(v) => set({ opacity: v })}
+        />
+        <Slider
+          label="Flow"
+          value={brush.flow}
+          min={0.01}
+          max={1}
+          format={pct}
+          onChange={(v) => set({ flow: v })}
+        />
+        <Slider
+          label="Hardness"
+          value={brush.hardness}
+          min={0}
+          max={1}
+          format={pct}
+          onChange={(v) => set({ hardness: v })}
+        />
+        <Slider
+          label="Spacing"
+          value={brush.spacing}
+          min={0.02}
+          max={1}
+          curve={1.8}
+          format={pct}
+          onChange={(v) => set({ spacing: v })}
+        />
+        <Slider
+          label="Smoothing"
+          value={brush.smoothing}
+          min={0}
+          max={1}
+          format={pct}
+          onChange={(v) => set({ smoothing: v })}
+        />
       </div>
       <div className="section-label">Pen pressure</div>
       <div className="toggles">
         <label className="toggle">
-          <input type="checkbox" checked={brush.pressureSize} onChange={(e) => set({ pressureSize: e.target.checked })} />
+          <input
+            type="checkbox"
+            checked={brush.pressureSize}
+            onChange={(e) => set({ pressureSize: e.target.checked })}
+          />
           <span className="toggle-track" />
           Size
         </label>
         <label className="toggle">
-          <input type="checkbox" checked={brush.pressureOpacity} onChange={(e) => set({ pressureOpacity: e.target.checked })} />
+          <input
+            type="checkbox"
+            checked={brush.pressureOpacity}
+            onChange={(e) => set({ pressureOpacity: e.target.checked })}
+          />
           <span className="toggle-track" />
           Opacity
         </label>

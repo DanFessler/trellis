@@ -143,7 +143,11 @@ function TitleBar() {
           </span>
         </div>
       </div>
-      <button className="command-center" onClick={() => ide.openPalette("files")} title="Search files, or type > for commands">
+      <button
+        className="command-center"
+        onClick={() => ide.openPalette("files")}
+        title="Search files, or type > for commands"
+      >
         <SearchIcon size={14} />
         <span>
           Search {PROJECT_NAME}
@@ -189,7 +193,11 @@ function TitleBar() {
           </svg>
         </button>
         <span className="titlebar-sep" />
-        <button className="layout-btn" title={`Command Palette (${mod}${shift}P)`} onClick={() => ide.openPalette("commands")}>
+        <button
+          className="layout-btn"
+          title={`Command Palette (${mod}${shift}P)`}
+          onClick={() => ide.openPalette("commands")}
+        >
           <CommandIcon size={15} />
         </button>
       </div>
@@ -212,12 +220,18 @@ function StatusBar() {
   const doc = snap.document;
   const panels = countPanels(doc?.root) + (doc?.floating.length ?? 0);
   const framedTitle = snap.framed
-    ? (snap.views.find((v) => v.panelId === snap.framed && v.selected)?.title ?? (snap.framed === "stage" ? "Editors" : "Panel"))
+    ? (snap.views.find((v) => v.panelId === snap.framed && v.selected)?.title ??
+      (snap.framed === "stage" ? "Editors" : "Panel"))
     : null;
   const FocusIcon =
-    { explorer: FilesIcon, search: SearchIcon, terminal: TerminalIcon, problems: ProblemsIcon, preview: PreviewIcon, outline: OutlineIcon }[
-      focused?.type ?? ""
-    ] ?? null;
+    {
+      explorer: FilesIcon,
+      search: SearchIcon,
+      terminal: TerminalIcon,
+      problems: ProblemsIcon,
+      preview: PreviewIcon,
+      outline: OutlineIcon,
+    }[focused?.type ?? ""] ?? null;
 
   return (
     <footer className="statusbar">
@@ -225,13 +239,21 @@ function StatusBar() {
         <button className="status-item" title="Source control">
           <BranchIcon size={13} /> main{vfs.dirtyPaths().length ? "*" : ""}
         </button>
-        <button className="status-item" title="Toggle Problems" onClick={() => ws && togglePanel(ws, "problems")}>
+        <button
+          className="status-item"
+          title="Toggle Problems"
+          onClick={() => ws && togglePanel(ws, "problems")}
+        >
           <SeverityIcon severity="error" size={13} /> {errors}
           <SeverityIcon severity="warning" size={13} /> {warnings}
         </button>
         {focused && (
           <span className="status-item focus-indicator" title="Focused view">
-            {focused.type === "editor" ? <FileIcon path={String(focused.params.path)} /> : FocusIcon && <FocusIcon size={13} />}
+            {focused.type === "editor" ? (
+              <FileIcon path={String(focused.params.path)} />
+            ) : (
+              FocusIcon && <FocusIcon size={13} />
+            )}
             {focused.title}
           </span>
         )}
@@ -264,7 +286,11 @@ function StatusBar() {
         <button
           className="status-item"
           title="Switch color theme"
-          onClick={() => ide.setTheme(({ light: "medium", medium: "dark", dark: "darker", darker: "light" } as const)[theme])}
+          onClick={() =>
+            ide.setTheme(
+              ({ light: "medium", medium: "dark", dark: "darker", darker: "light" } as const)[theme],
+            )
+          }
         >
           {theme[0].toUpperCase() + theme.slice(1)}
         </button>
@@ -295,7 +321,9 @@ function Shell() {
       else {
         const current = ide.get().activeEditor;
         if (!current || !s.views.some((v) => v.id === current)) {
-          const fallback = s.views.find((v) => v.type === "editor" && v.selected) ?? s.views.find((v) => v.type === "editor");
+          const fallback =
+            s.views.find((v) => v.type === "editor" && v.selected) ??
+            s.views.find((v) => v.type === "editor");
           ide.setActiveEditor(fallback?.id ?? null);
         }
       }
@@ -364,27 +392,72 @@ function Shell() {
             allow={{ side: false }}
             accessory={<EditorAccessory />}
             menu={(v) => [
-              { label: "Save", shortcut: `${mod}S`, disabled: !vfs.isDirty(v.params.path), run: () => vfs.save(v.params.path) },
-              { label: "Revert File", disabled: !vfs.isDirty(v.params.path), run: () => vfs.revert(v.params.path) },
+              {
+                label: "Save",
+                shortcut: `${mod}S`,
+                disabled: !vfs.isDirty(v.params.path),
+                run: () => vfs.save(v.params.path),
+              },
+              {
+                label: "Revert File",
+                disabled: !vfs.isDirty(v.params.path),
+                run: () => vfs.revert(v.params.path),
+              },
               { label: "Copy Path", run: () => void navigator.clipboard?.writeText(v.params.path) },
             ]}
           >
             <Editor />
           </ViewType>
-          <ViewType id="explorer" title="Explorer" icon={<FilesIcon />} singleton placement={LEFT_OF_STAGE} allow={{ stage: false, floating: false }}>
+          <ViewType
+            id="explorer"
+            title="Explorer"
+            icon={<FilesIcon />}
+            singleton
+            placement={LEFT_OF_STAGE}
+            allow={{ stage: false, floating: false }}
+          >
             <Explorer />
           </ViewType>
-          <ViewType id="search" title="Search" icon={<SearchIcon />} singleton placement={LEFT_OF_STAGE} allow={{ stage: false }}>
+          <ViewType
+            id="search"
+            title="Search"
+            icon={<SearchIcon />}
+            singleton
+            placement={LEFT_OF_STAGE}
+            allow={{ stage: false }}
+          >
             <Search />
           </ViewType>
           <ViewType id="terminal" title="Terminal" icon={<TerminalIcon />} placement={BELOW_STAGE}>
             <Terminal />
           </ViewType>
-          <ViewType id="problems" title="Problems" icon={<ProblemsIcon />} singleton placement={BELOW_STAGE} allow={{ stage: false }}>
+          <ViewType
+            id="problems"
+            title="Problems"
+            icon={<ProblemsIcon />}
+            singleton
+            placement={BELOW_STAGE}
+            allow={{ stage: false }}
+          >
             <Problems />
           </ViewType>
-          <ViewType id="preview" title="Preview" icon={<PreviewIcon />} singleton placement={RIGHT_OF_STAGE} iframe={PREVIEW_URL} accessory={<PreviewAccessory />} />
-          <ViewType id="outline" title="Outline" icon={<OutlineIcon />} singleton placement={RIGHT_OF_STAGE} allow={{ stage: false }}>
+          <ViewType
+            id="preview"
+            title="Preview"
+            icon={<PreviewIcon />}
+            singleton
+            placement={RIGHT_OF_STAGE}
+            iframe={PREVIEW_URL}
+            accessory={<PreviewAccessory />}
+          />
+          <ViewType
+            id="outline"
+            title="Outline"
+            icon={<OutlineIcon />}
+            singleton
+            placement={RIGHT_OF_STAGE}
+            allow={{ stage: false }}
+          >
             <Outline />
           </ViewType>
 

@@ -16,8 +16,7 @@ export function h<K extends keyof HTMLElementTagNameMap>(
 export const icons = {
   close:
     '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7m0-7l-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>',
-  more:
-    '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.5" cy="8" r="1.25" fill="currentColor"/></svg>',
+  more: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.5" cy="8" r="1.25" fill="currentColor"/></svg>',
   chevron:
     '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
   check:
@@ -39,11 +38,7 @@ export function setAttr(el: Element, key: string, value: string | null) {
   } else if (el.getAttribute(key) !== value) el.setAttribute(key, value);
 }
 
-export function place(
-  el: HTMLElement,
-  r: { x: number; y: number; w: number; h: number },
-  round: boolean,
-) {
+export function place(el: HTMLElement, r: { x: number; y: number; w: number; h: number }, round: boolean) {
   let { x, y, w, h } = r;
   if (round) {
     const x2 = Math.round(x + w);

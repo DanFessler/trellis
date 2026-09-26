@@ -30,7 +30,10 @@ export function Outline() {
   const editor = focused?.type === "editor" ? focused : views.find((v) => v.id === lastEditor);
   const path = editor?.params.path as string | undefined;
   const text = path ? vfs.read(path) : undefined;
-  const symbols = useMemo(() => (path && text !== undefined ? symbolsOf(text, languageOf(path)) : []), [path, text]);
+  const symbols = useMemo(
+    () => (path && text !== undefined ? symbolsOf(text, languageOf(path)) : []),
+    [path, text],
+  );
   const cursor = useIde((s) => (editor ? s.cursors[editor.id] : undefined));
   const current = cursor ? [...symbols].reverse().find((s) => s.line <= cursor.line - 1) : undefined;
 
@@ -56,7 +59,13 @@ export function Outline() {
             key={i}
             className={"tree-row symbol" + (s === current ? " active" : "")}
             style={{ paddingLeft: 10 + s.depth * 14 }}
-            onClick={() => openFile(ws, path, { line: s.line, col: s.col, length: s.kind === "heading" ? 0 : s.name.length })}
+            onClick={() =>
+              openFile(ws, path, {
+                line: s.line,
+                col: s.col,
+                length: s.kind === "heading" ? 0 : s.name.length,
+              })
+            }
             title={`${s.name} — line ${s.line + 1}`}
           >
             <span className={`sym-glyph sym-${s.kind}`}>{KIND_GLYPH[s.kind]}</span>

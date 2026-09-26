@@ -2,7 +2,12 @@
   "name": "trellis-example-ide",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview", "test:e2e": "node scripts/e2e.mjs" },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:e2e": "node scripts/e2e.mjs"
+  },
   "dependencies": {
     "@danfessler/trellis": "*",
     "@danfessler/trellis-react": "*",

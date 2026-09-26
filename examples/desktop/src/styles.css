@@ -196,7 +196,9 @@ button {
 .trellis [data-trellis-part="panel"][data-focused] [data-trellis-part="tabbar"] {
   background: #303033e6;
 }
-.trellis [data-trellis-part="panel"]:has([data-trellis-part="tab"][data-selected][data-type="spotify"]) [data-trellis-part="tabbar"] {
+.trellis
+  [data-trellis-part="panel"]:has([data-trellis-part="tab"][data-selected][data-type="spotify"])
+  [data-trellis-part="tabbar"] {
   background: #000;
 }
 .trellis [data-trellis-part="tabs"] {
@@ -247,25 +249,38 @@ button {
   display: inline-grid !important;
 }
 /* Two or more windows dragged into one title bar become tabs. */
-.trellis [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"]) [data-trellis-part="tab"] {
+.trellis
+  [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"])
+  [data-trellis-part="tab"] {
   height: 30px;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0;
   padding: 0 4px 0 8px;
 }
-.trellis [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"]) [data-trellis-part="tab"]:hover {
+.trellis
+  [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"])
+  [data-trellis-part="tab"]:hover {
   background: var(--trellis-tab-hover);
 }
-.trellis [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"]) [data-trellis-part="tab"][data-selected] {
+.trellis
+  [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"])
+  [data-trellis-part="tab"][data-selected] {
   background: var(--trellis-tab-active);
   box-shadow: inset 0 1px 0 #ffffff0d;
 }
-.trellis [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"]) [data-trellis-part="tab-close"] {
+.trellis
+  [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"])
+  [data-trellis-part="tab-close"] {
   display: inline-grid;
 }
-.trellis [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"]) [data-trellis-part="tab-icon"],
-.trellis [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"]) [data-trellis-part="tab-icon"] svg {
+.trellis
+  [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"])
+  [data-trellis-part="tab-icon"],
+.trellis
+  [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"])
+  [data-trellis-part="tab-icon"]
+  svg {
   width: 18px;
   height: 18px;
 }

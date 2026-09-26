@@ -55,7 +55,12 @@ export function NavigatorPanel() {
   const vy0 = Math.max(0, -y / zoom);
   const vx1 = Math.min(doc.width, (doc.viewport.w - x) / zoom);
   const vy1 = Math.min(doc.height, (doc.viewport.h - y) / zoom);
-  const rect = { left: ox + vx0 * s, top: oy + vy0 * s, width: Math.max(0, (vx1 - vx0) * s), height: Math.max(0, (vy1 - vy0) * s) };
+  const rect = {
+    left: ox + vx0 * s,
+    top: oy + vy0 * s,
+    width: Math.max(0, (vx1 - vx0) * s),
+    height: Math.max(0, (vy1 - vy0) * s),
+  };
   const whole = vx0 <= 0 && vy0 <= 0 && vx1 >= doc.width && vy1 >= doc.height;
 
   const moveTo = (e: PointerEvent) => {
@@ -79,7 +84,10 @@ export function NavigatorPanel() {
           const r = box.current!.getBoundingClientRect();
           const px = (e.clientX - r.left - ox) / s;
           const py = (e.clientY - r.top - oy) / s;
-          doc.zoomTo(doc.view.zoom * Math.exp(-e.deltaY * 0.004), { x: doc.view.x + px * doc.view.zoom, y: doc.view.y + py * doc.view.zoom });
+          doc.zoomTo(doc.view.zoom * Math.exp(-e.deltaY * 0.004), {
+            x: doc.view.x + px * doc.view.zoom,
+            y: doc.view.y + py * doc.view.zoom,
+          });
         }}
       >
         <canvas ref={canvas} className="nav-thumb" style={{ left: ox, top: oy }} />
@@ -90,12 +98,26 @@ export function NavigatorPanel() {
           <MinusIcon />
         </button>
         <div className="nav-slider">
-          <Slider label="Zoom" value={zoom} min={0.02} max={32} curve={3.2} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => doc.zoomTo(v)} />
+          <Slider
+            label="Zoom"
+            value={zoom}
+            min={0.02}
+            max={32}
+            curve={3.2}
+            format={(v) => `${Math.round(v * 100)}%`}
+            onChange={(v) => doc.zoomTo(v)}
+          />
         </div>
         <button type="button" className="icon-btn" title="Zoom in" onClick={() => doc.zoomStep(1)}>
           <PlusIcon />
         </button>
-        <button type="button" className="icon-btn" title="Fit on screen (⌘0)" aria-pressed={doc.view.fit} onClick={() => doc.fit()}>
+        <button
+          type="button"
+          className="icon-btn"
+          title="Fit on screen (⌘0)"
+          aria-pressed={doc.view.fit}
+          onClick={() => doc.fit()}
+        >
           <FitIcon />
         </button>
       </div>

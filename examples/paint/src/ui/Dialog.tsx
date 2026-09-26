@@ -7,7 +7,10 @@ const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((fn) => fn());
 
 /** Show a modal rendered by the app (outside the workspace) and resolve with the chosen value. */
-export function openDialog<T>(render: (close: (value: T) => void) => ReactNode, dismissValue?: T): Promise<T> {
+export function openDialog<T>(
+  render: (close: (value: T) => void) => ReactNode,
+  dismissValue?: T,
+): Promise<T> {
   current?.resolve(undefined);
   return new Promise<T>((resolve) => {
     const key = ++seq;
@@ -41,7 +44,12 @@ export function confirmDialog<T extends string>(o: ConfirmOptions<T>): Promise<T
         </div>
         <div className="dialog-actions">
           {o.actions.map((a, i) => (
-            <button key={a.value} className={`btn btn-${a.kind ?? "ghost"}`} onClick={() => close(a.value)} autoFocus={i === o.actions.length - 1}>
+            <button
+              key={a.value}
+              className={`btn btn-${a.kind ?? "ghost"}`}
+              onClick={() => close(a.value)}
+              autoFocus={i === o.actions.length - 1}
+            >
               {a.label}
             </button>
           ))}
@@ -73,7 +81,8 @@ export function DialogHost() {
     };
     window.addEventListener("keydown", onKey, true);
     requestAnimationFrame(() => {
-      if (!box.current?.contains(document.activeElement)) box.current?.querySelector<HTMLElement>("[autofocus], input, button")?.focus();
+      if (!box.current?.contains(document.activeElement))
+        box.current?.querySelector<HTMLElement>("[autofocus], input, button")?.focus();
     });
     return () => {
       window.removeEventListener("keydown", onKey, true);

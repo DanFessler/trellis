@@ -26,8 +26,12 @@ function path(pts: [number, number][], taper = true, steps = 14): Point[] {
       const t2 = t * t;
       const t3 = t2 * t;
       // Catmull-Rom
-      const x = 0.5 * (2 * bx + (-ax + cx) * t + (2 * ax - 5 * bx + 4 * cx - dx) * t2 + (-ax + 3 * bx - 3 * cx + dx) * t3);
-      const y = 0.5 * (2 * by + (-ay + cy) * t + (2 * ay - 5 * by + 4 * cy - dy) * t2 + (-ay + 3 * by - 3 * cy + dy) * t3);
+      const x =
+        0.5 *
+        (2 * bx + (-ax + cx) * t + (2 * ax - 5 * bx + 4 * cx - dx) * t2 + (-ax + 3 * bx - 3 * cx + dx) * t3);
+      const y =
+        0.5 *
+        (2 * by + (-ay + cy) * t + (2 * ay - 5 * by + 4 * cy - dy) * t2 + (-ay + 3 * by - 3 * cy + dy) * t3);
       const u = (i * steps + s) / total;
       out.push({ x, y, p: taper ? Math.sin(Math.PI * Math.min(1, u * 1.08)) ** 0.7 : 1 });
     }
@@ -103,7 +107,11 @@ export function paintSample(doc: PaintDoc) {
   ranges.forEach((r, k) => {
     const phase = rand() * 6;
     const yAt = (x: number) =>
-      H * (r.base - r.amp * (Math.sin((x / W) * Math.PI * r.freq + phase) * 0.6 + Math.sin((x / W) * Math.PI * r.freq * 2.7 + phase * 2) * 0.4));
+      H *
+      (r.base -
+        r.amp *
+          (Math.sin((x / W) * Math.PI * r.freq + phase) * 0.6 +
+            Math.sin((x / W) * Math.PI * r.freq * 2.7 + phase * 2) * 0.4));
     hc.fillStyle = r.color;
     hc.beginPath();
     hc.moveTo(0, H);
@@ -113,7 +121,12 @@ export function paintSample(doc: PaintDoc) {
     hc.fill();
     const ridge: [number, number][] = [];
     for (let x = -20; x <= W + 20; x += W / 14) ridge.push([x, yAt(x) + 6 + k * 2]);
-    doc.paintPath(preset("marker", { size: 16 - k * 3, opacity: 0.5 }), hexToRgb(r.ridge)!, path(ridge, false, 10), { record: false });
+    doc.paintPath(
+      preset("marker", { size: 16 - k * 3, opacity: 0.5 }),
+      hexToRgb(r.ridge)!,
+      path(ridge, false, 10),
+      { record: false },
+    );
   });
 
   // Ink: birds and a few hand-drawn accents.
@@ -132,8 +145,34 @@ export function paintSample(doc: PaintDoc) {
     const x = bx * W;
     const y = by * H;
     const w = 34 * s;
-    doc.paintPath(pen, inkColor, path([[x - w, y - w * 0.3], [x - w * 0.45, y - w * 0.45], [x, y]], true, 10), { record: false });
-    doc.paintPath(pen, inkColor, path([[x, y], [x + w * 0.45, y - w * 0.5], [x + w, y - w * 0.25]], true, 10), { record: false });
+    doc.paintPath(
+      pen,
+      inkColor,
+      path(
+        [
+          [x - w, y - w * 0.3],
+          [x - w * 0.45, y - w * 0.45],
+          [x, y],
+        ],
+        true,
+        10,
+      ),
+      { record: false },
+    );
+    doc.paintPath(
+      pen,
+      inkColor,
+      path(
+        [
+          [x, y],
+          [x + w * 0.45, y - w * 0.5],
+          [x + w, y - w * 0.25],
+        ],
+        true,
+        10,
+      ),
+      { record: false },
+    );
   }
   // Grass tufts on the foreground hill.
   for (let i = 0; i < 26; i++) {
@@ -141,14 +180,40 @@ export function paintSample(doc: PaintDoc) {
     const y = H * (0.9 + rand() * 0.08);
     const h = 30 + rand() * 50;
     const lean = (rand() - 0.5) * 30;
-    doc.paintPath(preset("ink", { size: 4 }), inkColor, path([[x, y], [x + lean * 0.4, y - h * 0.55], [x + lean, y - h]], true, 8), { record: false });
+    doc.paintPath(
+      preset("ink", { size: 4 }),
+      inkColor,
+      path(
+        [
+          [x, y],
+          [x + lean * 0.4, y - h * 0.55],
+          [x + lean, y - h],
+        ],
+        true,
+        8,
+      ),
+      { record: false },
+    );
   }
   // Warm haze near the horizon.
   const haze = doc.makeLayer("Haze");
   haze.opacity = 0.55;
   haze.blend = "soft-light";
   doc.layers.push(haze);
-  doc.paintPath(preset("airbrush", { size: 420, flow: 0.06 }), hexToRgb("#ffb27a")!, path([[-100, H * 0.7], [W * 0.5, H * 0.66], [W + 100, H * 0.72]], false, 30), { record: false });
+  doc.paintPath(
+    preset("airbrush", { size: 420, flow: 0.06 }),
+    hexToRgb("#ffb27a")!,
+    path(
+      [
+        [-100, H * 0.7],
+        [W * 0.5, H * 0.66],
+        [W + 100, H * 0.72],
+      ],
+      false,
+      30,
+    ),
+    { record: false },
+  );
   doc.activeLayerId = ink.id;
   for (const l of doc.layers) l.rev++;
   doc.emit(true);

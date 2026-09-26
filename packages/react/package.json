@@ -6,17 +6,35 @@
   "license": "SEE LICENSE IN LICENSE.md",
   "author": "Dan Fessler",
   "homepage": "https://github.com/DanFessler/trellis",
-  "repository": { "type": "git", "url": "git+https://github.com/DanFessler/trellis.git", "directory": "packages/react" },
-  "keywords": ["react", "docking", "layout", "tabs", "panels", "workspace"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DanFessler/trellis.git",
+    "directory": "packages/react"
+  },
+  "keywords": [
+    "react",
+    "docking",
+    "layout",
+    "tabs",
+    "panels",
+    "workspace"
+  ],
   "sideEffects": false,
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./package.json": "./package.json"
   },
-  "files": ["dist", "LICENSE*.md", "README.md"],
+  "files": [
+    "dist",
+    "LICENSE*.md",
+    "README.md"
+  ],
   "peerDependencies": {
     "@danfessler/trellis": "^0.1.0",
     "react": ">=18.3",

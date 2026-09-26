@@ -44,7 +44,12 @@ if (scenario === "vanilla") {
     types: {
       files: { title: "Files", mount: input("files"), allow: { stage: false } },
       search: { title: "Search", mount: input("search"), allow: { stage: false } },
-      editor: { title: (v) => String(v.params.name ?? "Editor"), placement: "stage", allow: { side: false }, mount: input("editor") },
+      editor: {
+        title: (v) => String(v.params.name ?? "Editor"),
+        placement: "stage",
+        allow: { side: false },
+        mount: input("editor"),
+      },
       outline: { title: "Outline", mount: input("outline"), singleton: true },
       locked: { title: "Locked", closable: false, mount: input("locked") },
     },
@@ -52,7 +57,13 @@ if (scenario === "vanilla") {
     defaultLayout: L.row(
       [
         L.panel({ id: "left" }, L.view("files", { id: "files" }), L.view("search", { id: "search" })),
-        L.stage(L.panel({ id: "docs" }, L.view("editor", { id: "a", params: { name: "a.ts" } }), L.view("editor", { id: "b", params: { name: "b.ts" } }))),
+        L.stage(
+          L.panel(
+            { id: "docs" },
+            L.view("editor", { id: "a", params: { name: "a.ts" } }),
+            L.view("editor", { id: "b", params: { name: "b.ts" } }),
+          ),
+        ),
         L.panel({ id: "right" }, L.view("outline", { id: "outline" })),
       ],
       [1, 3, 1],
@@ -76,7 +87,13 @@ function Counter() {
         count {n}
       </button>
       <label>
-        <input type="checkbox" data-test="guard" checked={guard} onChange={(e) => setGuard(e.target.checked)} /> guard
+        <input
+          type="checkbox"
+          data-test="guard"
+          checked={guard}
+          onChange={(e) => setGuard(e.target.checked)}
+        />{" "}
+        guard
       </label>
       <span data-test="focused">{String(view.focused)}</span>
     </div>
@@ -102,30 +119,30 @@ if (scenario === "react") {
   createRoot(app).render(
     <StrictMode>
       <WorkspaceProvider>
-      <Status />
-      <Workspace motion="reduced" ref={(h) => void (w.ws = h)}>
-        <ViewType id="counter" title={(v) => String(v.params.name)} placement="stage">
-          <Counter />
-        </ViewType>
-        <ViewType id="tools" title="Tools" allow={{ stage: false }}>
-          <Opener />
-        </ViewType>
-        <Workspace.Backdrop>
-          <span data-test="backdrop">backdrop</span>
-        </Workspace.Backdrop>
-        <Floating rect={{ x: 0.74, y: 0.72, w: 0.24, h: 0.25 }}>
-          <View type="tools" id="floating-tools" />
-        </Floating>
-        <Split weights={[1, 3]}>
-          <View type="tools" id="tools" />
-          <Stage empty={<p data-test="stage-empty">empty stage</p>}>
-            <Panel id="docs">
-              <View type="counter" id="c1" params={{ name: "one" }} />
-              <View type="counter" id="c2" params={{ name: "two" }} />
-            </Panel>
-          </Stage>
-        </Split>
-      </Workspace>
+        <Status />
+        <Workspace motion="reduced" ref={(h) => void (w.ws = h)}>
+          <ViewType id="counter" title={(v) => String(v.params.name)} placement="stage">
+            <Counter />
+          </ViewType>
+          <ViewType id="tools" title="Tools" allow={{ stage: false }}>
+            <Opener />
+          </ViewType>
+          <Workspace.Backdrop>
+            <span data-test="backdrop">backdrop</span>
+          </Workspace.Backdrop>
+          <Floating rect={{ x: 0.74, y: 0.72, w: 0.24, h: 0.25 }}>
+            <View type="tools" id="floating-tools" />
+          </Floating>
+          <Split weights={[1, 3]}>
+            <View type="tools" id="tools" />
+            <Stage empty={<p data-test="stage-empty">empty stage</p>}>
+              <Panel id="docs">
+                <View type="counter" id="c1" params={{ name: "one" }} />
+                <View type="counter" id="c2" params={{ name: "two" }} />
+              </Panel>
+            </Stage>
+          </Split>
+        </Workspace>
       </WorkspaceProvider>
     </StrictMode>,
   );
@@ -146,13 +163,17 @@ if (scenario === "element") {
       </trellis-split>
       <div slot="chrome"><span data-test="chrome">chrome slot</span></div>
     </trellis-workspace>`;
-  document.querySelector("trellis-workspace")!.addEventListener("trellis-ready", (e: any) => (w.ws = e.detail));
+  document
+    .querySelector("trellis-workspace")!
+    .addEventListener("trellis-ready", (e: any) => (w.ws = e.detail));
 }
 
 if (scenario === "stress") {
   const cols = 6;
   const rows = 6;
-  const types: WorkspaceOptions["types"] = { cell: { title: (v) => `Cell ${v.params.n}`, mount: input("cell") } };
+  const types: WorkspaceOptions["types"] = {
+    cell: { title: (v) => `Cell ${v.params.n}`, mount: input("cell") },
+  };
   let n = 0;
   const ws = createWorkspace(app, {
     types,
@@ -161,7 +182,11 @@ if (scenario === "stress") {
       Array.from({ length: cols }, () =>
         L.column(
           Array.from({ length: rows }, () =>
-            L.panel(L.view("cell", { params: { n: n++ } }), L.view("cell", { params: { n: n++ } }), L.view("cell", { params: { n: n++ } })),
+            L.panel(
+              L.view("cell", { params: { n: n++ } }),
+              L.view("cell", { params: { n: n++ } }),
+              L.view("cell", { params: { n: n++ } }),
+            ),
           ),
         ),
       ),

@@ -1,5 +1,11 @@
 import { useCloseGuard, useView, useViewTitle } from "@danfessler/trellis-react";
-import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useSyncExternalStore,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import type { Point } from "../paint/brush";
 import { hsvToHex, rgbToHsv } from "../paint/color";
 import type { DocParams, PaintDoc } from "../paint/PaintDoc";
@@ -54,7 +60,8 @@ export function DocumentView() {
 
   // Tool panels follow the most recently focused document (see also the workspace "focus" event in App).
   useEffect(() => {
-    if (view.focused || (view.selected && !documents.get(app.get().activeDoc))) app.set({ activeDoc: view.id });
+    if (view.focused || (view.selected && !documents.get(app.get().activeDoc)))
+      app.set({ activeDoc: view.id });
   }, [view.focused, view.selected, view.id]);
 
   return <PaintCanvas doc={doc} visible={view.visible} />;
@@ -199,7 +206,7 @@ function PaintCanvas({ doc, visible }: { doc: PaintDoc; visible: boolean }) {
   const docPoint = (e: PointerEvent | ReactPointerEvent): Point => {
     const l = localPoint(e);
     const p = doc.toDoc(l.x, l.y);
-    const pressure = e.pointerType === "pen" ? (e.pressure || 0.01) : 1;
+    const pressure = e.pointerType === "pen" ? e.pressure || 0.01 : 1;
     return { x: p.x, y: p.y, p: pressure };
   };
   const moveRing = (e: { clientX: number; clientY: number }) => {
@@ -208,7 +215,9 @@ function PaintCanvas({ doc, visible }: { doc: PaintDoc; visible: boolean }) {
     const p = doc.toDoc(l.x, l.y);
     if (hud.current)
       hud.current.textContent =
-        p.x >= 0 && p.y >= 0 && p.x < doc.width && p.y < doc.height ? `${Math.floor(p.x)}, ${Math.floor(p.y)}` : "";
+        p.x >= 0 && p.y >= 0 && p.x < doc.width && p.y < doc.height
+          ? `${Math.floor(p.x)}, ${Math.floor(p.y)}`
+          : "";
   };
   const pick = (e: ReactPointerEvent) => {
     const p = docPoint(e);
@@ -225,7 +234,11 @@ function PaintCanvas({ doc, visible }: { doc: PaintDoc; visible: boolean }) {
         if (g.mode === "paint") doc.cancelStroke();
         const [a, b] = [...g.touches.values()];
         g.mode = "pinch";
-        g.pinch = { dist: Math.hypot(a.x - b.x, a.y - b.y), zoom: doc.view.zoom, mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+        g.pinch = {
+          dist: Math.hypot(a.x - b.x, a.y - b.y),
+          zoom: doc.view.zoom,
+          mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+        };
         e.currentTarget.setPointerCapture(e.pointerId);
         return;
       }
@@ -341,7 +354,12 @@ export function ZoomAccessory({ id }: { id: string }) {
       <button type="button" aria-label="Zoom out" onClick={() => doc.zoomStep(-1)}>
         <MinusIcon size={12} />
       </button>
-      <button type="button" className="zoom-acc-value" title="Fit on screen" onClick={() => (doc.view.fit ? doc.zoomTo(1) : doc.fit())}>
+      <button
+        type="button"
+        className="zoom-acc-value"
+        title="Fit on screen"
+        onClick={() => (doc.view.fit ? doc.zoomTo(1) : doc.fit())}
+      >
         {pct}%
       </button>
       <button type="button" aria-label="Zoom in" onClick={() => doc.zoomStep(1)}>
@@ -350,4 +368,3 @@ export function ZoomAccessory({ id }: { id: string }) {
     </div>
   );
 }
-

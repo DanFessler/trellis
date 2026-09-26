@@ -63,25 +63,41 @@ const caret = await editor.evaluate((el) => el.selectionStart);
 check(typed.includes(marker + "\nconst answer = 42;"), "typed text landed in the editor buffer");
 
 const tab = page.locator('[data-trellis-part="tab"]', { hasText: "timer.ts" });
-check(!(await tab.locator('[data-trellis-part="tab-badge"]').evaluate((el) => el.hidden)), "dirty badge shows on the tab");
+check(
+  !(await tab.locator('[data-trellis-part="tab-badge"]').evaluate((el) => el.hidden)),
+  "dirty badge shows on the tab",
+);
 const accessory = await page.locator(".accessory-text", { hasText: "Ln" }).first().innerText();
-check(/Ln 6, Col 19/.test(accessory), `cursor accessory shows the caret position (${accessory.replace(/\s+/g, " ")})`);
+check(
+  /Ln 6, Col 19/.test(accessory),
+  `cursor accessory shows the caret position (${accessory.replace(/\s+/g, " ")})`,
+);
 
 const before = await snapshot();
 const editorsBefore = before.views.filter((v) => v.type === "editor");
 check(new Set(editorsBefore.map((v) => v.panelId)).size === 1, "both editors start in one panel");
 
-const stageBox = await page.locator(`[data-trellis-part="surface"][data-type="editor"]:has(textarea[data-path="${path}"])`).boundingBox();
+const stageBox = await page
+  .locator(`[data-trellis-part="surface"][data-type="editor"]:has(textarea[data-path="${path}"])`)
+  .boundingBox();
 const tabBox = await tab.boundingBox();
 await drag(center(tabBox), { x: stageBox.x + stageBox.width - 24, y: stageBox.y + stageBox.height / 2 });
 if (shots) await page.screenshot({ path: `${shots}/ide-e2e-split.png` });
 
 const after = await snapshot();
 const editorsAfter = after.views.filter((v) => v.type === "editor");
-check(new Set(editorsAfter.map((v) => v.panelId)).size === 2, "dragging the tab split the editors into two panels");
+check(
+  new Set(editorsAfter.map((v) => v.panelId)).size === 2,
+  "dragging the tab split the editors into two panels",
+);
 check((await editor.inputValue()) === typed, "editor text survived the move");
 check((await editor.evaluate((el) => el.selectionStart)) === caret, "caret position survived the move");
-check(await editor.evaluate((el) => el.isConnected && el === document.querySelector(`textarea[data-path="src/timer.ts"]`)), "same textarea element (never remounted)");
+check(
+  await editor.evaluate(
+    (el) => el.isConnected && el === document.querySelector(`textarea[data-path="src/timer.ts"]`),
+  ),
+  "same textarea element (never remounted)",
+);
 
 await editor.focus();
 let undos = 0;
@@ -89,13 +105,18 @@ while ((await editor.inputValue()) !== original && undos < 80) {
   await page.keyboard.press("ControlOrMeta+z");
   undos++;
 }
-check((await editor.inputValue()) === original, `native undo history survived the move (${undos} undo steps back to the original)`);
+check(
+  (await editor.inputValue()) === original,
+  `native undo history survived the move (${undos} undo steps back to the original)`,
+);
 await page.keyboard.press("ControlOrMeta+Shift+z");
 check((await editor.inputValue()) !== original, "redo works too");
 
 // ------------------------------------------------------------------ preview iframe: state across moves
 const previewFrame = () => page.frames().find((f) => f.url().startsWith("blob:"));
-await page.waitForFunction(() => [...document.querySelectorAll("iframe")].some((f) => f.contentWindow?.__renders > 0));
+await page.waitForFunction(() =>
+  [...document.querySelectorAll("iframe")].some((f) => f.contentWindow?.__renders > 0),
+);
 let frame = previewFrame();
 const bootId = await frame.evaluate(() => window.__bootId);
 await frame.click("#toggle");
@@ -114,7 +135,10 @@ const p1 = await previewInfo();
 check(p1.panelId !== p0.panelId, "preview moved into another panel");
 frame = previewFrame();
 check((await frame.evaluate(() => window.__bootId)) === bootId, "iframe was not reloaded by the re-dock");
-check((await frame.textContent("#toggle")) === "Pause", "preview app state (running timer) survived the re-dock");
+check(
+  (await frame.textContent("#toggle")) === "Pause",
+  "preview app state (running timer) survived the re-dock",
+);
 if (shots) await page.screenshot({ path: `${shots}/ide-e2e-preview-docked.png` });
 
 // 2) Maximize it (focus navigation), 3) float it, then dock it back.
@@ -122,20 +146,32 @@ await page.evaluate((id) => window.__ide.ws.navigation.toggle(id), p1.id);
 await page.waitForTimeout(700);
 check(!!(await snapshot()).framed, "preview panel maximized");
 if (shots) await page.screenshot({ path: `${shots}/ide-e2e-preview-max.png` });
-check((await previewFrame().evaluate(() => window.__bootId)) === bootId, "iframe was not reloaded by maximize");
+check(
+  (await previewFrame().evaluate(() => window.__bootId)) === bootId,
+  "iframe was not reloaded by maximize",
+);
 await page.evaluate(() => window.__ide.ws.navigation.back());
 await page.waitForTimeout(600);
 await page.evaluate((id) => window.__ide.ws.float(id), p1.id);
 await page.waitForTimeout(600);
 check((await snapshot()).floating === 1, "preview floated");
 if (shots) await page.screenshot({ path: `${shots}/ide-e2e-preview-float.png` });
-check((await previewFrame().evaluate(() => window.__bootId)) === bootId, "iframe was not reloaded by floating");
+check(
+  (await previewFrame().evaluate(() => window.__bootId)) === bootId,
+  "iframe was not reloaded by floating",
+);
 await page.evaluate((id) => window.__ide.ws.dock(id, { beside: "stage", edge: "right" }), p1.id);
 await page.waitForTimeout(600);
 check((await snapshot()).floating === 0, "preview docked back beside the stage");
 const clockAfter = await previewFrame().textContent("#clock");
-check((await previewFrame().evaluate(() => window.__bootId)) === bootId, "iframe was not reloaded by docking back");
-check(clockAfter !== clockBefore && clockAfter !== "25:00", `timer kept ticking throughout (${clockBefore} → ${clockAfter})`);
+check(
+  (await previewFrame().evaluate(() => window.__bootId)) === bootId,
+  "iframe was not reloaded by docking back",
+);
+check(
+  clockAfter !== clockBefore && clockAfter !== "25:00",
+  `timer kept ticking throughout (${clockBefore} → ${clockAfter})`,
+);
 
 // ------------------------------------------------------------------ app features
 // Explorer opens each file once (reuse: "params").
@@ -143,23 +179,34 @@ const fileRow = page.locator('.explorer [data-path="src/format.ts"]');
 await fileRow.click();
 await fileRow.click();
 await page.waitForTimeout(300);
-check((await snapshot()).views.filter((v) => v.type === "editor" && v.params.path === "src/format.ts").length === 1, "explorer opens a file once, then focuses it");
+check(
+  (await snapshot()).views.filter((v) => v.type === "editor" && v.params.path === "src/format.ts").length ===
+    1,
+  "explorer opens a file once, then focuses it",
+);
 
 // Save clears the dirty badge.
 await editor.focus();
 await page.keyboard.press("ControlOrMeta+s");
 await page.waitForTimeout(150);
-check(await tab.locator('[data-trellis-part="tab-badge"]').evaluate((el) => el.hidden), "Cmd/Ctrl+S saves and clears the dirty badge");
+check(
+  await tab.locator('[data-trellis-part="tab-badge"]').evaluate((el) => el.hidden),
+  "Cmd/Ctrl+S saves and clears the dirty badge",
+);
 
 // Outline click moves the caret in the active editor.
 await page.locator(".outline .symbol", { hasText: "reduce" }).click();
 await page.waitForTimeout(300);
 const caretLine = await editor.evaluate((el) => el.value.slice(0, el.selectionStart).split("\n").length);
-const reduceLine = (await editor.inputValue()).split("\n").findIndex((l) => l.includes("export function reduce")) + 1;
+const reduceLine =
+  (await editor.inputValue()).split("\n").findIndex((l) => l.includes("export function reduce")) + 1;
 check(caretLine === reduceLine, `outline click reveals the symbol (line ${caretLine})`);
 
 // Palette: toggle the terminal off (hide) and back on (restore).
-const terminalHidden = async () => (await page.evaluate(() => window.__ide.ws.getSnapshot().hidden)).some((h) => h.views.some((v) => v.type === "terminal"));
+const terminalHidden = async () =>
+  (await page.evaluate(() => window.__ide.ws.getSnapshot().hidden)).some((h) =>
+    h.views.some((v) => v.type === "terminal"),
+  );
 await page.locator('[data-trellis-part="tab"]', { hasText: "Terminal" }).click();
 for (const expected of [true, false]) {
   await page.keyboard.press("ControlOrMeta+Shift+p");
@@ -168,7 +215,10 @@ for (const expected of [true, false]) {
   await page.keyboard.press("Enter");
   await page.waitForTimeout(500);
   if (process.env.DEBUG) console.log("  chose:", chosen.replace(/\s+/g, " "));
-  check((await terminalHidden()) === expected, `palette "Toggle Terminal" ${expected ? "hides" : "restores"} the terminal panel`);
+  check(
+    (await terminalHidden()) === expected,
+    `palette "Toggle Terminal" ${expected ? "hides" : "restores"} the terminal panel`,
+  );
 }
 
 // Terminal commands.
@@ -177,16 +227,26 @@ const term = page.locator(".term-input input");
 await term.fill("open README.md");
 await term.press("Enter");
 await page.waitForTimeout(300);
-check((await snapshot()).views.some((v) => v.type === "editor" && v.params.path === "README.md"), "terminal `open README.md` opens an editor");
+check(
+  (await snapshot()).views.some((v) => v.type === "editor" && v.params.path === "README.md"),
+  "terminal `open README.md` opens an editor",
+);
 
 // Persistence: the layout (including the split editors) comes back after a reload.
 const beforeReload = await snapshot();
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
 const afterReload = await snapshot();
-const shape = (s) => s.views.map((v) => `${v.type}:${v.params.path ?? ""}`).sort().join(",");
+const shape = (s) =>
+  s.views
+    .map((v) => `${v.type}:${v.params.path ?? ""}`)
+    .sort()
+    .join(",");
 check(shape(afterReload) === shape(beforeReload), "layout persisted across reload");
-check(new Set(afterReload.views.filter((v) => v.type === "editor").map((v) => v.panelId)).size === 2, "editor split persisted");
+check(
+  new Set(afterReload.views.filter((v) => v.type === "editor").map((v) => v.panelId)).size === 2,
+  "editor split persisted",
+);
 
 check(errors.length === 0, `no page errors${errors.length ? ":\n  " + errors.join("\n  ") : ""}`);
 await browser.close();

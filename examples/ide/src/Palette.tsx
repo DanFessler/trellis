@@ -84,7 +84,9 @@ export function Palette() {
       return commands
         .map((command) => {
           const label = `${command.category}: ${command.title}`;
-          const m = fuzzy(query, label) ?? (command.keywords && fuzzy(query, command.keywords) ? { score: -5, hits: [] } : null);
+          const m =
+            fuzzy(query, label) ??
+            (command.keywords && fuzzy(query, command.keywords) ? { score: -5, hits: [] } : null);
           return m ? { kind: "command" as const, command, hits: m.hits, label, score: m.score } : null;
         })
         .filter((x): x is NonNullable<typeof x> => !!x)
@@ -94,7 +96,14 @@ export function Palette() {
       .paths()
       .map((path) => {
         const m = fuzzy(query, path);
-        return m ? { kind: "file" as const, path, hits: m.hits, score: m.score + (fuzzy(query, basename(path)) ? 5 : 0) } : null;
+        return m
+          ? {
+              kind: "file" as const,
+              path,
+              hits: m.hits,
+              score: m.score + (fuzzy(query, basename(path)) ? 5 : 0),
+            }
+          : null;
       })
       .filter((x): x is NonNullable<typeof x> => !!x)
       .sort((a, b) => (query ? b.score - a.score : a.path.localeCompare(b.path)));
@@ -131,7 +140,9 @@ export function Palette() {
             ref={input}
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder={mode === "commands" ? "Type a command" : "Search files by name (type > for commands)"}
+            placeholder={
+              mode === "commands" ? "Type a command" : "Search files by name (type > for commands)"
+            }
             spellCheck={false}
             aria-label="Palette query"
             onKeyDown={(e) => {
@@ -154,7 +165,9 @@ export function Palette() {
           <kbd>esc</kbd>
         </div>
         <div className="palette-list" ref={list} role="listbox">
-          {items.length === 0 && <div className="palette-empty">No matching {mode === "commands" ? "commands" : "files"}</div>}
+          {items.length === 0 && (
+            <div className="palette-empty">No matching {mode === "commands" ? "commands" : "files"}</div>
+          )}
           {items.map((item, i) => (
             <div
               key={item.kind === "file" ? item.path : item.command.id}
@@ -169,7 +182,11 @@ export function Palette() {
                 <>
                   <FileIcon path={item.path} />
                   <span className="palette-label">
-                    <Highlighted text={basename(item.path)} hits={item.hits} offset={item.path.length - basename(item.path).length} />
+                    <Highlighted
+                      text={basename(item.path)}
+                      hits={item.hits}
+                      offset={item.path.length - basename(item.path).length}
+                    />
                   </span>
                   <span className="palette-detail">{dirname(item.path)}</span>
                   {vfs.isDirty(item.path) && <span className="tree-dot dirty" />}

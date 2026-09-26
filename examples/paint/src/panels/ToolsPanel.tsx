@@ -40,8 +40,18 @@ export function ToolsPanel() {
             title="Secondary color — click to swap (X)"
             onClick={() => app.swapColors()}
           />
-          <button type="button" className="chip chip-primary" style={{ background: hsvToHex(color) }} title="Primary color" />
-          <button type="button" className="chip-swap" title="Swap colors (X)" onClick={() => app.swapColors()}>
+          <button
+            type="button"
+            className="chip chip-primary"
+            style={{ background: hsvToHex(color) }}
+            title="Primary color"
+          />
+          <button
+            type="button"
+            className="chip-swap"
+            title="Swap colors (X)"
+            onClick={() => app.swapColors()}
+          >
             <SwapIcon size={12} />
           </button>
         </div>

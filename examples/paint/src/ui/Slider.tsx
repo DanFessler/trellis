@@ -13,9 +13,19 @@ interface SliderProps {
   disabled?: boolean;
 }
 
-export function Slider({ label, value, min, max, curve = 1, step = 0, format = (v) => String(Math.round(v)), onChange, disabled }: SliderProps) {
+export function Slider({
+  label,
+  value,
+  min,
+  max,
+  curve = 1,
+  step = 0,
+  format = (v) => String(Math.round(v)),
+  onChange,
+  disabled,
+}: SliderProps) {
   const track = useRef<HTMLDivElement>(null);
-  const toT = (v: number) => (((v - min) / (max - min)) ** (1 / curve));
+  const toT = (v: number) => ((v - min) / (max - min)) ** (1 / curve);
   const fromT = (t: number) => {
     const v = min + (max - min) * Math.max(0, Math.min(1, t)) ** curve;
     return step ? Math.round(v / step) * step : v;
@@ -26,7 +36,12 @@ export function Slider({ label, value, min, max, curve = 1, step = 0, format = (
     onChange(fromT((e.clientX - r.left) / r.width));
   };
   const onKey = (e: KeyboardEvent) => {
-    const d = e.key === "ArrowRight" || e.key === "ArrowUp" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowDown" ? -1 : 0;
+    const d =
+      e.key === "ArrowRight" || e.key === "ArrowUp"
+        ? 1
+        : e.key === "ArrowLeft" || e.key === "ArrowDown"
+          ? -1
+          : 0;
     if (!d) return;
     e.preventDefault();
     onChange(fromT(t + d * (e.shiftKey ? 0.1 : 0.02)));

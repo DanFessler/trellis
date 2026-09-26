@@ -40,7 +40,11 @@ export function rgbToHex({ r, g, b }: RGB): string {
 
 export function hexToRgb(hex: string): RGB | null {
   let s = hex.trim().replace(/^#/, "");
-  if (s.length === 3) s = s.split("").map((c) => c + c).join("");
+  if (s.length === 3)
+    s = s
+      .split("")
+      .map((c) => c + c)
+      .join("");
   if (!/^[0-9a-f]{6}$/i.test(s)) return null;
   const n = parseInt(s, 16);
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };

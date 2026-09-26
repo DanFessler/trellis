@@ -39,7 +39,8 @@ function typeFromTemplate(template: HTMLTemplateElement): [string, ViewTypeDefin
     def.minSize = { width: Number(d.minWidth ?? 0), height: Number(d.minHeight ?? 0) };
   if (d.iframe) {
     const src = d.iframe;
-    def.iframe = (view) => src.replace(/\{(\w+)\}/g, (_, key) => encodeURIComponent(String(view.params[key] ?? "")));
+    def.iframe = (view) =>
+      src.replace(/\{(\w+)\}/g, (_, key) => encodeURIComponent(String(view.params[key] ?? "")));
   } else
     def.mount = (el, view) => {
       el.append(template.content.cloneNode(true));
@@ -85,7 +86,11 @@ function specFrom(el: Element): LayoutSpec | null {
       return {
         kind: "split",
         axis: el.getAttribute("axis") === "y" ? "y" : "x",
-        weights: el.getAttribute("weights")?.split(/[\s,]+/).filter(Boolean).map(Number),
+        weights: el
+          .getAttribute("weights")
+          ?.split(/[\s,]+/)
+          .filter(Boolean)
+          .map(Number),
         children: kids(),
       };
     case "trellis-stage": {
@@ -163,7 +168,8 @@ export class TrellisWorkspaceElement extends ElementBase {
       this.pending = false;
       if (this.isConnected && !this.handle) this.init();
     };
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
+    if (document.readyState === "loading")
+      document.addEventListener("DOMContentLoaded", start, { once: true });
     else queueMicrotask(start);
   }
   disconnectedCallback() {
@@ -188,8 +194,12 @@ export class TrellisWorkspaceElement extends ElementBase {
     const navigation = this.attr("navigation");
     return {
       ...(this.hasAttribute("theme") ? { theme: this.attr("theme") } : {}),
-      ...(floating !== undefined ? { floating: floating === "false" ? false : (floating as "stage" | "overlay") } : {}),
-      ...(navigation !== undefined ? { navigation: navigation === "false" ? false : (navigation as "focus" | "free") } : {}),
+      ...(floating !== undefined
+        ? { floating: floating === "false" ? false : (floating as "stage" | "overlay") }
+        : {}),
+      ...(navigation !== undefined
+        ? { navigation: navigation === "false" ? false : (navigation as "focus" | "free") }
+        : {}),
       ...(this.hasAttribute("motion") ? { motion: this.attr("motion") } : {}),
       ...(this.hasAttribute("panel-menu") ? { panelMenu: bool(this, "panel-menu") } : {}),
       ...this._options,
@@ -197,7 +207,9 @@ export class TrellisWorkspaceElement extends ElementBase {
   }
   private init() {
     this.templateTypes = Object.fromEntries(
-      [...this.querySelectorAll<HTMLTemplateElement>(":scope > template[data-view-type]")].map(typeFromTemplate),
+      [...this.querySelectorAll<HTMLTemplateElement>(":scope > template[data-view-type]")].map(
+        typeFromTemplate,
+      ),
     );
     const layoutEl = [...this.children].find((c) => c.tagName.toLowerCase().startsWith("trellis-"));
     const spec = layoutEl ? specFrom(layoutEl) : null;
@@ -207,7 +219,8 @@ export class TrellisWorkspaceElement extends ElementBase {
       if (slot) slotted.set(slot, child);
     }
     // Keep definitions out of the way; the workspace renders its own tree.
-    for (const child of [...this.children]) if (!(child instanceof HTMLTemplateElement)) (child as HTMLElement).hidden = true;
+    for (const child of [...this.children])
+      if (!(child instanceof HTMLTemplateElement)) (child as HTMLElement).hidden = true;
     const container = document.createElement("div");
     container.style.cssText = "width:100%;height:100%";
     this.append(container);

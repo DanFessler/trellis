@@ -2,21 +2,30 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const tab = (page: Page, view: string) => page.locator(`[data-trellis-part=tab][data-view="${view}"]`);
 const panel = (page: Page, id: string) => page.locator(`[data-trellis-part=panel][data-panel="${id}"]`);
-const surface = (page: Page, view: string) => page.locator(`[data-trellis-part=surface][data-view="${view}"]`);
+const surface = (page: Page, view: string) =>
+  page.locator(`[data-trellis-part=surface][data-view="${view}"]`);
 
 async function box(locator: Locator) {
   const b = await locator.boundingBox();
   if (!b) throw Error("no bounding box");
   return b;
 }
-async function drag(page: Page, from: { x: number; y: number }, to: { x: number; y: number }, release = true) {
+async function drag(
+  page: Page,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  release = true,
+) {
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(from.x + 12, from.y + 12, { steps: 3 });
   await page.mouse.move(to.x, to.y, { steps: 8 });
   if (release) await page.mouse.up();
 }
-const center = (b: { x: number; y: number; width: number; height: number }) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
+const center = (b: { x: number; y: number; width: number; height: number }) => ({
+  x: b.x + b.width / 2,
+  y: b.y + b.height / 2,
+});
 async function doc(page: Page) {
   return page.evaluate(() => (window as any).ws.getDocument());
 }
@@ -51,7 +60,10 @@ test.describe("vanilla workspace", () => {
   test("drags a tab to a panel edge to split, keeping content state", async ({ page }) => {
     await surface(page, "a").locator("input").fill("hello");
     const target = await box(panel(page, "docs"));
-    await drag(page, center(await box(tab(page, "b"))), { x: target.x + target.width - 20, y: target.y + target.height / 2 });
+    await drag(page, center(await box(tab(page, "b"))), {
+      x: target.x + target.width - 20,
+      y: target.y + target.height / 2,
+    });
     await expect(panel(page, "docs")).toBeVisible();
     const b = await panelOf(page, "b");
     expect(b).not.toBe("docs");
@@ -60,7 +72,10 @@ test.describe("vanilla workspace", () => {
     expect(stage.child.kind).toBe("split");
     // Drag a with its typed text into the new panel's tab bar.
     const bar = await box(tab(page, "b"));
-    await drag(page, center(await box(tab(page, "a"))), { x: bar.x + bar.width + 10, y: bar.y + bar.height / 2 });
+    await drag(page, center(await box(tab(page, "a"))), {
+      x: bar.x + bar.width + 10,
+      y: bar.y + bar.height / 2,
+    });
     expect(await panelOf(page, "a")).toBe(b);
     await expect(surface(page, "a").locator("input")).toHaveValue("hello");
     expect(await page.evaluate(() => (window as any).mounts.a)).toBe(1);
@@ -117,13 +132,21 @@ test.describe("vanilla workspace", () => {
     const moved = (await doc(page)).floating[0].rect;
     // Resize from the south-east corner.
     const f = await box(panel(page, "right"));
-    await drag(page, { x: f.x + f.width - 2, y: f.y + f.height - 2 }, { x: f.x + f.width + 80, y: f.y + f.height + 40 });
+    await drag(
+      page,
+      { x: f.x + f.width - 2, y: f.y + f.height - 2 },
+      { x: f.x + f.width + 80, y: f.y + f.height + 40 },
+    );
     const resized = (await doc(page)).floating[0].rect;
     expect(resized.w).toBeGreaterThan(moved.w);
     // Dock into the files panel's tab bar.
     const files = await box(tab(page, "search"));
     const b2 = await box(panel(page, "right").locator("[data-trellis-part=tabbar]"));
-    await drag(page, { x: b2.x + b2.width - 60, y: b2.y + b2.height / 2 }, { x: files.x + files.width + 10, y: files.y + files.height / 2 });
+    await drag(
+      page,
+      { x: b2.x + b2.width - 60, y: b2.y + b2.height / 2 },
+      { x: files.x + files.width + 10, y: files.y + files.height / 2 },
+    );
     expect((await doc(page)).floating).toHaveLength(0);
     expect(await panelOf(page, "outline")).toBe("left");
     await expect(surface(page, "outline").locator("input")).toHaveValue("kept");
@@ -267,7 +290,9 @@ test.describe("vanilla workspace", () => {
       await ws.close("b");
     });
     await expect(page.locator(".trellis")).toHaveAttribute("data-stage-empty", "");
-    const id = await page.evaluate(() => (window as any).ws.open("editor", { params: { name: "n.ts" } }).panelId);
+    const id = await page.evaluate(
+      () => (window as any).ws.open("editor", { params: { name: "n.ts" } }).panelId,
+    );
     const stage = (await doc(page)).root.children[1];
     expect(stage.child.id).toBe(id);
   });
@@ -316,7 +341,10 @@ test.describe("react adapter", () => {
     await c1.locator("[data-test=inc]").click();
     await expect(c1.locator("[data-test=inc]")).toHaveText("count 2");
     const docs = await box(panel(page, "docs"));
-    await drag(page, center(await box(tab(page, "c1"))), { x: docs.x + docs.width - 20, y: docs.y + docs.height / 2 });
+    await drag(page, center(await box(tab(page, "c1"))), {
+      x: docs.x + docs.width - 20,
+      y: docs.y + docs.height / 2,
+    });
     expect(await panelOf(page, "c1")).not.toBe("docs");
     await expect(c1.locator("[data-test=inc]")).toHaveText("count 2");
   });
@@ -398,7 +426,11 @@ test.describe("stage-floating windows", () => {
   test("tokens removed from options are cleared", async ({ page }) => {
     await page.goto("/?scenario=vanilla");
     await page.evaluate(() => (window as any).ws.update({ tokens: { "--trellis-panel": "rgb(1, 2, 3)" } }));
-    const bg = () => page.locator("[data-trellis-part=panel]").first().evaluate((e) => getComputedStyle(e).backgroundColor);
+    const bg = () =>
+      page
+        .locator("[data-trellis-part=panel]")
+        .first()
+        .evaluate((e) => getComputedStyle(e).backgroundColor);
     expect(await bg()).toBe("rgb(1, 2, 3)");
     await page.evaluate(() => (window as any).ws.update({ tokens: {} }));
     expect(await bg()).not.toBe("rgb(1, 2, 3)");

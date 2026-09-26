@@ -114,7 +114,9 @@ export function Dock() {
             data-magnify=""
             data-hidden-panel={panelId}
             aria-label={`Restore ${title}`}
-            onClick={(e) => ws.restore(panelId, { from: e.currentTarget.querySelector(".dock-window") ?? undefined })}
+            onClick={(e) =>
+              ws.restore(panelId, { from: e.currentTarget.querySelector(".dock-window") ?? undefined })
+            }
           >
             <span className="dock-label">{title}</span>
             <span className="dock-icon dock-window">

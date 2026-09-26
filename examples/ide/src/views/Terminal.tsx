@@ -39,14 +39,20 @@ function listDir(dir: string): string[] {
     const rest = p.slice(prefix.length);
     names.add(rest.includes("/") ? rest.slice(0, rest.indexOf("/") + 1) : rest);
   }
-  return [...names].sort((a, b) => comparePaths(a.endsWith("/") ? a + "x" : a, b.endsWith("/") ? b + "x" : b));
+  return [...names].sort((a, b) =>
+    comparePaths(a.endsWith("/") ? a + "x" : a, b.endsWith("/") ? b + "x" : b),
+  );
 }
 
 function Ls({ names }: { names: string[] }) {
   return (
     <div className="ls">
       {names.map((n) => (
-        <span key={n} style={{ color: n.endsWith("/") ? "var(--ide-accent)" : fileColor(n) }} className={n.endsWith("/") ? "ls-dir" : undefined}>
+        <span
+          key={n}
+          style={{ color: n.endsWith("/") ? "var(--ide-accent)" : fileColor(n) }}
+          className={n.endsWith("/") ? "ls-dir" : undefined}
+        >
           {n}
         </span>
       ))}
@@ -72,14 +78,15 @@ export function Terminal() {
       out(
         <span>
           {"  "}
-          <span className="ok">➜</span> <span className="muted"> Local:   </span>
+          <span className="ok">➜</span> <span className="muted"> Local: </span>
           <span className="accent">http://localhost:5173/</span>
         </span>,
       ),
       out(
         <span className="muted">
           {"  "}
-          <span className="ok">➜</span> Preview is live in the panel on the right · type <span className="accent">help</span> for commands
+          <span className="ok">➜</span> Preview is live in the panel on the right · type{" "}
+          <span className="accent">help</span> for commands
         </span>,
       ),
       out(""),
@@ -99,7 +106,8 @@ export function Terminal() {
   useEffect(() => {
     if (!view.focused || busy) return;
     const active = document.activeElement;
-    if (!active || active === document.body || scroller.current?.contains(active)) inputRef.current?.focus({ preventScroll: true });
+    if (!active || active === document.body || scroller.current?.contains(active))
+      inputRef.current?.focus({ preventScroll: true });
   }, [view.focused, busy]);
 
   const print = (...nodes: ReactNode[]) =>
@@ -163,7 +171,9 @@ export function Terminal() {
             out.push(
               <span>
                 <span className="muted">{prefix + (last ? "└── " : "├── ")}</span>
-                <span style={{ color: n.endsWith("/") ? "var(--ide-accent)" : fileColor(n) }}>{n.replace(/\/$/, "")}</span>
+                <span style={{ color: n.endsWith("/") ? "var(--ide-accent)" : fileColor(n) }}>
+                  {n.replace(/\/$/, "")}
+                </span>
               </span>,
             );
             if (n.endsWith("/")) walk(dir + n, prefix + (last ? "    " : "│   "));
@@ -205,7 +215,12 @@ export function Terminal() {
         if (args[0] !== "status") return err(`git: '${args[0] ?? ""}' is not supported in this demo`);
         const dirty = vfs.dirtyPaths();
         if (!dirty.length) {
-          print(<span>On branch <span className="accent">main</span></span>, "nothing to commit, working tree clean");
+          print(
+            <span>
+              On branch <span className="accent">main</span>
+            </span>,
+            "nothing to commit, working tree clean",
+          );
           return;
         }
         print(
@@ -237,7 +252,7 @@ export function Terminal() {
               <span className="muted"> ({tests.length})</span>
             </span>,
             <span>
-              <span className="muted">      Tests </span> <span className="ok">{tests.length * 2} passed</span>
+              <span className="muted"> Tests </span> <span className="ok">{tests.length * 2} passed</span>
               <span className="muted"> ({tests.length * 2})</span>
             </span>,
           ]);
@@ -252,8 +267,10 @@ export function Terminal() {
               ...errors.map((d) => (
                 <span>
                   <span className="accent">{d.path}</span>
-                  <span className="muted">:{d.line + 1}:{d.col + 1}</span> - <span className="err">error</span>{" "}
-                  <span className="muted">{d.code}:</span> {d.message}
+                  <span className="muted">
+                    :{d.line + 1}:{d.col + 1}
+                  </span>{" "}
+                  - <span className="err">error</span> <span className="muted">{d.code}:</span> {d.message}
                 </span>
               )),
               "",
@@ -266,17 +283,21 @@ export function Terminal() {
           void stream([
             <span className="muted">&gt; tsc && vite build</span>,
             <span>
-              <span className="accent">vite v7.3.0</span> <span className="ok">building for production...</span>
+              <span className="accent">vite v7.3.0</span>{" "}
+              <span className="ok">building for production...</span>
             </span>,
             <span className="ok">✓ 6 modules transformed.</span>,
             <span>
-              <span className="muted">dist/</span>index.html <span className="muted">        0.71 kB │ gzip: 0.40 kB</span>
+              <span className="muted">dist/</span>index.html{" "}
+              <span className="muted"> 0.71 kB │ gzip: 0.40 kB</span>
             </span>,
             <span>
-              <span className="muted">dist/</span>assets/index.css <span className="muted"> 1.52 kB │ gzip: 0.66 kB</span>
+              <span className="muted">dist/</span>assets/index.css{" "}
+              <span className="muted"> 1.52 kB │ gzip: 0.66 kB</span>
             </span>,
             <span>
-              <span className="muted">dist/</span>assets/index.js <span className="muted">  2.08 kB │ gzip: 1.02 kB</span>
+              <span className="muted">dist/</span>assets/index.js{" "}
+              <span className="muted"> 2.08 kB │ gzip: 1.02 kB</span>
             </span>,
             <span className="ok">✓ built in 212ms</span>,
           ]);
@@ -294,9 +315,18 @@ export function Terminal() {
     if (!m) return;
     const [, head = "", partial] = m;
     if (!head) {
-      const cmds = ["help", "ls", "tree", "cat", "open", "echo", "git status", "npm test", "npm run build", "clear"].filter((c) =>
-        c.startsWith(partial),
-      );
+      const cmds = [
+        "help",
+        "ls",
+        "tree",
+        "cat",
+        "open",
+        "echo",
+        "git status",
+        "npm test",
+        "npm run build",
+        "clear",
+      ].filter((c) => c.startsWith(partial));
       if (cmds.length === 1) setInput(cmds[0] + " ");
       return;
     }
@@ -311,7 +341,11 @@ export function Terminal() {
   };
 
   return (
-    <div className="terminal" ref={scroller} onMouseUp={() => !window.getSelection()?.toString() && inputRef.current?.focus()}>
+    <div
+      className="terminal"
+      ref={scroller}
+      onMouseUp={() => !window.getSelection()?.toString() && inputRef.current?.focus()}
+    >
       {entries.map((e) =>
         e.kind === "in" ? (
           <div key={e.id} className="term-line">

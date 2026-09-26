@@ -1,4 +1,10 @@
-import { layoutRects, type LayoutDocument, type LayoutNode, type Rect, type WorkspaceHandle } from "@danfessler/trellis";
+import {
+  layoutRects,
+  type LayoutDocument,
+  type LayoutNode,
+  type Rect,
+  type WorkspaceHandle,
+} from "@danfessler/trellis";
 import { APPS, STAGE_ID, type AppDefinition, type AppParams } from "./apps";
 
 /**
@@ -60,11 +66,14 @@ export function launch(
 ) {
   const snap = ws.getSnapshot();
   const matches = snap.views.filter(
-    (v) => v.type === app.id && (app.singleton || (params?.folder !== undefined && v.params.folder === params.folder)),
+    (v) =>
+      v.type === app.id &&
+      (app.singleton || (params?.folder !== undefined && v.params.folder === params.folder)),
   );
   const existing = matches[0];
   if (existing) {
-    if (existing.placement === "hidden") ws.restore(existing.panelId, { from: dockIcon(app.id) ?? undefined });
+    if (existing.placement === "hidden")
+      ws.restore(existing.panelId, { from: dockIcon(app.id) ?? undefined });
     else ws.focus(existing.id);
     return existing.id;
   }

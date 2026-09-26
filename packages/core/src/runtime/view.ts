@@ -1,11 +1,6 @@
 import type { Params } from "../model/types";
 import { Emitter } from "./lifetime";
-import type {
-  ViewEvents,
-  ViewHandle,
-  ViewState,
-  WorkspaceHandle,
-} from "./types";
+import type { ViewEvents, ViewHandle, ViewState, WorkspaceHandle } from "./types";
 
 export interface ViewHost {
   workspace: WorkspaceHandle;
@@ -125,8 +120,7 @@ export class ViewController implements ViewHandle {
       this.events.emit("resize", next.size);
     if (next.visible !== prev.visible) this.events.emit("visibility", next.visible);
     if (next.focused !== prev.focused) this.events.emit("focus", next.focused);
-    if (next.interactive !== prev.interactive)
-      this.events.emit("interactive", next.interactive);
+    if (next.interactive !== prev.interactive) this.events.emit("interactive", next.interactive);
     if (next.scale !== prev.scale) this.events.emit("scale", next.scale);
     this.events.emit("change", next);
     for (const listener of [...this.listeners]) listener();

@@ -17,7 +17,10 @@ const openMenu = async (label) => {
   await page.waitForTimeout(250);
 };
 await openMenu("Window");
-await page.screenshot({ path: `${dir}/paint-window-menu.png`, clip: { x: 0, y: 0, width: 720, height: 480 } });
+await page.screenshot({
+  path: `${dir}/paint-window-menu.png`,
+  clip: { x: 0, y: 0, width: 720, height: 480 },
+});
 await page.keyboard.press("Escape");
 
 for (const theme of ["light", "medium", "darker"]) {

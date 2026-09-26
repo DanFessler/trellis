@@ -34,7 +34,12 @@ export interface AppParams extends Record<string, unknown> {
 /** Page markup and title-bar text for a window. Pages are big strings, so cache them. */
 const pages = new Map<string, ReturnType<typeof webpage>>();
 export function pageFor(app: AppDefinition, params: AppParams = {}) {
-  const folder = app.id === "finder" ? (params.folder && folders[params.folder] ? params.folder : DEFAULT_FOLDER) : undefined;
+  const folder =
+    app.id === "finder"
+      ? params.folder && folders[params.folder]
+        ? params.folder
+        : DEFAULT_FOLDER
+      : undefined;
   const key = `${app.index}:${folder ?? ""}`;
   let page = pages.get(key);
   if (!page) pages.set(key, (page = webpage(app.index, folder)));

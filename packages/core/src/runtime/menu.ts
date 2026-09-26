@@ -54,21 +54,22 @@ export class Menu {
     return !!this.el?.contains(node) || !!this.submenu?.contains(node);
   }
   private items(): HTMLElement[] {
-    return [...(this.el?.querySelectorAll<HTMLElement>(":scope > [role=menuitem]:not([aria-disabled=true]), :scope > [role=menuitemcheckbox]:not([aria-disabled=true])") ?? [])];
+    return [
+      ...(this.el?.querySelectorAll<HTMLElement>(
+        ":scope > [role=menuitem]:not([aria-disabled=true]), :scope > [role=menuitemcheckbox]:not([aria-disabled=true])",
+      ) ?? []),
+    ];
   }
   private item(entry: MenuItem) {
     const role = entry.checked !== undefined ? "menuitemcheckbox" : "menuitem";
-    const button = h(
-      "button",
-      {
-        class: `trellis-menu-item${entry.danger ? " trellis-danger" : ""}`,
-        role,
-        tabindex: "-1",
-        "aria-disabled": entry.disabled ? "true" : undefined,
-        "aria-checked": entry.checked === undefined ? undefined : String(entry.checked),
-        "aria-haspopup": entry.items ? "menu" : undefined,
-      },
-    );
+    const button = h("button", {
+      class: `trellis-menu-item${entry.danger ? " trellis-danger" : ""}`,
+      role,
+      tabindex: "-1",
+      "aria-disabled": entry.disabled ? "true" : undefined,
+      "aria-checked": entry.checked === undefined ? undefined : String(entry.checked),
+      "aria-haspopup": entry.items ? "menu" : undefined,
+    });
     const check = h("span", { class: "trellis-menu-check" });
     if (entry.checked) check.innerHTML = icons.check;
     button.append(check, h("span", { class: "trellis-menu-label" }, entry.label));

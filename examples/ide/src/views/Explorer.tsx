@@ -35,7 +35,9 @@ export function Explorer() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
   const activeEditor = useIde((s) => s.activeEditor);
-  const activePath = useWorkspaceSelector((s) => (s.views.find((v) => v.id === activeEditor)?.params.path as string) ?? null);
+  const activePath = useWorkspaceSelector(
+    (s) => (s.views.find((v) => v.id === activeEditor)?.params.path as string) ?? null,
+  );
   const tree = useMemo(() => buildTree(vfs.paths()), [version]); // eslint-disable-line react-hooks/exhaustive-deps
   const severity = useMemo(() => {
     const map = new Map<string, "error" | "warning">();
@@ -61,9 +63,18 @@ export function Explorer() {
         const hasProblem = [...severity.keys()].some((p) => p.startsWith(node.path + "/"));
         return (
           <div key={node.path} role="group">
-            <button className="tree-row" style={{ paddingLeft: 8 + depth * 12 }} onClick={() => toggle(node.path)} aria-expanded={open}>
-              <span className="tree-chevron">{open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}</span>
-              <span className="tree-folder">{open ? <FolderOpenIcon size={14} /> : <FolderIcon size={14} />}</span>
+            <button
+              className="tree-row"
+              style={{ paddingLeft: 8 + depth * 12 }}
+              onClick={() => toggle(node.path)}
+              aria-expanded={open}
+            >
+              <span className="tree-chevron">
+                {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              </span>
+              <span className="tree-folder">
+                {open ? <FolderOpenIcon size={14} /> : <FolderIcon size={14} />}
+              </span>
               <span className={"tree-name" + (hasProblem ? " has-problem" : "")}>{node.name}</span>
               {hasProblem && <span className="tree-dot folder-problem" />}
             </button>
@@ -84,7 +95,11 @@ export function Explorer() {
         >
           <FileIcon path={node.path} />
           <span className={"tree-name" + (sev ? ` ${sev}` : "")}>{node.name}</span>
-          {dirty ? <span className="tree-dot dirty" title="Unsaved changes" /> : sev ? <span className={`tree-sev ${sev}`}>{sev === "error" ? "!" : "•"}</span> : null}
+          {dirty ? (
+            <span className="tree-dot dirty" title="Unsaved changes" />
+          ) : sev ? (
+            <span className={`tree-sev ${sev}`}>{sev === "error" ? "!" : "•"}</span>
+          ) : null}
         </button>
       );
     });
@@ -95,7 +110,15 @@ export function Explorer() {
         <span className="side-title">{PROJECT_NAME}</span>
         <div className="side-actions">
           <button className="icon-btn" title="New File…" onClick={() => setCreating(true)}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.35"
+              strokeLinecap="round"
+            >
               <path d="M9.5 1.75H4.75a1.5 1.5 0 0 0-1.5 1.5v9.5a1.5 1.5 0 0 0 1.5 1.5h6.5a1.5 1.5 0 0 0 1.5-1.5V5L9.5 1.75Z" />
               <path d="M8 7v4.5M5.75 9.25h4.5" />
             </svg>
@@ -103,7 +126,16 @@ export function Explorer() {
           <button
             className="icon-btn"
             title="Collapse Folders"
-            onClick={() => setCollapsed(new Set(vfs.paths().filter((p) => p.includes("/")).map((p) => p.split("/")[0])))}
+            onClick={() =>
+              setCollapsed(
+                new Set(
+                  vfs
+                    .paths()
+                    .filter((p) => p.includes("/"))
+                    .map((p) => p.split("/")[0]),
+                ),
+              )
+            }
           >
             <CollapseIcon />
           </button>
@@ -114,14 +146,22 @@ export function Explorer() {
           className="new-file"
           onSubmit={(e) => {
             e.preventDefault();
-            const input = (e.currentTarget.elements.namedItem("name") as HTMLInputElement).value.trim().replace(/^\/+/, "");
+            const input = (e.currentTarget.elements.namedItem("name") as HTMLInputElement).value
+              .trim()
+              .replace(/^\/+/, "");
             setCreating(false);
             if (!input) return;
             if (!vfs.exists(input)) vfs.create(input, "");
             openFile(ws, input);
           }}
         >
-          <input name="name" autoFocus placeholder="src/new-file.ts" onBlur={() => setCreating(false)} onKeyDown={(e) => e.key === "Escape" && setCreating(false)} />
+          <input
+            name="name"
+            autoFocus
+            placeholder="src/new-file.ts"
+            onBlur={() => setCreating(false)}
+            onKeyDown={(e) => e.key === "Escape" && setCreating(false)}
+          />
         </form>
       )}
       <div className="tree" role="tree">

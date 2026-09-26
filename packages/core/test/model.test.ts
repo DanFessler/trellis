@@ -28,14 +28,21 @@ import {
 } from "../src/model/tree";
 import type { LayoutDocument, PanelNode, SplitNode } from "../src/model/types";
 
-const panel = (id: string, ...views: string[]): PanelNode => ({ kind: "panel", id, views, selected: views[0] });
+const panel = (id: string, ...views: string[]): PanelNode => ({
+  kind: "panel",
+  id,
+  views,
+  selected: views[0],
+});
 
 function ide(): LayoutDocument {
   return createDocument(
     L.row(
       [
         L.panel({ id: "left" }, L.view("files", { id: "files" }), L.view("search", { id: "search" })),
-        L.stage(L.panel({ id: "docs" }, L.view("editor", { id: "a" }), L.view("editor", { id: "b" })), { id: "stage" }),
+        L.stage(L.panel({ id: "docs" }, L.view("editor", { id: "a" }), L.view("editor", { id: "b" })), {
+          id: "stage",
+        }),
         L.panel({ id: "outline" }, L.view("outline", { id: "outline" })),
       ],
       [1, 3, 1],
@@ -58,7 +65,9 @@ describe("builder", () => {
     expect(doc.root).toMatchObject({ kind: "panel", views: ["1", "2"], selected: "2" });
   });
   it("rejects duplicate ids and multiple stages", () => {
-    expect(() => createDocument(L.row([L.view("x", { id: "a" }), L.view("x", { id: "a" })]))).toThrow(/duplicate/);
+    expect(() => createDocument(L.row([L.view("x", { id: "a" }), L.view("x", { id: "a" })]))).toThrow(
+      /duplicate/,
+    );
     expect(() => createDocument(L.row([L.stage(), L.stage()]))).toThrow(/one stage/);
   });
   it("generates deterministic ids that avoid explicit ones", () => {
@@ -87,12 +96,23 @@ describe("tree", () => {
       id: "outer",
       axis: "x",
       weights: [0.5, 0.5],
-      children: [panel("a", "1"), { kind: "split", id: "inner", axis: "x", weights: [0.5, 0.5], children: [panel("b", "2"), panel("c", "3")] }],
+      children: [
+        panel("a", "1"),
+        {
+          kind: "split",
+          id: "inner",
+          axis: "x",
+          weights: [0.5, 0.5],
+          children: [panel("b", "2"), panel("c", "3")],
+        },
+      ],
     };
     const n = normalize(nested) as SplitNode;
     expect(n.children.map((c) => c.id)).toEqual(["a", "b", "c"]);
     expect(n.weights).toEqual([0.5, 0.25, 0.25]);
-    expect(normalize({ kind: "split", id: "s", axis: "y", weights: [1], children: [panel("a", "1")] })).toMatchObject({ id: "a" });
+    expect(
+      normalize({ kind: "split", id: "s", axis: "y", weights: [1], children: [panel("a", "1")] }),
+    ).toMatchObject({ id: "a" });
   });
   it("never removes the stage, and gives removed space to a neighbour", () => {
     const doc = ide();
@@ -111,7 +131,13 @@ describe("tree", () => {
     expect(findNode(below, "t")).toMatchObject({ axis: "y" });
   });
   it("clamps boundary resizes to minimum sizes", () => {
-    const split: SplitNode = { kind: "split", id: "s", axis: "x", weights: [0.5, 0.5], children: [panel("a", "1"), panel("b", "2")] };
+    const split: SplitNode = {
+      kind: "split",
+      id: "s",
+      axis: "x",
+      weights: [0.5, 0.5],
+      children: [panel("a", "1"), panel("b", "2")],
+    };
     expect(resizeBoundary(split, 0, 0.3).weights[0]).toBeCloseTo(0.3);
     expect(resizeBoundary(split, 0, 0.01, () => 0.2).weights[0]).toBeCloseTo(0.2);
     expect(resizeBoundary(split, 0, 0.99, () => 0.2).weights[1]).toBeCloseTo(0.2);
@@ -159,7 +185,12 @@ describe("document operations", () => {
     const root = doc.root as SplitNode;
     expect(root.children.map((c) => c.id)).toEqual(["left", "stage", "outline"]);
     expect(root.weights[2]).toBeCloseTo(0.2);
-    const floating = floatPanel(doc, locatePanel(doc, "outline")!.panel, { x: 0.1, y: 0.1, w: 0.3, h: 0.3 }, "overlay");
+    const floating = floatPanel(
+      doc,
+      locatePanel(doc, "outline")!.panel,
+      { x: 0.1, y: 0.1, w: 0.3, h: 0.3 },
+      "overlay",
+    );
     expect(floating.floating).toHaveLength(1);
     const hidden = hidePanel(floating, "outline");
     expect(hidden.hidden[0].restore).toMatchObject({ kind: "floating", layer: "overlay" });
@@ -173,7 +204,12 @@ describe("document operations", () => {
         id: "s",
         axis: "x",
         weights: [NaN, 2],
-        children: [panel("p", "a", "ghost"), panel("q", "a"), { kind: "stage", id: "st1" }, { kind: "stage", id: "st2" }],
+        children: [
+          panel("p", "a", "ghost"),
+          panel("q", "a"),
+          { kind: "stage", id: "st1" },
+          { kind: "stage", id: "st2" },
+        ],
       },
       floating: [{ panel: panel("f", "c"), rect: { x: 5, y: -1, w: 3, h: 0 }, z: 1, layer: "weird" }],
       hidden: [],
@@ -200,8 +236,27 @@ describe("hit testing", () => {
     rootId: "root",
     stage: null,
     panels: [
-      { id: "a", rect: { x: 0, y: 0, w: 500, h: 600 }, tabbar: { x: 0, y: 0, w: 500, h: 34 }, tabs: [{ x: 4, y: 0, w: 100, h: 34 }, { x: 106, y: 0, w: 100, h: 34 }], region: "side", floating: false, z: 0 },
-      { id: "b", rect: { x: 500, y: 0, w: 500, h: 600 }, tabbar: { x: 500, y: 0, w: 500, h: 34 }, tabs: [], region: "side", floating: false, z: 0 },
+      {
+        id: "a",
+        rect: { x: 0, y: 0, w: 500, h: 600 },
+        tabbar: { x: 0, y: 0, w: 500, h: 34 },
+        tabs: [
+          { x: 4, y: 0, w: 100, h: 34 },
+          { x: 106, y: 0, w: 100, h: 34 },
+        ],
+        region: "side",
+        floating: false,
+        z: 0,
+      },
+      {
+        id: "b",
+        rect: { x: 500, y: 0, w: 500, h: 600 },
+        tabbar: { x: 500, y: 0, w: 500, h: 34 },
+        tabs: [],
+        region: "side",
+        floating: false,
+        z: 0,
+      },
     ],
     allowed: () => true,
     ...overrides,
@@ -226,11 +281,23 @@ describe("hit testing", () => {
   });
   it("prefers floating panels on top", () => {
     const s = scene();
-    s.panels.push({ id: "f", rect: { x: 200, y: 200, w: 200, h: 200 }, tabbar: { x: 200, y: 200, w: 200, h: 34 }, tabs: [], region: "floating", floating: true, z: 5 });
+    s.panels.push({
+      id: "f",
+      rect: { x: 200, y: 200, w: 200, h: 200 },
+      tabbar: { x: 200, y: 200, w: 200, h: 34 },
+      tabs: [],
+      region: "floating",
+      floating: true,
+      z: 5,
+    });
     expect(hitTest(s, { x: 300, y: 300 })).toMatchObject({ kind: "tab", panel: "f" });
   });
   it("docks into an empty stage centre and beside it at its edges", () => {
-    const s = scene({ panels: [], rootId: "root", stage: { id: "stage", rect: { x: 200, y: 0, w: 600, h: 600 }, empty: true } });
+    const s = scene({
+      panels: [],
+      rootId: "root",
+      stage: { id: "stage", rect: { x: 200, y: 0, w: 600, h: 600 }, empty: true },
+    });
     expect(hitTest(s, { x: 500, y: 300 })).toMatchObject({ kind: "stage" });
     expect(hitTest(s, { x: 220, y: 300 })).toMatchObject({ kind: "split", beside: "stage", edge: "left" });
   });
@@ -246,10 +313,24 @@ describe("hit testing near the stage boundary", () => {
       viewport: { x: 0, y: 0, w: 1000, h: 600 },
       rootId: "root",
       stage: { id: "stage", rect: { x: 200, y: 6, w: 600, h: 590 }, empty: false },
-      panels: [{ id: "p", rect: { x: 200, y: 6, w: 600, h: 590 }, tabbar: { x: 200, y: 6, w: 600, h: 34 }, tabs: [], region: "stage", floating: false, z: 0 }],
+      panels: [
+        {
+          id: "p",
+          rect: { x: 200, y: 6, w: 600, h: 590 },
+          tabbar: { x: 200, y: 6, w: 600, h: 34 },
+          tabs: [],
+          region: "stage",
+          floating: false,
+          z: 0,
+        },
+      ],
       allowed: () => true,
     };
     expect(hitTest(scene, { x: 500, y: 12 })).toMatchObject({ kind: "tab", panel: "p" });
-    expect(hitTest(scene, { x: 205, y: 300 })).toMatchObject({ kind: "split", beside: "stage", edge: "left" });
+    expect(hitTest(scene, { x: 205, y: 300 })).toMatchObject({
+      kind: "split",
+      beside: "stage",
+      edge: "left",
+    });
   });
 });

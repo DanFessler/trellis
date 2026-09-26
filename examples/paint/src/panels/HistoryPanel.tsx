@@ -1,7 +1,18 @@
 import { useEffect, useRef } from "react";
 import type { HistoryKind } from "../paint/PaintDoc";
 import { useActiveDoc } from "../store";
-import { BrushIcon, BucketIcon, EraserIcon, EyeIcon, ImageIcon, LayersIcon, MergeIcon, RedoIcon, TrashIcon, UndoIcon } from "../ui/icons";
+import {
+  BrushIcon,
+  BucketIcon,
+  EraserIcon,
+  EyeIcon,
+  ImageIcon,
+  LayersIcon,
+  MergeIcon,
+  RedoIcon,
+  TrashIcon,
+  UndoIcon,
+} from "../ui/icons";
 import { NoDocument } from "./LayersPanel";
 
 const ICONS: Record<HistoryKind, typeof BrushIcon> = {
@@ -46,10 +57,22 @@ export function HistoryPanel() {
         ))}
       </div>
       <div className="panel-footer">
-        <button type="button" className="icon-btn" title="Undo (⌘Z)" disabled={doc.index === 0} onClick={() => doc.undo()}>
+        <button
+          type="button"
+          className="icon-btn"
+          title="Undo (⌘Z)"
+          disabled={doc.index === 0}
+          onClick={() => doc.undo()}
+        >
           <UndoIcon />
         </button>
-        <button type="button" className="icon-btn" title="Redo (⇧⌘Z)" disabled={doc.index >= doc.history.length} onClick={() => doc.redo()}>
+        <button
+          type="button"
+          className="icon-btn"
+          title="Redo (⇧⌘Z)"
+          disabled={doc.index >= doc.history.length}
+          onClick={() => doc.redo()}
+        >
           <RedoIcon />
         </button>
         <span className="spacer" />

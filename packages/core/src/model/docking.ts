@@ -37,11 +37,7 @@ function inside(p: { x: number; y: number }, r: Rect) {
 }
 
 /** Nearest edge within `band` (a fraction of the rect), else null. */
-export function nearestEdge(
-  p: { x: number; y: number },
-  r: Rect,
-  band = EDGE_BAND,
-): Edge | null {
+export function nearestEdge(p: { x: number; y: number }, r: Rect, band = EDGE_BAND): Edge | null {
   if (r.w <= 0 || r.h <= 0) return null;
   const x = (p.x - r.x) / r.w;
   const y = (p.y - r.y) / r.h;
@@ -70,8 +66,7 @@ export function edgeSlot(r: Rect, edge: Edge, share = 0.5): Rect {
 }
 
 export function tabIndexAt(x: number, tabs: Rect[]): number {
-  for (let i = 0; i < tabs.length; i++)
-    if (x < tabs[i].x + tabs[i].w / 2) return i;
+  for (let i = 0; i < tabs.length; i++) if (x < tabs[i].x + tabs[i].w / 2) return i;
   return tabs.length;
 }
 
@@ -95,9 +90,7 @@ export function hitTest(scene: HitScene, p: { x: number; y: number }): DropTarge
   const floatTarget: DropTarget | null = scene.allowed("floating") ? { kind: "float" } : null;
   if (!inside(p, scene.viewport)) return floatTarget;
 
-  const floats = scene.panels
-    .filter((b) => b.floating && b.id !== scene.source)
-    .sort((a, b) => b.z - a.z);
+  const floats = scene.panels.filter((b) => b.floating && b.id !== scene.source).sort((a, b) => b.z - a.z);
   for (const box of floats) {
     if (!inside(p, box.rect)) continue;
     if (!scene.allowed("floating")) return null;
@@ -130,7 +123,14 @@ export function hitTest(scene: HitScene, p: { x: number; y: number }): DropTarge
   }
 
   const stage = scene.stage;
-  if (stage && !stage.empty && !overTabbar && inside(p, stage.rect) && scene.allowed("side") && scene.rootId !== stage.id) {
+  if (
+    stage &&
+    !stage.empty &&
+    !overTabbar &&
+    inside(p, stage.rect) &&
+    scene.allowed("side") &&
+    scene.rootId !== stage.id
+  ) {
     // A thin band just inside the stage's boundary docks beside the whole stage.
     const band = Math.min(16, stage.rect.w * 0.08, stage.rect.h * 0.08);
     const s = stage.rect;
@@ -171,9 +171,14 @@ export function hitTest(scene: HitScene, p: { x: number; y: number }): DropTarge
   if (stage && stage.empty && inside(p, stage.rect)) {
     const edge = scene.rootId !== stage.id ? nearestEdge(p, stage.rect, 0.2) : null;
     if (edge && scene.allowed("side"))
-      return { kind: "split", beside: stage.id, edge, region: "side", preview: edgeSlot(stage.rect, edge, 0.3) };
-    if (scene.allowed("stage"))
-      return { kind: "stage", stage: stage.id, preview: stage.rect };
+      return {
+        kind: "split",
+        beside: stage.id,
+        edge,
+        region: "side",
+        preview: edgeSlot(stage.rect, edge, 0.3),
+      };
+    if (scene.allowed("stage")) return { kind: "stage", stage: stage.id, preview: stage.rect };
     return null;
   }
   return floatTarget;

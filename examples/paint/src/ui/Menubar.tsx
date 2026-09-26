@@ -2,7 +2,16 @@ import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import { CheckIcon } from "./icons";
 
 export type MenuDef =
-  | { label: string; shortcut?: string; run?(): void; checked?: boolean; radio?: boolean; disabled?: boolean; danger?: boolean; icon?: ReactNode }
+  | {
+      label: string;
+      shortcut?: string;
+      run?(): void;
+      checked?: boolean;
+      radio?: boolean;
+      disabled?: boolean;
+      danger?: boolean;
+      icon?: ReactNode;
+    }
   | { section: string }
   | "separator";
 
@@ -62,7 +71,9 @@ export function Menubar({ menus }: { menus: TopMenu[] }) {
           >
             {m.label}
           </button>
-          {open === i && <Dropdown items={m.items()} close={() => setOpen(null)} autoFocus={viaKeyboard.current} />}
+          {open === i && (
+            <Dropdown items={m.items()} close={() => setOpen(null)} autoFocus={viaKeyboard.current} />
+          )}
         </div>
       ))}
     </div>
@@ -72,7 +83,8 @@ export function Menubar({ menus }: { menus: TopMenu[] }) {
 function Dropdown({ items, close, autoFocus }: { items: MenuDef[]; close(): void; autoFocus: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (autoFocus) ref.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus({ preventScroll: true });
+    if (autoFocus)
+      ref.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus({ preventScroll: true });
   }, [autoFocus]);
   return (
     <div
@@ -99,7 +111,9 @@ function Dropdown({ items, close, autoFocus }: { items: MenuDef[]; close(): void
           <button
             key={i}
             type="button"
-            role={item.checked !== undefined ? (item.radio ? "menuitemradio" : "menuitemcheckbox") : "menuitem"}
+            role={
+              item.checked !== undefined ? (item.radio ? "menuitemradio" : "menuitemcheckbox") : "menuitem"
+            }
             aria-checked={item.checked}
             className="dropdown-item"
             data-danger={item.danger || undefined}
@@ -110,7 +124,15 @@ function Dropdown({ items, close, autoFocus }: { items: MenuDef[]; close(): void
             }}
           >
             <span className="dropdown-check">
-              {item.checked ? item.radio ? <span className="radio-dot" /> : <CheckIcon size={13} /> : item.icon}
+              {item.checked ? (
+                item.radio ? (
+                  <span className="radio-dot" />
+                ) : (
+                  <CheckIcon size={13} />
+                )
+              ) : (
+                item.icon
+              )}
             </span>
             <span className="dropdown-label">{item.label}</span>
             {item.shortcut && <span className="dropdown-shortcut">{item.shortcut}</span>}

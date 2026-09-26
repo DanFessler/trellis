@@ -6,6 +6,8 @@ export default defineConfig({
   resolve: { alias: trellisAliases },
   server: { port: 5310 },
   build: {
-    rollupOptions: { input: { main: resolve(__dirname, "index.html"), element: resolve(__dirname, "element.html") } },
+    rollupOptions: {
+      input: { main: resolve(__dirname, "index.html"), element: resolve(__dirname, "element.html") },
+    },
   },
 });

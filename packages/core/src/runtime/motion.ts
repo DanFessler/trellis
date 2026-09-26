@@ -8,8 +8,7 @@ export const MOTION = {
   appearMs: 220,
 };
 
-export const easeOutQuint = (t: number) =>
-  1 - (1 - Math.min(1, Math.max(0, t))) ** 5;
+export const easeOutQuint = (t: number) => 1 - (1 - Math.min(1, Math.max(0, t))) ** 5;
 
 export function lerpRect(a: Rect, b: Rect, t: number): Rect {
   return {
@@ -39,13 +38,9 @@ export class RectSpring {
     let error = 0;
     for (const key of ["x", "y", "w", "h"] as const) {
       this.velocity[key] +=
-        ((this.target[key] - this.value[key]) * stiffness -
-          this.velocity[key] * damping) *
-        dt;
+        ((this.target[key] - this.value[key]) * stiffness - this.velocity[key] * damping) * dt;
       this.value[key] += this.velocity[key] * dt;
-      error +=
-        Math.abs(this.target[key] - this.value[key]) +
-        Math.abs(this.velocity[key]) * 0.1;
+      error += Math.abs(this.target[key] - this.value[key]) + Math.abs(this.velocity[key]) * 0.1;
     }
     if (error <= epsilon) {
       this.finish();
