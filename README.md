@@ -1,4 +1,10 @@
-# Trellis
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="design/logo/dist/trellis-mark-dark.svg">
+    <img src="design/logo/dist/trellis-mark.svg" alt="" width="36" height="36">
+  </picture>
+  Trellis
+</h1>
 
 **Dockable, zoomable workspaces for web tools.**
 

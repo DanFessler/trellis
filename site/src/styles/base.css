@@ -264,18 +264,25 @@ kbd {
 .nav-wide {
   max-width: none;
 }
+/* Lockup: the wordmark's cap height equals the leaf (12 of the mark's 20 units, and Bricolage
+   Grotesque's caps are 0.66 em), its baseline sits on the leaf's bottom edge, and the space
+   before it equals the mark's narrow column (6 units). */
 .brand {
   display: inline-flex;
-  align-items: center;
-  gap: 10px;
+  align-items: baseline;
+  gap: calc(1.1em * 6 / 20);
   font-family: var(--font-display);
   font-size: 19px;
   font-weight: 650;
   letter-spacing: -0.02em;
 }
 .brand-mark {
-  width: 26px;
-  height: 26px;
+  flex: none;
+  align-self: baseline;
+  width: 1.1em;
+  height: 1.1em;
+  /* Flex baseline alignment sits the mark's bottom on the baseline; drop it so the leaf's bottom does. */
+  transform: translateY(calc(1.1em * 8 / 20));
   color: var(--accent);
 }
 .brand-tag {
