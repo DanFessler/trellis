@@ -1904,7 +1904,7 @@ a.example:hover .thumb-shot img {
   margin: 12px 0;
   font-family: var(--font-display);
   font-size: clamp(36px, 6vw, 64px);
-  letter-spacing: -0.04em;
+  letter-spacing: -0.02em;
   line-height: 1.05;
 }
 .not-found p {

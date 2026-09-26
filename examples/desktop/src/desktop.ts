@@ -46,19 +46,18 @@ export function windowRect(ws: WorkspaceHandle, app: AppDefinition, at?: { x: nu
   return { x: x / desk.w, y: y / desk.h, w: w / desk.w, h: h / desk.h };
 }
 
-/** Floating windows live in the desktop, so opening one while the camera frames a docked panel
- * would open it offscreen. Trellis only keeps *docked* views in frame on open, so do it here. */
-function bringDesktopIntoView(ws: WorkspaceHandle) {
-  const framed = ws.navigation.framed;
-  if (framed && framed !== STAGE_ID) ws.navigation.overview();
-}
-
 export function dockIcon(appId: string): HTMLElement | null {
   return document.querySelector<HTMLElement>(`[data-dock-app="${appId}"] .dock-icon`);
 }
 
 /** Launch an app, or bring its existing window forward (restoring it from the dock if hidden). */
-export function launch(ws: WorkspaceHandle, app: AppDefinition, params?: AppParams, at?: { x: number; y: number }) {
+export function launch(
+  ws: WorkspaceHandle,
+  app: AppDefinition,
+  params?: AppParams,
+  at?: { x: number; y: number },
+  from?: Element | null,
+) {
   const snap = ws.getSnapshot();
   const matches = snap.views.filter(
     (v) => v.type === app.id && (app.singleton || (params?.folder !== undefined && v.params.folder === params.folder)),
@@ -69,11 +68,12 @@ export function launch(ws: WorkspaceHandle, app: AppDefinition, params?: AppPara
     else ws.focus(existing.id);
     return existing.id;
   }
-  bringDesktopIntoView(ws);
+  // Trellis zooms out if the new window would open outside the current frame.
   const info = ws.open(app.id, {
     params,
     placement: { float: windowRect(ws, app, at), layer: "stage" },
     reuse: "none",
+    from: from ?? undefined,
   });
   return info.id;
 }
@@ -82,7 +82,7 @@ export function launch(ws: WorkspaceHandle, app: AppDefinition, params?: AppPara
 export function activateApp(ws: WorkspaceHandle, app: AppDefinition, icon: Element | null) {
   const snap = ws.getSnapshot();
   const views = snap.views.filter((v) => v.type === app.id);
-  if (!views.length) return launch(ws, app);
+  if (!views.length) return launch(ws, app, undefined, undefined, icon);
   const visible = views.filter((v) => v.placement !== "hidden");
   if (!visible.length) {
     ws.restore(views[views.length - 1].panelId, { from: icon ?? undefined });
@@ -90,7 +90,6 @@ export function activateApp(ws: WorkspaceHandle, app: AppDefinition, icon: Eleme
   }
   const current = visible.findIndex((v) => v.id === snap.focusedView);
   const next = visible[(current + 1) % visible.length];
-  if (next.placement === "floating") bringDesktopIntoView(ws);
   ws.focus(next.id);
 }
 
@@ -101,46 +100,20 @@ export function minimize(ws: WorkspaceHandle, viewId: string) {
   ws.hide(viewId, { toward: dockIcon(type) ?? undefined });
 }
 
-const FILL: Rect = { x: 0, y: 0, w: 1, h: 1 };
-const zoomedFrom = new Map<string, Rect>();
-const near = (a: Rect, b: Rect) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) + Math.abs(a.w - b.w) + Math.abs(a.h - b.h) < 0.01;
-
 export function isZoomed(ws: WorkspaceHandle, viewId: string) {
-  const doc = ws.getDocument();
-  const float = doc.floating.find((f) => f.panel.views.includes(viewId));
-  if (float) return near(float.rect, FILL);
   const panel = ws.getSnapshot().views.find((v) => v.id === viewId)?.panelId;
   return !!panel && ws.navigation.framed === panel;
 }
 
-/** Green button: floating windows fill the desktop (floats cannot be framed by navigation);
- * docked windows use Trellis's focus navigation. */
+/** Green button: zoom the camera onto the window (floating or docked), or back out. */
 export function zoom(ws: WorkspaceHandle, viewId: string) {
-  const doc = ws.getDocument();
-  const float = doc.floating.find((f) => f.panel.views.includes(viewId));
-  if (float) {
-    const id = float.panel.id;
-    if (near(float.rect, FILL)) {
-      const app = APPS.find((a) => a.id === doc.views[viewId]?.type);
-      ws.float(id, zoomedFrom.get(id) ?? (app ? windowRect(ws, app) : { x: 0.2, y: 0.15, w: 0.6, h: 0.7 }));
-      zoomedFrom.delete(id);
-    } else {
-      zoomedFrom.set(id, float.rect);
-      ws.float(id, FILL);
-    }
-    return;
-  }
   ws.navigation.toggle(viewId);
 }
 
-/** Clicking into a window's iframe should raise it. Trellis focuses the view on pointerdown in
- * the surface, but only raises a float when its tab bar is pressed; `focus()` does both. */
+/** Clicking into a window's iframe should raise it; iframes swallow the pointer, so the app
+ * reports clicks itself. Focusing a floating window raises it. */
 export function raise(ws: WorkspaceHandle, viewId: string) {
-  const snap = ws.getSnapshot();
-  const float = snap.document.floating.find((f) => f.panel.views.includes(viewId));
-  const top = Math.max(0, ...snap.document.floating.map((f) => f.z));
-  if (snap.focusedView === viewId && (!float || float.z === top)) return;
-  ws.focus(viewId);
+  if (ws.getSnapshot().focusedView !== viewId) ws.focus(viewId);
 }
 
 export function floatOnDesktop(ws: WorkspaceHandle, viewId: string) {
