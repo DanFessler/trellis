@@ -64,7 +64,7 @@ In React, `<Workspace>` renders a `div` with `width: 100%; height: 100%`, so its
 
 ## Browser support
 
-Trellis targets current evergreen browsers: Chrome, Edge, Firefox and Safari. It uses `ResizeObserver`, pointer events, CSS custom properties and `color-mix()`.
+Trellis targets current evergreen browsers: Chrome, Edge, Firefox and Safari. It uses `ResizeObserver`, pointer events, CSS custom properties, `color-mix()` and the `:has()` selector.
 
 ## Next
 

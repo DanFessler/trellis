@@ -104,7 +104,7 @@ export function Landing() {
               <span>remounts when a view docks, tabs, floats or hides</span>
             </div>
             <div>
-              <strong>~25 kB</strong>
+              <strong>~33 kB</strong>
               <span>gzipped core with zero runtime dependencies</span>
             </div>
             <div>
