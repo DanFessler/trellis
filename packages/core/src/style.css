@@ -334,7 +334,7 @@
 :where(.trellis [data-trellis-part="panel"][data-focused] [data-trellis-part="tab"][data-selected]),
 :where(.trellis [data-trellis-part="tabbar"][data-focused] [data-trellis-part="tab"][data-selected]) {
   background:
-    linear-gradient(var(--trellis-accent), var(--trellis-accent)) center top / calc(100% - 16px) 2px no-repeat,
+    linear-gradient(var(--trellis-accent), var(--trellis-accent)) center top / 100% 2px no-repeat,
     var(--trellis-tab-active);
 }
 :where(.trellis [data-trellis-part="tab"]:focus-visible) {
