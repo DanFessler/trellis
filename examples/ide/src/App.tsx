@@ -283,7 +283,6 @@ export function App() {
 
 function Shell() {
   const ws = useOptionalWorkspace();
-  const snap = useWorkspaceState();
   const theme = useIde((s) => s.theme);
 
   // Track the last focused editor so the outline and status bar keep context while you use tool panels.
@@ -344,20 +343,8 @@ function Shell() {
     };
   }, [ws]);
 
-  // Editor tabs show their dirty badge as a dot that swaps with the close button on hover.
-  // (Tabs don't carry their view type, so target editor tabs by view id.)
-  const editorTabs = snap.views
-    .filter((v) => v.type === "editor")
-    .map((v) => `.ide [data-trellis-part="tab"][data-view="${CSS.escape(v.id)}"]`);
-  const dirtyCss = editorTabs.length
-    ? `${editorTabs.map((t) => `${t} > [data-trellis-part="tab-badge"]`).join(",")}{font-size:0;min-width:0;width:8px;height:8px;padding:0;margin:0 6px 0 2px;border-radius:50%;background:var(--ide-text);opacity:.75}
-${editorTabs.map((t) => `${t}:not(:hover) > [data-trellis-part="tab-badge"]:not([hidden]) ~ [data-trellis-part="tab-close"]`).join(",")}{display:none}
-${editorTabs.map((t) => `${t}:hover > [data-trellis-part="tab-badge"]`).join(",")}{display:none}`
-    : "";
-
   return (
     <div className="ide" data-theme={theme}>
-      <style>{dirtyCss}</style>
       <TitleBar />
       <main className="ide-main">
         <Workspace

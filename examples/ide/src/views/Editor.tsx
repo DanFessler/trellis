@@ -108,7 +108,7 @@ export function Editor() {
   const dirty = !!file && file.content !== file.saved;
 
   useViewTitle(basename(path));
-  useViewBadge(dirty ? "●" : null);
+  useViewBadge(dirty || null); // a dot that swaps with the close button on hover
   useCloseGuard(async () => {
     if (!vfs.isDirty(path)) return true;
     view.focus();
