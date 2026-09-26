@@ -3,7 +3,8 @@ export function installCopyHandler() {
   document.addEventListener("click", async (e) => {
     const button = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-copy]");
     if (!button) return;
-    const text = button.dataset.copyText ?? button.closest(".code-block")?.querySelector("pre")?.textContent ?? "";
+    const text =
+      button.dataset.copyText ?? button.closest(".code-block")?.querySelector("pre")?.textContent ?? "";
     try {
       await navigator.clipboard.writeText(text);
     } catch {

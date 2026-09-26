@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { createDocument, layout as L, ViewType, Workspace, type WorkspaceHandle, type WorkspaceSnapshot } from "@danfessler/trellis-react";
+import {
+  createDocument,
+  layout as L,
+  ViewType,
+  Workspace,
+  type WorkspaceHandle,
+  type WorkspaceSnapshot,
+} from "@danfessler/trellis-react";
 import { useSiteTheme } from "../../theme";
 import { useMedia } from "../../components/useMedia";
 import { Reset } from "../../components/icons";
@@ -22,21 +29,56 @@ function desktopLayout() {
   return createDocument(
     L.row(
       [
-        L.column([L.panel({ id: "p-layers" }, L.view("layers", { id: "layers" })), L.panel({ id: "p-color" }, L.view("color", { id: "color" }))], [1.1, 1]),
-        L.stage(L.panel({ id: "p-docs" }, L.view("sketch", { id: "sketch-1", params: { name: "Climbing vine" } }), L.view("code", { id: "code" }))),
-        L.panel({ id: "p-inspect" }, L.view("inspector", { id: "inspector" }), L.view("preview", { id: "preview" })),
+        L.column(
+          [
+            L.panel({ id: "p-layers" }, L.view("layers", { id: "layers" })),
+            L.panel({ id: "p-color" }, L.view("color", { id: "color" })),
+          ],
+          [1.1, 1],
+        ),
+        L.stage(
+          L.panel(
+            { id: "p-docs" },
+            L.view("sketch", { id: "sketch-1", params: { name: "Climbing vine" } }),
+            L.view("code", { id: "code" }),
+          ),
+        ),
+        L.panel(
+          { id: "p-inspect" },
+          L.view("inspector", { id: "inspector" }),
+          L.view("preview", { id: "preview" }),
+        ),
       ],
       [1, 3.3, 1.3],
     ),
-    { floating: [{ panel: L.view("brush", { id: "brush" }), rect: { x: 0.62, y: 0.7, w: 0.35, h: 0.26 }, layer: "stage" }] },
+    {
+      floating: [
+        {
+          panel: L.view("brush", { id: "brush" }),
+          rect: { x: 0.62, y: 0.7, w: 0.35, h: 0.26 },
+          layer: "stage",
+        },
+      ],
+    },
   );
 }
 function compactLayout() {
   return createDocument(
     L.column(
       [
-        L.stage(L.panel({ id: "p-docs" }, L.view("sketch", { id: "sketch-1", params: { name: "Climbing vine" } }), L.view("code", { id: "code" }))),
-        L.panel({ id: "p-tools" }, L.view("layers", { id: "layers" }), L.view("color", { id: "color" }), L.view("inspector", { id: "inspector" })),
+        L.stage(
+          L.panel(
+            { id: "p-docs" },
+            L.view("sketch", { id: "sketch-1", params: { name: "Climbing vine" } }),
+            L.view("code", { id: "code" }),
+          ),
+        ),
+        L.panel(
+          { id: "p-tools" },
+          L.view("layers", { id: "layers" }),
+          L.view("color", { id: "color" }),
+          L.view("inspector", { id: "inspector" }),
+        ),
       ],
       [1.6, 1],
     ),
@@ -45,7 +87,11 @@ function compactLayout() {
 
 const empty = () => () => {};
 function useHandleSnapshot(ws: WorkspaceHandle | null): WorkspaceSnapshot | null {
-  return useSyncExternalStore(ws ? ws.subscribe : empty, () => (ws ? ws.getSnapshot() : null), () => null);
+  return useSyncExternalStore(
+    ws ? ws.subscribe : empty,
+    () => (ws ? ws.getSnapshot() : null),
+    () => null,
+  );
 }
 
 export function HeroDemo() {
@@ -90,8 +136,22 @@ function HeroWorkspace() {
     // Every key appears in both themes: tokens removed from the object are not cleared by the
     // workspace, so light mode sets "" (which removes the property) for dark-only overrides.
     ...(theme === "dark"
-      ? { "--trellis-bg": "#0b0c0b", "--trellis-panel": "#171917", "--trellis-tabbar": "#121412", "--trellis-tab-active": "#171917", "--trellis-stage": "#0f110f", "--trellis-menu": "#1d201d" }
-      : { "--trellis-bg": "#e4e5df", "--trellis-panel": "", "--trellis-tabbar": "#f3f3ef", "--trellis-tab-active": "", "--trellis-stage": "#eeeee9", "--trellis-menu": "" }),
+      ? {
+          "--trellis-bg": "#0b0c0b",
+          "--trellis-panel": "#171917",
+          "--trellis-tabbar": "#121412",
+          "--trellis-tab-active": "#171917",
+          "--trellis-stage": "#0f110f",
+          "--trellis-menu": "#1d201d",
+        }
+      : {
+          "--trellis-bg": "#e4e5df",
+          "--trellis-panel": "",
+          "--trellis-tabbar": "#f3f3ef",
+          "--trellis-tab-active": "",
+          "--trellis-stage": "#eeeee9",
+          "--trellis-menu": "",
+        }),
   };
 
   const artMenu = [
@@ -131,7 +191,13 @@ function HeroWorkspace() {
           <div className="hero-bar-actions">
             <div className="seg" role="radiogroup" aria-label="Navigation mode">
               {(["focus", "free"] as const).map((n) => (
-                <button key={n} type="button" role="radio" aria-checked={navigation === n} onClick={() => setNavigation(n)}>
+                <button
+                  key={n}
+                  type="button"
+                  role="radio"
+                  aria-checked={navigation === n}
+                  onClick={() => setNavigation(n)}
+                >
                   {n === "focus" ? "Focus" : "Free zoom"}
                 </button>
               ))}
@@ -139,7 +205,13 @@ function HeroWorkspace() {
             <button type="button" className="hero-bar-btn" onClick={newSketch}>
               + Sketch
             </button>
-            <button type="button" className="hero-bar-btn icon" onClick={() => ws?.reset()} aria-label="Reset layout" title="Reset layout">
+            <button
+              type="button"
+              className="hero-bar-btn icon"
+              onClick={() => ws?.reset()}
+              aria-label="Reset layout"
+              title="Reset layout"
+            >
               <Reset />
             </button>
           </div>
@@ -155,20 +227,47 @@ function HeroWorkspace() {
             label="Trellis demo workspace"
             defaultLayout={defaultLayout}
           >
-            <ViewType id="sketch" title={(v) => String(v.params.name ?? "Sketch")} icon={ICONS.sketch} placement="stage" allow={{ side: false }} render={() => <Sketch />} />
+            <ViewType
+              id="sketch"
+              title={(v) => String(v.params.name ?? "Sketch")}
+              icon={ICONS.sketch}
+              placement="stage"
+              allow={{ side: false }}
+              render={() => <Sketch />}
+            />
             <ViewType id="code" title="Sprout.tsx" icon={ICONS.code} placement="stage" singleton>
               <CodeView />
             </ViewType>
-            <ViewType id="layers" title="Layers" icon={ICONS.layers} singleton allow={{ stage: false }} menu={artMenu}>
+            <ViewType
+              id="layers"
+              title="Layers"
+              icon={ICONS.layers}
+              singleton
+              allow={{ stage: false }}
+              menu={artMenu}
+            >
               <Layers />
             </ViewType>
             <ViewType id="color" title="Color" icon={ICONS.color} singleton allow={{ stage: false }}>
               <ColorPicker />
             </ViewType>
-            <ViewType id="brush" title="Brush" icon={ICONS.brush} singleton allow={{ stage: false }} placement="float">
+            <ViewType
+              id="brush"
+              title="Brush"
+              icon={ICONS.brush}
+              singleton
+              allow={{ stage: false }}
+              placement="float"
+            >
               <Brush />
             </ViewType>
-            <ViewType id="inspector" title="Inspector" icon={ICONS.inspect} singleton allow={{ stage: false }}>
+            <ViewType
+              id="inspector"
+              title="Inspector"
+              icon={ICONS.inspect}
+              singleton
+              allow={{ stage: false }}
+            >
               <Inspector />
             </ViewType>
             <ViewType id="preview" title="Preview" icon={ICONS.preview} singleton iframe={PREVIEW_URL} />
@@ -180,7 +279,9 @@ function HeroWorkspace() {
         createPortal(
           <div className="d-stage-empty">
             <p>The stage is empty.</p>
-            <button type="button" onClick={newSketch}>New sketch</button>
+            <button type="button" onClick={newSketch}>
+              New sketch
+            </button>
           </div>,
           ws.slots.stageEmpty,
         )}

@@ -8,7 +8,7 @@ nav: Hiding & docks
 
 # Hiding & building a dock
 
-Hiding takes a panel out of the layout without closing anything. Its views stay mounted and keep their state; Trellis remembers where the panel was, and `restore()` puts it back. Combined with the snapshot's `hidden` list, that's everything you need for a dock, a tray of minimized palettes, or a *Window* menu.
+Hiding takes a panel out of the layout without closing anything. Its views stay mounted and keep their state; Trellis remembers where the panel was, and `restore()` puts it back. Combined with the snapshot's `hidden` list, that's everything you need for a dock, a tray of minimized palettes, or a _Window_ menu.
 
 ## Hide and restore
 
@@ -21,9 +21,9 @@ ws.restore(panelId); // an id from snapshot.hidden
 What gets hidden depends on the id:
 
 - A **panel id** — or the id of a view that is alone in its panel — hides the whole panel.
-- The id of a **view that shares its panel** hides just that tab. The rest of the panel stays put, and `restore()` puts the tab back into the same panel. (A single hidden tab disappears without the `toward` animation.)
+- The id of a **view that shares its panel** hides just that tab. The rest of the panel stays put, and `restore()` puts the tab back into the same panel. The tab animates out of its panel toward `toward`, like a whole panel does.
 
-Users can also hide a panel from its menu (**Hide**). The `panel.hide` keyboard command exists but has no default shortcut.
+Users can also hide a panel from its menu (**Hide**) — see [the built-in Hide](#the-built-in-hide) to animate it into your dock. The `panel.hide` keyboard command exists but has no default shortcut.
 
 ### Animating toward a button
 
@@ -35,6 +35,23 @@ ws.restore(panelId, { from: dockButton });
 ```
 
 Both accept an `Element` or a `Rect` in pixels relative to the workspace's top-left corner. Without `toward`, the panel shrinks and fades downward in place.
+
+`open()` takes the same kind of target: `ws.open("notes", { from: launcher })` grows a new panel out of a launcher. See [Opening views](./opening-views.md#launching-from-a-button).
+
+### The built-in Hide
+
+The panel menu's **Hide** item doesn't know where your dock is. Tell it with `hideToward`, a workspace option (and `<Workspace>` prop) that receives the panel id and returns an `Element` or `Rect` — or nothing, for the default animation:
+
+```tsx
+<Workspace hideToward={() => document.querySelector(".dock")}>{/* … */}</Workspace>
+```
+
+```ts
+createWorkspace(el, {
+  types,
+  hideToward: (panelId) => (panelId === "panel-tools" ? toolsButton : dock),
+});
+```
 
 ### Where panels come back
 
@@ -75,10 +92,7 @@ function Dock() {
   return (
     <nav className="dock">
       {hidden.map(({ panelId, views }) => (
-        <button
-          key={panelId}
-          onClick={(e) => ws.restore(panelId, { from: e.currentTarget })}
-        >
+        <button key={panelId} onClick={(e) => ws.restore(panelId, { from: e.currentTarget })}>
           {views.map((v) => v.title).join(", ")}
         </button>
       ))}
@@ -117,7 +131,9 @@ function MinimizeButton() {
   return (
     <button
       aria-label="Minimize"
-      onClick={() => view.workspace.hide(view.panelId, { toward: document.querySelector(".dock") ?? undefined })}
+      onClick={() =>
+        view.workspace.hide(view.panelId, { toward: document.querySelector(".dock") ?? undefined })
+      }
     >
       –
     </button>

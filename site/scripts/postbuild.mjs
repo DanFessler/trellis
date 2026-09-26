@@ -13,10 +13,15 @@ const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/
 const front = (src) => {
   const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(src);
   const data = {};
-  if (m) for (const line of m[1].split(/\r?\n/)) {
-    const i = line.indexOf(":");
-    if (i > 0) data[line.slice(0, i).trim()] = line.slice(i + 1).trim().replace(/^["']|["']$/g, "");
-  }
+  if (m)
+    for (const line of m[1].split(/\r?\n/)) {
+      const i = line.indexOf(":");
+      if (i > 0)
+        data[line.slice(0, i).trim()] = line
+          .slice(i + 1)
+          .trim()
+          .replace(/^["']|["']$/g, "");
+    }
   return data;
 };
 const page = (title, description) =>
@@ -32,7 +37,10 @@ for (const file of fs.readdirSync(docsDir).filter((f) => f.endsWith(".md") && !f
   const data = front(fs.readFileSync(path.join(docsDir, file), "utf8"));
   const out = path.join(dist, "docs", slug);
   fs.mkdirSync(out, { recursive: true });
-  fs.writeFileSync(path.join(out, "index.html"), page(`${data.title ?? slug} — Trellis`, data.description ?? ""));
+  fs.writeFileSync(
+    path.join(out, "index.html"),
+    page(`${data.title ?? slug} — Trellis`, data.description ?? ""),
+  );
   count++;
 }
 fs.mkdirSync(path.join(dist, "docs"), { recursive: true });

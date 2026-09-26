@@ -12,7 +12,16 @@ export function LogoMark({ className }: { className?: string }) {
         <path d="M-5 11 11 -5M-5 21 21 -5M-5 31 31 -5M5 35 35 5M15 35 35 15" />
         <path d="M-5 21 11 37M-5 11 21 37M-5 1 31 37M5 -5 37 27M15 -5 37 17" opacity="0.55" />
       </g>
-      <rect x="3" y="3" width="26" height="26" rx="7.5" stroke="currentColor" strokeOpacity="0.55" strokeWidth="1.5" />
+      <rect
+        x="3"
+        y="3"
+        width="26"
+        height="26"
+        rx="7.5"
+        stroke="currentColor"
+        strokeOpacity="0.55"
+        strokeWidth="1.5"
+      />
       <circle cx="21" cy="11" r="3.2" fill="currentColor" />
     </svg>
   );

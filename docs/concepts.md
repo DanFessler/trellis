@@ -13,17 +13,17 @@ A Trellis workspace is built from a handful of pieces. Once these click, the res
 
 A **view type** is a registered kind of content — `"layers"`, `"document"`, `"terminal"`. You register types when you create the workspace (`types` in the core, `<ViewType>` in React). A type says how to render its content and carries **rules**:
 
-| Rule | Meaning |
-| --- | --- |
-| `placement` | Where `open()` puts a new view of this type unless the caller says otherwise. |
-| `allow` | `{ stage?, side?, floating? }` — regions users may drop it into. Everything is allowed by default. |
-| `singleton` | At most one instance. `open()` focuses the existing one. |
-| `closable` | `false` hides the close button and ignores close shortcuts. |
-| `minSize` | `{ width, height }` — content lays out at no less than this size and is visually scaled down below it. |
-| `tabbar` | `"always"` (default), `"auto"` — hide the tab bar while the view is alone in its panel — or `"never"`. |
-| `gestures` | `"workspace"` lets navigation gestures start over this view's content. See [Navigation](./navigation.md#gesture-ownership). |
+| Rule        | Meaning                                                                                                                     |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `placement` | Where `open()` puts a new view of this type unless the caller says otherwise.                                               |
+| `allow`     | `{ stage?, side?, floating? }` — regions users may drop it into. Everything is allowed by default.                          |
+| `singleton` | At most one instance. `open()` focuses the existing one.                                                                    |
+| `closable`  | `false` hides the close button and ignores close shortcuts.                                                                 |
+| `minSize`   | `{ width, height }` — content lays out at no less than this size and is visually scaled down below it.                      |
+| `tabbar`    | `"always"` (default), `"auto"` — hide the tab bar while the view is alone in its panel — or `"never"`.                      |
+| `gestures`  | `"workspace"` lets navigation gestures start over this view's content. See [Navigation](./navigation.md#gesture-ownership). |
 
-A type renders content in one of three ways: a `mount(element, view)` function (core), an `iframe` URL, or — with an adapter — framework components (`children` or `render` in React).
+A type renders content in one of three ways: a `mount(element, view)` function (core), an `iframe` (a URL, or options such as `srcdoc` and `sandbox`), or — with an adapter — framework components (`children` or `render` in React).
 
 ## Views
 
@@ -63,11 +63,11 @@ Without a stage, the workspace is a plain docking layout; everything works the s
 
 Every panel is in one of three regions, and `allow` rules refer to them:
 
-| Region | Where |
-| --- | --- |
-| `stage` | Inside the stage. |
-| `side` | Docked anywhere outside the stage. |
-| `floating` | A floating panel. |
+| Region     | Where                              |
+| ---------- | ---------------------------------- |
+| `stage`    | Inside the stage.                  |
+| `side`     | Docked anywhere outside the stage. |
+| `floating` | A floating panel.                  |
 
 A view's `placement` state (`view.placement`) reports `"stage"`, `"docked"` (side), `"floating"` or `"hidden"`.
 
@@ -76,7 +76,7 @@ A view's `placement` state (`view.placement`) reports `"stage"`, `"docked"` (sid
 **Floating** panels hover above the docked layout and can be moved and resized freely. The workspace's `floating` option picks their layer:
 
 - `"overlay"` (default) — floats sit above everything and are positioned relative to the whole workspace. They stay put during navigation.
-- `"stage"` — floats live inside the stage, are clipped to it and move with it.
+- `"stage"` — floats live inside the stage, are clipped to it and move with it. They can be maximized like docked panels.
 - `false` — floating is disabled.
 
 See [Floating panels](./floating.md).
@@ -85,8 +85,8 @@ See [Floating panels](./floating.md).
 
 **Navigation** animates the workspace's camera to frame part of the layout. The `navigation` option:
 
-- `"focus"` (default) — double-click a tab bar, use the panel menu's *Maximize*, or press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>↩</kbd> to zoom one panel to fill the workspace. <kbd>Esc</kbd> goes back.
-- `"free"` — everything in focus mode, plus pinch or <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+scroll to zoom, and scroll to pan while zoomed. When the gesture ends, the camera snaps to the best-fitting panel or split.
+- `"focus"` (default) — double-click a tab bar, use the panel menu's _Maximize_, or press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>↩</kbd> to zoom one panel to fill the workspace. <kbd>Esc</kbd> goes back.
+- `"free"` — everything in focus mode, plus pinch or <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+scroll to zoom, and scroll to pan while zoomed. When the gesture ends, the camera snaps to the best-fitting panel, split or stage float.
 - `false` — no navigation.
 
 Navigation has history (back/forward) and saved **framings**. See [Navigation & maximize](./navigation.md).

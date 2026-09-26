@@ -129,7 +129,14 @@ export function Sketch() {
   const hidden = !demo.layers.find((l) => l.id === demo.activeLayer)?.visible;
   return (
     <div className="d-sketch" ref={wrap}>
-      <canvas ref={canvas} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} aria-label="Drawing canvas" />
+      <canvas
+        ref={canvas}
+        onPointerDown={down}
+        onPointerMove={move}
+        onPointerUp={up}
+        onPointerCancel={up}
+        aria-label="Drawing canvas"
+      />
       <div className="d-sketch-hint">
         <span className="d-dot" style={{ background: demo.color }} />
         {hidden ? `“${activeName}” is hidden` : `Draw on ${activeName}`}
@@ -148,7 +155,14 @@ export function CodeView() {
 
 // ------------------------------------------------------------------ Layers
 const EyeIcon = ({ off }: { off: boolean }) => (
-  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden="true">
+  <svg
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.4"
+    strokeLinecap="round"
+    aria-hidden="true"
+  >
     <path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z" />
     <circle cx="8" cy="8" r="2" />
     {off && <path d="M2.5 13.5l11-11" />}
@@ -164,7 +178,13 @@ export function Layers() {
           const count = demo.strokes.filter((s) => s.layer === l.id).length;
           const active = demo.activeLayer === l.id;
           return (
-            <li key={l.id} role="option" aria-selected={active} data-active={active || undefined} onClick={() => demo.setActiveLayer(l.id)}>
+            <li
+              key={l.id}
+              role="option"
+              aria-selected={active}
+              data-active={active || undefined}
+              onClick={() => demo.setActiveLayer(l.id)}
+            >
               <button
                 type="button"
                 className="d-eye"
@@ -177,15 +197,21 @@ export function Layers() {
                 <EyeIcon off={!l.visible} />
               </button>
               <span className={`d-thumb d-thumb-${l.id}`} />
-              <span className="d-layer-name" data-dim={!l.visible || undefined}>{l.name}</span>
+              <span className="d-layer-name" data-dim={!l.visible || undefined}>
+                {l.name}
+              </span>
               <span className="d-count">{count}</span>
             </li>
           );
         })}
       </ul>
       <div className="d-actions">
-        <button type="button" onClick={demo.undo}>Undo</button>
-        <button type="button" onClick={demo.clear}>Reset art</button>
+        <button type="button" onClick={demo.undo}>
+          Undo
+        </button>
+        <button type="button" onClick={demo.clear}>
+          Reset art
+        </button>
       </div>
     </div>
   );
@@ -194,8 +220,11 @@ export function Layers() {
 // ------------------------------------------------------------------ Color
 function hexToHsl(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
-  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const r = ((n >> 16) & 255) / 255,
+    g = ((n >> 8) & 255) / 255,
+    b = (n & 255) / 255;
+  const max = Math.max(r, g, b),
+    min = Math.min(r, g, b);
   const l = (max + min) / 2;
   if (max === min) return [0, 0, l * 100];
   const d = max - min;
@@ -209,7 +238,16 @@ function hslToHex(h: number, s: number, l: number) {
   const k = (n: number) => (n + h / 30) % 12;
   const a = s * Math.min(l, 1 - l);
   const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-  return "#" + [f(0), f(8), f(4)].map((x) => Math.round(x * 255).toString(16).padStart(2, "0")).join("");
+  return (
+    "#" +
+    [f(0), f(8), f(4)]
+      .map((x) =>
+        Math.round(x * 255)
+          .toString(16)
+          .padStart(2, "0"),
+      )
+      .join("")
+  );
 }
 export function ColorPicker() {
   useAliveClock();
@@ -233,13 +271,22 @@ export function ColorPicker() {
           min={0}
           max={359}
           value={Math.round(h)}
-          onChange={(e) => demo.setColor(hslToHex(Number(e.target.value), Math.max(s, 45), Math.min(Math.max(l, 35), 65)))}
+          onChange={(e) =>
+            demo.setColor(hslToHex(Number(e.target.value), Math.max(s, 45), Math.min(Math.max(l, 35), 65)))
+          }
           style={{ background: "linear-gradient(90deg,#f33,#fd3,#3f5,#3df,#35f,#f3d,#f33)" }}
         />
       </label>
       <div className="d-swatches">
         {SWATCHES.map((c) => (
-          <button key={c} type="button" aria-label={`Color ${c}`} data-active={c === demo.color || undefined} style={{ background: c }} onClick={() => demo.setColor(c)} />
+          <button
+            key={c}
+            type="button"
+            aria-label={`Color ${c}`}
+            data-active={c === demo.color || undefined}
+            style={{ background: c }}
+            onClick={() => demo.setColor(c)}
+          />
         ))}
       </div>
     </div>
@@ -254,12 +301,24 @@ export function Brush() {
     <div className="d-pane d-brush">
       <div className="d-brush-preview">
         <svg viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M10 40 C 50 5, 90 60, 130 28 S 180 20, 190 30" stroke={demo.color} strokeWidth={demo.size} fill="none" strokeLinecap="round" />
+          <path
+            d="M10 40 C 50 5, 90 60, 130 28 S 180 20, 190 30"
+            stroke={demo.color}
+            strokeWidth={demo.size}
+            fill="none"
+            strokeLinecap="round"
+          />
         </svg>
       </div>
       <label className="d-slider">
         <span>Size</span>
-        <input type="range" min={1} max={32} value={demo.size} onChange={(e) => demo.setSize(Number(e.target.value))} />
+        <input
+          type="range"
+          min={1}
+          max={32}
+          value={demo.size}
+          onChange={(e) => demo.setSize(Number(e.target.value))}
+        />
         <output>{demo.size}px</output>
       </label>
     </div>

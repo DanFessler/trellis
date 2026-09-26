@@ -22,34 +22,47 @@ In React, get `ws` from `useWorkspace()` inside the workspace or from a `ref` ou
 
 ## Options
 
-| Option | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `params` | `object` | `{}` | Serializable data for the view. Any plain object; interface types are fine. |
-| `id` | `string` | generated | A specific view id. If a view with this id already exists, it is revealed instead. |
-| `title` | `string` | from the type | A title override stored in the document. |
-| `placement` | `Placement` | see below | Where the new view goes. |
-| `reuse` | `"none" \| "type" \| "params" \| (view) => boolean` | `"type"` for singletons, else `"none"` | Reveal a matching existing view instead of opening a new one. |
-| `focus` | `boolean` | `true` | Focus the view (and move keyboard focus into it). |
+| Option      | Type                                                | Default                                | Meaning                                                                                                                                       |
+| ----------- | --------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `params`    | `object`                                            | `{}`                                   | Serializable data for the view. Any plain object; interface types are fine.                                                                   |
+| `id`        | `string`                                            | generated                              | A specific view id. If a view with this id already exists, it is revealed instead.                                                            |
+| `title`     | `string`                                            | from the type                          | A title override stored in the document.                                                                                                      |
+| `placement` | `Placement`                                         | see below                              | Where the new view goes.                                                                                                                      |
+| `reuse`     | `"none" \| "type" \| "params" \| (view) => boolean` | `"type"` for singletons, else `"none"` | Reveal a matching existing view instead of opening a new one.                                                                                 |
+| `focus`     | `boolean`                                           | `true`                                 | Focus the view (and move keyboard focus into it).                                                                                             |
+| `from`      | `Element \| Rect`                                   |                                        | Animate the new panel out of this element or rect — a launcher, dock icon or toolbar button. A `Rect` is in pixels relative to the workspace. |
+
+Focusing raises a floating panel to the front. Keyboard focus moves into the content one frame after `open()` returns, so content rendered by an adapter (React) has mounted first — see [Keyboard & accessibility](./keyboard-accessibility.md#tabs).
 
 `open()` returns a `ViewInfo` — `{ id, type, params, title, panelId, placement, selected }` — for the new or revealed view. It throws if the type isn't registered.
 
 ## Placements
 
-| Placement | Behaviour |
-| --- | --- |
-| `"stage"` | Into the stage. If the stage is empty the view fills it; otherwise it becomes a tab in the focused stage panel (or the last focused one, or the first). Without a stage, it becomes a tab in the focused panel. |
-| `"tab"` | A new tab in the focused panel. Without a focused panel, falls back to the stage. |
-| `"side"` | Docked outside the stage — beside the stage on the right, or beside the whole layout if there is no stage. If the workspace is empty, it becomes the whole layout. |
-| `"float"` | A new floating panel on the workspace's floating layer, cascaded so successive floats don't stack exactly. |
-| `{ float: rect, layer? }` | A floating panel at `rect` (fractions 0–1 of the layer). `layer` defaults to the workspace's `floating` option. |
-| `{ beside: id, edge, share? }` | Docked against a panel, split or the stage, on `edge` (`"left" \| "right" \| "top" \| "bottom"`). `share` is the fraction of that node's space the new panel takes. |
-| `{ into: id, index? }` | A tab in a specific panel, at `index` — or into the stage, if `id` is the stage's id. |
+| Placement                      | Behaviour                                                                                                                                                                                                       |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `"stage"`                      | Into the stage. If the stage is empty the view fills it; otherwise it becomes a tab in the focused stage panel (or the last focused one, or the first). Without a stage, it becomes a tab in the focused panel. |
+| `"tab"`                        | A new tab in the focused panel. Without a focused panel, falls back to the stage.                                                                                                                               |
+| `"side"`                       | Docked outside the stage — beside the stage on the right, or beside the whole layout if there is no stage. If the workspace is empty, it becomes the whole layout.                                              |
+| `"float"`                      | A new floating panel on the workspace's floating layer, cascaded so successive floats don't stack exactly.                                                                                                      |
+| `{ float: rect, layer? }`      | A floating panel at `rect` (fractions 0–1 of the layer). `layer` defaults to the workspace's `floating` option.                                                                                                 |
+| `{ beside: id, edge, share? }` | Docked against a panel, split or the stage, on `edge` (`"left" \| "right" \| "top" \| "bottom"`). `share` is the fraction of that node's space the new panel takes.                                             |
+| `{ into: id, index? }`         | A tab in a specific panel, at `index` — or into the stage, if `id` is the stage's id.                                                                                                                           |
 
 ```ts
 ws.open("terminal", { placement: { beside: "stage", edge: "bottom", share: 0.3 } });
 ws.open("inspector", { placement: { into: "panel-tools", index: 0 } });
 ws.open("picker", { placement: { float: { x: 0.6, y: 0.1, w: 0.3, h: 0.4 } } });
 ```
+
+### Launching from a button
+
+Pass `from` to make the new panel grow out of whatever launched it:
+
+```tsx
+<button onClick={(e) => ws.open("notes", { placement: "float", from: e.currentTarget })}>Notes</button>
+```
+
+`from` only animates a newly created panel. When `open()` reveals an existing view (through `reuse`, a singleton or an existing `id`), it is ignored.
 
 > **Note** The stage's id is `"stage"` unless you gave it another one (`<Stage id>` / `L.stage(child, { id })`). A `{ beside }` target that doesn't exist falls back to docking beside the whole layout.
 
@@ -88,14 +101,14 @@ A type with `singleton: true` defaults to `reuse: "type"`, so there is at most o
 
 ## Moving existing views
 
-| Method | Does |
-| --- | --- |
-| `ws.focus(id)` | Reveal and focus a view, or the selected view of a panel. |
-| `ws.select(viewId)` | Select a view's tab without moving focus. |
-| `ws.float(panelOrViewId, rect?)` | Float a panel, or tear a single view out of its panel and float it. |
-| `ws.dock(panelOrViewId, target)` | Dock a panel or view: `"stage"`, `{ beside, edge, share? }` or `{ into, index? }`. |
-| `ws.hide(panelOrViewId, { toward? })` | Hide a panel, or a single tab. See [Hiding](./hiding.md). |
-| `ws.close(viewId, { force? })` | Close a view. Resolves `false` if a close guard vetoed it. |
+| Method                                | Does                                                                               |
+| ------------------------------------- | ---------------------------------------------------------------------------------- |
+| `ws.focus(id)`                        | Reveal and focus a view, or the selected view of a panel.                          |
+| `ws.select(viewId)`                   | Select a view's tab without moving focus.                                          |
+| `ws.float(panelOrViewId, rect?)`      | Float a panel, or tear a single view out of its panel and float it.                |
+| `ws.dock(panelOrViewId, target)`      | Dock a panel or view: `"stage"`, `{ beside, edge, share? }` or `{ into, index? }`. |
+| `ws.hide(panelOrViewId, { toward? })` | Hide a panel, or a single tab. See [Hiding](./hiding.md).                          |
+| `ws.close(viewId, { force? })`        | Close a view. Resolves `false` if a close guard vetoed it.                         |
 
 ```ts
 ws.float("color");
@@ -112,7 +125,7 @@ ws.setParams("doc-1", { path: "notes.md" }); // shallow merge
 ws.view("doc-1")?.setBadge(3);
 ```
 
-> **Note** For iframe views, a URL derived from params (`iframe: (v) => v.params.url`) reloads the iframe when those params change — by design. For a live preview that should keep its state, keep the URL fixed and send updates with `postMessage` (reach the frame with `view.element.querySelector("iframe")`).
+> **Note** For iframe views, options derived from params (`iframe: (v) => v.params.url`) reload the iframe when they change — by design. Params changes that leave the computed `src`, `srcdoc` and other options the same don't reload it. For a live preview that should keep its state, keep the URL fixed and send updates with `postMessage`. See [A live preview iframe](./recipes.md#a-live-preview-iframe).
 
 A type's `title` can be a function of the view — `title: (view) => String(view.params.path)` — and is re-evaluated when params change. `setTitle()` stores an explicit title in the document, which takes precedence.
 

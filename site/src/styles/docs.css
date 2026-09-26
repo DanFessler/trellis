@@ -73,7 +73,9 @@
   color: var(--text-2);
   font-size: 14.5px;
   line-height: 1.4;
-  transition: color 120ms, background-color 120ms;
+  transition:
+    color 120ms,
+    background-color 120ms;
 }
 .docs-nav a:hover {
   color: var(--text);
@@ -128,7 +130,9 @@
   border-left: 1px solid transparent;
   color: var(--text-3);
   line-height: 1.4;
-  transition: color 120ms, border-color 120ms;
+  transition:
+    color 120ms,
+    border-color 120ms;
 }
 .docs-toc a:hover {
   color: var(--text);
@@ -358,18 +362,24 @@
   border: 0;
   border-radius: 12px;
   background: var(--surface);
-  box-shadow: 0 0 0 1px var(--line) inset, inset 3px 0 0 var(--text-3);
+  box-shadow:
+    0 0 0 1px var(--line) inset,
+    inset 3px 0 0 var(--text-3);
 }
 .prose blockquote.callout p {
   margin: 6px 0;
 }
 .prose .callout-tip {
-  box-shadow: 0 0 0 1px var(--line) inset, inset 3px 0 0 var(--accent);
+  box-shadow:
+    0 0 0 1px var(--line) inset,
+    inset 3px 0 0 var(--accent);
   background: color-mix(in srgb, var(--accent) 6%, var(--surface));
 }
 .prose .callout-warning,
 .prose .callout-important {
-  box-shadow: 0 0 0 1px var(--line) inset, inset 3px 0 0 #e59a3b;
+  box-shadow:
+    0 0 0 1px var(--line) inset,
+    inset 3px 0 0 #e59a3b;
   background: color-mix(in srgb, #e59a3b 7%, var(--surface));
 }
 .prose .table-wrap {
@@ -429,7 +439,9 @@
   border-radius: 12px;
   box-shadow: 0 0 0 1px var(--line) inset;
   text-decoration: none !important;
-  transition: box-shadow 150ms, background-color 150ms;
+  transition:
+    box-shadow 150ms,
+    background-color 150ms;
 }
 .pager:hover {
   background: var(--surface);

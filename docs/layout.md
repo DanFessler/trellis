@@ -13,11 +13,11 @@ There are three ways to describe a layout, and they all end up as the same `Layo
 2. The **`layout` builder**, compiled with `createDocument()` (any framework).
 3. A **`LayoutDocument`** object written or stored directly.
 
-A layout you provide is the *initial* layout. After the workspace mounts, users own it; to change it programmatically, use the imperative API or [`setDocument()`](./persistence.md#controlled-layouts).
+A layout you provide is the _initial_ layout. After the workspace mounts, users own it; to change it programmatically, use the imperative API or [`setDocument()`](./persistence.md#controlled-layouts-react).
 
 ## JSX layouts (React)
 
-Place `<Split>`, `<Panel>`, `<View>` and `<Stage>` as children of `<Workspace>`, next to your `<ViewType>` registrations.
+Place `<Split>`, `<Panel>`, `<View>`, `<Stage>` and `<Floating>` as children of `<Workspace>`, next to your `<ViewType>` registrations.
 
 ```tsx
 <Workspace>
@@ -41,12 +41,13 @@ Place `<Split>`, `<Panel>`, `<View>` and `<Stage>` as children of `<Workspace>`,
 </Workspace>
 ```
 
-| Component | Props | Notes |
-| --- | --- | --- |
-| `<Split>` | `axis?: "x" \| "y"`, `weights?: number[]`, `id?` | Default axis is `"x"` (a row). Weights are relative. |
-| `<Panel>` | `selected?: number`, `id?` | Children must be `<View>`s. `selected` is the index of the initially selected tab. |
-| `<View>` | `type`, `params?`, `id?`, `title?` | A bare `<View>` outside a `<Panel>` gets its own panel. |
-| `<Stage>` | `backdrop?`, `empty?`, `id?` | At most one. Multiple children are arranged in a row. |
+| Component    | Props                                            | Notes                                                                                                 |
+| ------------ | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `<Split>`    | `axis?: "x" \| "y"`, `weights?: number[]`, `id?` | Default axis is `"x"` (a row). Weights are relative.                                                  |
+| `<Panel>`    | `selected?: number`, `id?`                       | Children must be `<View>`s. `selected` is the index of the initially selected tab.                    |
+| `<View>`     | `type`, `params?`, `id?`, `title?`               | A bare `<View>` outside a `<Panel>` gets its own panel.                                               |
+| `<Stage>`    | `backdrop?`, `empty?`, `id?`                     | At most one. Multiple children are arranged in a row.                                                 |
+| `<Floating>` | `rect`, `layer?`                                 | An initial floating panel. Children: one `<Panel>` or `<View>`. See [below](#floating-panels-in-jsx). |
 
 Rules worth knowing:
 
@@ -54,7 +55,31 @@ Rules worth knowing:
 - They must be direct children of `<Workspace>` (or of each other). Fragments are fine, but wrapping layout in your own component is not — `<Workspace>` reads its children's element types and won't render your component to find them.
 - If there are several top-level layout children, they are placed in a row.
 - JSX layout takes precedence over the `defaultLayout` prop, and a persisted or controlled document takes precedence over both.
-- JSX cannot declare floating panels. Use a data layout (below) for an initial float.
+- `<Workspace.Backdrop>` and `<Workspace.StageEmpty>` fill the stage's slots when the stage comes from a data layout rather than a JSX `<Stage>`.
+
+### Floating panels in JSX
+
+`<Floating>` wraps a `<Panel>` or a bare `<View>` and floats it in the initial layout. `rect` is in fractions (0–1) of the layer; `layer` is `"stage"` or `"overlay"` (the default).
+
+```tsx
+<Workspace floating="stage">
+  <ViewType id="doc" title="Document" />
+  <ViewType id="color" title="Color" />
+  <ViewType id="swatches" title="Swatches" />
+
+  <Stage>
+    <View type="doc" />
+  </Stage>
+  <Floating rect={{ x: 0.65, y: 0.55, w: 0.3, h: 0.4 }} layer="stage">
+    <Panel>
+      <View type="color" id="color" />
+      <View type="swatches" id="swatches" />
+    </Panel>
+  </Floating>
+</Workspace>
+```
+
+`<Floating>` counts as JSX layout: a workspace with only `<Floating>` children (and no docked layout) starts with just those floats, and ignores `defaultLayout`.
 
 ## The `layout` builder
 
@@ -66,21 +91,27 @@ import { layout as L } from "@danfessler/trellis"; // or "@danfessler/trellis-re
 const spec = L.row(
   [
     L.column([L.view("layers"), L.view("history")], [2, 1]),
-    L.stage(L.panel({ selected: 0 }, L.view("doc", { params: { name: "a.png" } }), L.view("doc", { params: { name: "b.png" } }))),
+    L.stage(
+      L.panel(
+        { selected: 0 },
+        L.view("doc", { params: { name: "a.png" } }),
+        L.view("doc", { params: { name: "b.png" } }),
+      ),
+    ),
     L.view("color"),
   ],
   [1, 4, 1],
 );
 ```
 
-| Function | Returns |
-| --- | --- |
-| `L.view(type, { id?, params?, title? })` | `ViewSpec` |
-| `L.panel(...views)` or `L.panel({ id?, selected? }, ...views)` | `PanelSpec` |
-| `L.row(children, weights?)` | `SplitSpec` on the x axis |
-| `L.column(children, weights?)` | `SplitSpec` on the y axis |
-| `L.split(axis, children, { weights?, id? })` | `SplitSpec` |
-| `L.stage(child?, { id? })` | `StageSpec` |
+| Function                                                       | Returns                   |
+| -------------------------------------------------------------- | ------------------------- |
+| `L.view(type, { id?, params?, title? })`                       | `ViewSpec`                |
+| `L.panel(...views)` or `L.panel({ id?, selected? }, ...views)` | `PanelSpec`               |
+| `L.row(children, weights?)`                                    | `SplitSpec` on the x axis |
+| `L.column(children, weights?)`                                 | `SplitSpec` on the y axis |
+| `L.split(axis, children, { weights?, id? })`                   | `SplitSpec`               |
+| `L.stage(child?, { id? })`                                     | `StageSpec`               |
 
 Pass a spec as `defaultLayout` (core option or React prop). The workspace compiles it when it needs the default.
 
@@ -91,18 +122,15 @@ Pass a spec as `defaultLayout` (core option or React prop). The workspace compil
 ```ts
 import { createDocument, layout as L } from "@danfessler/trellis";
 
-const doc = createDocument(
-  L.row([L.view("tools"), L.stage(L.view("doc"))], [1, 5]),
-  {
-    floating: [
-      {
-        panel: L.view("color"),
-        rect: { x: 0.65, y: 0.55, w: 0.3, h: 0.4 }, // fractions of the layer
-        layer: "stage", // defaults to "overlay"
-      },
-    ],
-  },
-);
+const doc = createDocument(L.row([L.view("tools"), L.stage(L.view("doc"))], [1, 5]), {
+  floating: [
+    {
+      panel: L.view("color"),
+      rect: { x: 0.65, y: 0.55, w: 0.3, h: 0.4 }, // fractions of the layer
+      layer: "stage", // defaults to "overlay"
+    },
+  ],
+});
 
 createWorkspace(el, { types, floating: "stage", defaultLayout: doc });
 ```
@@ -132,13 +160,40 @@ interface LayoutDocument {
 
 type LayoutNode = SplitNode | PanelNode | StageNode;
 
-interface SplitNode { kind: "split"; id: string; axis: "x" | "y"; weights: number[]; children: LayoutNode[] }
-interface PanelNode { kind: "panel"; id: string; views: string[]; selected: string }
-interface StageNode { kind: "stage"; id: string; child?: SplitNode | PanelNode }
+interface SplitNode {
+  kind: "split";
+  id: string;
+  axis: "x" | "y";
+  weights: number[];
+  children: LayoutNode[];
+}
+interface PanelNode {
+  kind: "panel";
+  id: string;
+  views: string[];
+  selected: string;
+}
+interface StageNode {
+  kind: "stage";
+  id: string;
+  child?: SplitNode | PanelNode;
+}
 
-interface FloatingPanel { panel: PanelNode; rect: Rect; z: number; layer: "stage" | "overlay" }
-interface HiddenPanel { panel: PanelNode; restore: RestoreTarget }
-interface ViewRecord { type: string; params?: Params; title?: string }
+interface FloatingPanel {
+  panel: PanelNode;
+  rect: Rect;
+  z: number;
+  layer: "stage" | "overlay";
+}
+interface HiddenPanel {
+  panel: PanelNode;
+  restore: RestoreTarget;
+}
+interface ViewRecord {
+  type: string;
+  params?: Params;
+  title?: string;
+}
 ```
 
 A small example:

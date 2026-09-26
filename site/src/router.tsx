@@ -1,12 +1,26 @@
-import { createContext, useCallback, useContext, useEffect, useState, type AnchorHTMLAttributes, type MouseEvent } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type AnchorHTMLAttributes,
+  type MouseEvent,
+} from "react";
 
 interface Location {
   path: string;
   hash: string;
 }
-const RouterContext = createContext<{ location: Location; navigate(to: string, opts?: { replace?: boolean }): void } | null>(null);
+const RouterContext = createContext<{
+  location: Location;
+  navigate(to: string, opts?: { replace?: boolean }): void;
+} | null>(null);
 
-const current = (): Location => ({ path: window.location.pathname.replace(/\/+$/, "") || "/", hash: window.location.hash });
+const current = (): Location => ({
+  path: window.location.pathname.replace(/\/+$/, "") || "/",
+  hash: window.location.hash,
+});
 
 export function Router({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useState(current);

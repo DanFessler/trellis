@@ -18,15 +18,44 @@ export interface Layer {
 /** Logical artboard size; the canvas scales it to fit. */
 export const BOARD = { w: 1000, h: 640 };
 
-export const SWATCHES = ["#2f7d32", "#6fbf3a", "#b5e36a", "#1f5f5b", "#3a86c8", "#7b61d1", "#d04e7b", "#e0663d", "#f0a430", "#f2d45c", "#6b4a33", "#1c1f1a"];
+export const SWATCHES = [
+  "#2f7d32",
+  "#6fbf3a",
+  "#b5e36a",
+  "#1f5f5b",
+  "#3a86c8",
+  "#7b61d1",
+  "#d04e7b",
+  "#e0663d",
+  "#f0a430",
+  "#f2d45c",
+  "#6b4a33",
+  "#1c1f1a",
+];
 
 function seed(): Stroke[] {
   const strokes: Stroke[] = [];
   // Lattice: diagonal slats.
   for (let i = -6; i <= 12; i++) {
     const x0 = i * 110;
-    strokes.push({ layer: "lattice", color: "#c8b99a", size: 9, points: [[x0, 700], [x0 + 760, -60]] });
-    strokes.push({ layer: "lattice", color: "#b9a886", size: 9, points: [[x0, -60], [x0 + 760, 700]] });
+    strokes.push({
+      layer: "lattice",
+      color: "#c8b99a",
+      size: 9,
+      points: [
+        [x0, 700],
+        [x0 + 760, -60],
+      ],
+    });
+    strokes.push({
+      layer: "lattice",
+      color: "#b9a886",
+      size: 9,
+      points: [
+        [x0, -60],
+        [x0 + 760, 700],
+      ],
+    });
   }
   // Vine: a sinuous climb from bottom-left to top-right.
   const vine: Point[] = [];
@@ -56,7 +85,10 @@ function seed(): Stroke[] {
       const side = i <= steps ? 1 : -1;
       const along = t * len;
       const width = Math.sin(t * Math.PI) * len * 0.34 * side;
-      pts.push([cx + Math.cos(angle) * along - Math.sin(angle) * width, cy + Math.sin(angle) * along + Math.cos(angle) * width]);
+      pts.push([
+        cx + Math.cos(angle) * along - Math.sin(angle) * width,
+        cy + Math.sin(angle) * along + Math.cos(angle) * width,
+      ]);
     }
     return { layer: "leaves", color: "#3f7a26", size: 3, points: pts, fill: color };
   };
@@ -72,14 +104,26 @@ function seed(): Stroke[] {
   ];
   for (const [x, y, a, l, c] of leaves) strokes.push(leaf(x, y, a, l, c));
   // A few blossoms.
-  for (const [x, y] of [[520, 300], [760, 150], [330, 450]] as Point[]) {
+  for (const [x, y] of [
+    [520, 300],
+    [760, 150],
+    [330, 450],
+  ] as Point[]) {
     const petals: Point[] = [];
     for (let a = 0; a <= Math.PI * 2 + 0.01; a += 0.1) {
       const r = 16 + Math.sin(a * 5) * 7;
       petals.push([x + Math.cos(a) * r, y + Math.sin(a) * r]);
     }
     strokes.push({ layer: "leaves", color: "#d9683f", size: 3, points: petals, fill: "#f2a07a" });
-    strokes.push({ layer: "leaves", color: "#f2d45c", size: 9, points: [[x, y], [x + 0.5, y + 0.5]] });
+    strokes.push({
+      layer: "leaves",
+      color: "#f2d45c",
+      size: 9,
+      points: [
+        [x, y],
+        [x + 0.5, y + 0.5],
+      ],
+    });
   }
   return strokes;
 }
@@ -121,7 +165,8 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       setColor,
       setSize,
       setActiveLayer,
-      toggleLayer: (id) => setLayers((ls) => ls.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l))),
+      toggleLayer: (id) =>
+        setLayers((ls) => ls.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l))),
       addStroke: (s) => setStrokes((all) => [...all, s]),
       undo: () => setStrokes((all) => (all.length > 0 ? all.slice(0, -1) : all)),
       clear: () => setStrokes(seed()),

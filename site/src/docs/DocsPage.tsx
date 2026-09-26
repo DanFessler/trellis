@@ -39,14 +39,25 @@ function Sidebar({ slug, onNavigate }: { slug: string; onNavigate(): void }) {
   const [query, setQuery] = useState("");
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = docs.filter((d) => !q || d.title.toLowerCase().includes(q) || d.description.toLowerCase().includes(q));
-    return SECTION_ORDER.map((section) => ({ section, items: list.filter((d) => d.section === section) })).filter((g) => g.items.length);
+    const list = docs.filter(
+      (d) => !q || d.title.toLowerCase().includes(q) || d.description.toLowerCase().includes(q),
+    );
+    return SECTION_ORDER.map((section) => ({
+      section,
+      items: list.filter((d) => d.section === section),
+    })).filter((g) => g.items.length);
   }, [query]);
   return (
     <nav className="docs-nav" aria-label="Documentation">
       <label className="docs-search">
         <Search />
-        <input type="search" placeholder="Filter pages" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Filter documentation pages" />
+        <input
+          type="search"
+          placeholder="Filter pages"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Filter documentation pages"
+        />
       </label>
       {groups.map((g) => (
         <div key={g.section} className="docs-nav-group">
@@ -54,7 +65,11 @@ function Sidebar({ slug, onNavigate }: { slug: string; onNavigate(): void }) {
           <ul>
             {g.items.map((d) => (
               <li key={d.slug}>
-                <Link href={`/docs/${d.slug}`} aria-current={d.slug === slug ? "page" : undefined} onClick={onNavigate}>
+                <Link
+                  href={`/docs/${d.slug}`}
+                  aria-current={d.slug === slug ? "page" : undefined}
+                  onClick={onNavigate}
+                >
                   {d.nav ?? d.title}
                 </Link>
               </li>
@@ -146,7 +161,12 @@ export function DocsPage({ slug }: { slug: string }) {
         <div className="docs-sidebar" data-open={drawer ? "" : undefined}>
           <div className="docs-sidebar-head">
             <span>Documentation</span>
-            <button type="button" className="icon-btn" aria-label="Close menu" onClick={() => setDrawer(false)}>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Close menu"
+              onClick={() => setDrawer(false)}
+            >
               <Close />
             </button>
           </div>
@@ -159,7 +179,8 @@ export function DocsPage({ slug }: { slug: string }) {
               <p className="eyebrow">404</p>
               <h1>Page not found</h1>
               <p>
-                There’s no documentation page at <code>/docs/{slug}</code>. Try the <Link href="/docs/introduction">introduction</Link>.
+                There’s no documentation page at <code>/docs/{slug}</code>. Try the{" "}
+                <Link href="/docs/introduction">introduction</Link>.
               </p>
             </article>
           ) : (
@@ -169,22 +190,35 @@ export function DocsPage({ slug }: { slug: string }) {
                 <>
                   <div ref={article} onClick={onClick} dangerouslySetInnerHTML={{ __html: page.html }} />
                   <div className="docs-footer">
-                    <a className="docs-edit" href={`${GITHUB_URL}/edit/main/docs/${slug}.md`} target="_blank" rel="noreferrer">
+                    <a
+                      className="docs-edit"
+                      href={`${GITHUB_URL}/edit/main/docs/${slug}.md`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       Edit this page on GitHub
                     </a>
                     <nav className="docs-pager" aria-label="Previous and next page">
                       {prev ? (
                         <Link className="pager prev" href={`/docs/${prev.slug}`}>
-                          <span><ArrowLeft /> Previous</span>
+                          <span>
+                            <ArrowLeft /> Previous
+                          </span>
                           <strong>{prev.title}</strong>
                         </Link>
-                      ) : <span />}
+                      ) : (
+                        <span />
+                      )}
                       {next ? (
                         <Link className="pager next" href={`/docs/${next.slug}`}>
-                          <span>Next <Arrow /></span>
+                          <span>
+                            Next <Arrow />
+                          </span>
                           <strong>{next.title}</strong>
                         </Link>
-                      ) : <span />}
+                      ) : (
+                        <span />
+                      )}
                     </nav>
                   </div>
                 </>

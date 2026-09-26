@@ -13,6 +13,13 @@ declare module "*.md" {
 }
 
 declare module "virtual:docs" {
-  export const docs: { slug: string; title: string; description: string; section: string; order: number; nav?: string }[];
+  export const docs: {
+    slug: string;
+    title: string;
+    description: string;
+    section: string;
+    order: number;
+    nav?: string;
+  }[];
   export const loaders: Record<string, () => Promise<{ default: MarkdownPage }>>;
 }

@@ -45,7 +45,9 @@
   font-size: 13.5px;
   font-weight: 500;
   backdrop-filter: blur(8px);
-  transition: color 150ms, box-shadow 150ms;
+  transition:
+    color 150ms,
+    box-shadow 150ms;
 }
 .pill:hover {
   color: var(--text);
@@ -116,7 +118,9 @@
   box-shadow: 0 0 0 1px var(--line-strong) inset;
   color: var(--text-2);
   cursor: pointer;
-  transition: box-shadow 150ms, color 150ms;
+  transition:
+    box-shadow 150ms,
+    color 150ms;
 }
 .install:hover {
   color: var(--text);
@@ -288,7 +292,9 @@
   font-weight: 550;
   text-transform: capitalize;
   cursor: pointer;
-  transition: background-color 150ms, color 150ms;
+  transition:
+    background-color 150ms,
+    color 150ms;
 }
 .seg button:hover {
   color: var(--text);
@@ -296,7 +302,9 @@
 .seg button[aria-checked="true"] {
   background: var(--surface);
   color: var(--text);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--line) inset;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.18),
+    0 0 0 1px var(--line) inset;
 }
 .hero-ws {
   height: clamp(460px, 64vh, 640px);
@@ -332,7 +340,11 @@
 .d-backdrop {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--trellis-text) 14%, transparent) 1px, transparent 0);
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    color-mix(in srgb, var(--trellis-text) 14%, transparent) 1px,
+    transparent 0
+  );
   background-size: 18px 18px;
 }
 .d-stage-empty {
@@ -484,13 +496,17 @@
   box-shadow: 0 0 0 1px var(--trellis-border);
 }
 .d-thumb-leaves {
-  background: radial-gradient(circle at 35% 60%, #6fbf3a 0 4px, transparent 5px), radial-gradient(circle at 70% 35%, #e98a5a 0 3px, transparent 4px), #f5f1e6;
+  background:
+    radial-gradient(circle at 35% 60%, #6fbf3a 0 4px, transparent 5px),
+    radial-gradient(circle at 70% 35%, #e98a5a 0 3px, transparent 4px), #f5f1e6;
 }
 .d-thumb-vine {
   background: linear-gradient(150deg, transparent 44%, #3f6b2a 45% 53%, transparent 54%), #f5f1e6;
 }
 .d-thumb-lattice {
-  background: repeating-linear-gradient(45deg, #c8b99a 0 2px, transparent 2px 7px), repeating-linear-gradient(-45deg, #c8b99a 0 2px, transparent 2px 7px), #f5f1e6;
+  background:
+    repeating-linear-gradient(45deg, #c8b99a 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(-45deg, #c8b99a 0 2px, transparent 2px 7px), #f5f1e6;
 }
 .d-layer-name {
   flex: 1;
@@ -529,7 +545,9 @@
   width: 38px;
   height: 38px;
   border-radius: 9px;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15) inset, 0 4px 12px -4px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.15) inset,
+    0 4px 12px -4px rgba(0, 0, 0, 0.4);
 }
 .d-color-hex {
   font-family: var(--font-mono);
@@ -568,7 +586,9 @@
   height: 16px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 2px 5px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.2),
+    0 2px 5px rgba(0, 0, 0, 0.35);
 }
 .d-slider input[type="range"]::-moz-range-thumb,
 .control input[type="range"]::-moz-range-thumb {
@@ -577,7 +597,9 @@
   border: 0;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 2px 5px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.2),
+    0 2px 5px rgba(0, 0, 0, 0.35);
 }
 .d-swatches {
   display: grid;
@@ -597,7 +619,9 @@
   transform: scale(1.08);
 }
 .d-swatches button[data-active] {
-  box-shadow: 0 0 0 2px var(--trellis-panel), 0 0 0 4px var(--trellis-accent);
+  box-shadow:
+    0 0 0 2px var(--trellis-panel),
+    0 0 0 4px var(--trellis-accent);
 }
 .d-brush {
   display: grid;
@@ -885,7 +909,9 @@
   position: absolute;
   border-radius: 10px;
   background: var(--surface-3);
-  box-shadow: 0 0 0 1px var(--line-strong), 0 10px 24px -14px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 0 0 1px var(--line-strong),
+    0 10px 24px -14px rgba(0, 0, 0, 0.45);
   overflow: hidden;
   animation: mover 12s var(--ease) infinite;
 }
@@ -910,7 +936,9 @@
     top: 18%;
     width: 44%;
     height: 64%;
-    box-shadow: 0 0 0 1px var(--accent-line), 0 16px 30px -16px rgba(0, 0, 0, 0.5);
+    box-shadow:
+      0 0 0 1px var(--accent-line),
+      0 16px 30px -16px rgba(0, 0, 0, 0.5);
   }
   90%,
   100% {
@@ -1039,7 +1067,9 @@
   width: 40%;
   height: 44%;
   background: var(--surface);
-  box-shadow: 0 0 0 1px var(--line-strong), 0 16px 30px -12px rgba(0, 0, 0, 0.55);
+  box-shadow:
+    0 0 0 1px var(--line-strong),
+    0 16px 30px -12px rgba(0, 0, 0, 0.55);
   display: grid;
   place-items: center;
   color: var(--text-2);
@@ -1352,11 +1382,15 @@
   background: var(--surface);
   box-shadow: 0 0 0 1px var(--line) inset;
   overflow: hidden;
-  transition: transform 220ms var(--ease), box-shadow 220ms;
+  transition:
+    transform 220ms var(--ease),
+    box-shadow 220ms;
 }
 a.example:hover {
   transform: translateY(-3px);
-  box-shadow: 0 0 0 1px var(--accent-line) inset, 0 24px 50px -30px rgba(0, 0, 0, 0.6);
+  box-shadow:
+    0 0 0 1px var(--accent-line) inset,
+    0 24px 50px -30px rgba(0, 0, 0, 0.6);
 }
 .example[data-disabled] {
   opacity: 0.8;
@@ -1503,7 +1537,9 @@ a.example:hover .thumb-shot img {
   height: 34%;
   border-radius: 5px;
   background: var(--surface);
-  box-shadow: 0 0 0 1px var(--t-edge), 0 10px 20px -8px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 0 0 1px var(--t-edge),
+    0 10px 20px -8px rgba(0, 0, 0, 0.5);
 }
 .t-main {
   flex: 1;
@@ -1542,14 +1578,18 @@ a.example:hover .thumb-shot img {
 .t-wall {
   position: absolute;
   inset: 10px;
-  background: radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--accent) 35%, transparent), transparent 60%), linear-gradient(160deg, color-mix(in srgb, var(--accent) 12%, var(--bg-soft)), var(--surface-3));
+  background:
+    radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--accent) 35%, transparent), transparent 60%),
+    linear-gradient(160deg, color-mix(in srgb, var(--accent) 12%, var(--bg-soft)), var(--surface-3));
   border-radius: 7px;
 }
 .t-win {
   position: absolute;
   border-radius: 6px;
   background: var(--surface);
-  box-shadow: 0 0 0 1px var(--t-edge), 0 12px 24px -10px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 0 0 1px var(--t-edge),
+    0 12px 24px -10px rgba(0, 0, 0, 0.5);
   background-image: linear-gradient(var(--t-edge), var(--t-edge));
   background-size: 100% 1px;
   background-position: 0 10px;
@@ -1644,13 +1684,17 @@ a.example:hover .thumb-shot img {
   border-radius: 50%;
   cursor: pointer;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18) inset;
-  transition: transform 150ms var(--ease), box-shadow 150ms;
+  transition:
+    transform 150ms var(--ease),
+    box-shadow 150ms;
 }
 .accents button:hover {
   transform: scale(1.1);
 }
 .accents button[aria-pressed="true"] {
-  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text);
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--text);
 }
 .accent-default {
   background: conic-gradient(#3a6ff7 0 50%, #5b8cff 0);
@@ -1775,8 +1819,14 @@ a.example:hover .thumb-shot img {
   box-shadow: 0 0 0 1px var(--line) inset;
 }
 .tier.featured {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 9%, var(--surface)), var(--surface) 60%);
-  box-shadow: 0 0 0 1px var(--accent-line) inset, 0 30px 80px -40px var(--glow);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 9%, var(--surface)),
+    var(--surface) 60%
+  );
+  box-shadow:
+    0 0 0 1px var(--accent-line) inset,
+    0 30px 80px -40px var(--glow);
 }
 .tier-badge {
   position: absolute;

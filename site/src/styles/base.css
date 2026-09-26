@@ -32,7 +32,8 @@
   --link: #c9fa86;
   --glow: rgba(150, 230, 70, 0.16);
   --lattice: rgba(210, 240, 190, 0.06);
-  --shadow-l: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 40px 120px -30px rgba(0, 0, 0, 0.9), 0 0 0 1px var(--line);
+  --shadow-l:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 40px 120px -30px rgba(0, 0, 0, 0.9), 0 0 0 1px var(--line);
   --code-bg: #0f110f;
   --kbd-bg: #1b1e1b;
   --selection: rgba(181, 240, 104, 0.28);
@@ -58,7 +59,9 @@
   --link: #3c7309;
   --glow: rgba(140, 210, 60, 0.22);
   --lattice: rgba(40, 60, 20, 0.07);
-  --shadow-l: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 40px 100px -40px rgba(40, 50, 30, 0.35), 0 0 0 1px var(--line-strong);
+  --shadow-l:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 40px 100px -40px rgba(40, 50, 30, 0.35),
+    0 0 0 1px var(--line-strong);
   --code-bg: #fbfbf8;
   --kbd-bg: #ffffff;
   --selection: rgba(120, 190, 40, 0.25);
@@ -181,7 +184,9 @@ pre {
 .btn-primary {
   background: var(--accent);
   color: var(--accent-ink);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06) inset, 0 8px 24px -10px var(--accent);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.06) inset,
+    0 8px 24px -10px var(--accent);
 }
 .btn-primary:hover {
   background: var(--accent-strong);
@@ -209,7 +214,9 @@ kbd {
   padding: 0 6px;
   border-radius: 6px;
   background: var(--kbd-bg);
-  box-shadow: 0 0 0 1px var(--line-strong) inset, 0 1px 0 var(--line-strong);
+  box-shadow:
+    0 0 0 1px var(--line-strong) inset,
+    0 1px 0 var(--line-strong);
   color: var(--text-2);
   font-family: var(--font-text);
   font-size: 12px;

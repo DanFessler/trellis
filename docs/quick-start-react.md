@@ -139,7 +139,9 @@ function Shell() {
   const ws = useRef<WorkspaceHandle>(null);
   return (
     <>
-      <button onClick={() => ws.current?.open("preview", { params: { url: "/" }, placement: "float" })}>Preview</button>
+      <button onClick={() => ws.current?.open("preview", { params: { url: "/" }, placement: "float" })}>
+        Preview
+      </button>
       <Workspace ref={ws}>{/* … */}</Workspace>
     </>
   );

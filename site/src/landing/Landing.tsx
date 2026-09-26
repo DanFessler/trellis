@@ -14,7 +14,13 @@ function Lattice({ className }: { className: string }) {
   return (
     <svg className={className} aria-hidden="true">
       <defs>
-        <pattern id={`${className}-p`} width="56" height="56" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <pattern
+          id={`${className}-p`}
+          width="56"
+          height="56"
+          patternUnits="userSpaceOnUse"
+          patternTransform="rotate(45)"
+        >
           <path d="M0 0H56M0 0V56" stroke="var(--lattice)" strokeWidth="1.5" fill="none" />
           <circle cx="0" cy="0" r="2.2" fill="var(--lattice)" />
         </pattern>
@@ -50,14 +56,20 @@ export function Landing() {
               <br /> room to <span className="grow">grow</span>.
             </h1>
             <p className="hero-sub">
-              Trellis is a dockable, zoomable workspace for art programs, IDEs, editors and dashboards. Drag tabs
-              anywhere, float panels, zoom into focus — and your content never remounts.
+              Trellis is a dockable, zoomable workspace for art programs, IDEs, editors and dashboards. Drag
+              tabs anywhere, float panels, zoom into focus — and your content never remounts.
             </p>
             <div className="hero-ctas">
               <Link className="btn btn-primary" href="/docs/quick-start-react">
                 Get started <Arrow />
               </Link>
-              <button type="button" className="install" data-copy data-copy-text={INSTALL} aria-label="Copy install command">
+              <button
+                type="button"
+                className="install"
+                data-copy
+                data-copy-text={INSTALL}
+                aria-label="Copy install command"
+              >
                 <span className="install-prompt">$</span>
                 <code>npm i @danfessler/trellis</code>
                 <Copy />
@@ -68,20 +80,40 @@ export function Landing() {
           <div className="container hero-demo">
             <HeroDemo />
             <ul className="hints" aria-label="Things to try">
-              <li><span className="hint-key">Drag</span> a tab onto a panel edge to dock it</li>
-              <li><span className="hint-key">Double-click</span> a tab bar to maximize</li>
-              <li><kbd>Alt</kbd> while dragging to float</li>
-              <li><kbd>Esc</kbd> to zoom back out</li>
+              <li>
+                <span className="hint-key">Drag</span> a tab onto a panel edge to dock it
+              </li>
+              <li>
+                <span className="hint-key">Double-click</span> a tab bar to maximize
+              </li>
+              <li>
+                <kbd>Alt</kbd> while dragging to float
+              </li>
+              <li>
+                <kbd>Esc</kbd> to zoom back out
+              </li>
             </ul>
           </div>
         </section>
 
         <section className="stats">
           <div className="container stats-grid">
-            <div><strong>0</strong><span>remounts when a view docks, tabs, floats or hides</span></div>
-            <div><strong>~25 kB</strong><span>gzipped core with zero runtime dependencies</span></div>
-            <div><strong>4</strong><span>built-in themes, all driven by CSS tokens</span></div>
-            <div><strong>1</strong><span>JSON document describes the entire workspace</span></div>
+            <div>
+              <strong>0</strong>
+              <span>remounts when a view docks, tabs, floats or hides</span>
+            </div>
+            <div>
+              <strong>~25 kB</strong>
+              <span>gzipped core with zero runtime dependencies</span>
+            </div>
+            <div>
+              <strong>4</strong>
+              <span>built-in themes, all driven by CSS tokens</span>
+            </div>
+            <div>
+              <strong>1</strong>
+              <span>JSON document describes the entire workspace</span>
+            </div>
           </div>
         </section>
 

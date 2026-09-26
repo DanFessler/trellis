@@ -81,13 +81,13 @@ mount(element, view) {
 
 `layout` (imported here as `L`) builds the initial layout:
 
-| Call | Result |
-| --- | --- |
-| `L.view(type, { id?, params?, title? })` | One view. On its own, it gets its own panel. |
-| `L.panel(...views)` / `L.panel({ id?, selected? }, ...views)` | A tab group. |
-| `L.row(children, weights?)` / `L.column(children, weights?)` | A split along x or y. |
-| `L.split(axis, children, { weights?, id? })` | The general form of row/column. |
-| `L.stage(child?, { id? })` | The primary region. At most one per layout. |
+| Call                                                          | Result                                       |
+| ------------------------------------------------------------- | -------------------------------------------- |
+| `L.view(type, { id?, params?, title? })`                      | One view. On its own, it gets its own panel. |
+| `L.panel(...views)` / `L.panel({ id?, selected? }, ...views)` | A tab group.                                 |
+| `L.row(children, weights?)` / `L.column(children, weights?)`  | A split along x or y.                        |
+| `L.split(axis, children, { weights?, id? })`                  | The general form of row/column.              |
+| `L.stage(child?, { id? })`                                    | The primary region. At most one per layout.  |
 
 See [Layout](./layout.md) for details.
 

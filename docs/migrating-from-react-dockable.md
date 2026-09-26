@@ -12,19 +12,19 @@ Trellis is the successor to [react-dockable](https://github.com/DanFessler/react
 
 ## Names
 
-| react-dockable | Trellis | Notes |
-| --- | --- | --- |
-| `Dockable.Root` | `<Workspace>` | |
-| `Dockable.Panel` (a row/column) | `<Split axis="x" \| "y">` | `size` becomes `weights` on the split. |
-| `Dockable.Window` (a tab group) | `<Panel>` | `selected` is still an index. |
-| `Dockable.Tab` (content + identity) | `<ViewType>` **and** `<View>` | See below. |
-| `layout` / `onChange` | `document` / `onDocumentChange` | A different, versioned format. |
-| `useDockableLocalStorage(version)` | `storageKey` + `version` props | Built in. |
-| `theme` | `theme` | Same four presets, plus `"system"`. |
-| `gap`, `radius` | `tokens={{ "--trellis-gap": "6px", "--trellis-radius": "10px" }}` | All styling is CSS custom properties. |
-| `hideTabsWhenSingle` | `tabbar="auto"` on a view type | |
-| `hideTabs` / `chromeless` | `tabbar="never"` on a view type | |
-| `actions` (tab menu) | `menu` on a view type | Items use `run` instead of `onClick`; nest with `items`, separate with `"separator"`. |
+| react-dockable                      | Trellis                                                           | Notes                                                                                 |
+| ----------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `Dockable.Root`                     | `<Workspace>`                                                     |                                                                                       |
+| `Dockable.Panel` (a row/column)     | `<Split axis="x" \| "y">`                                         | `size` becomes `weights` on the split.                                                |
+| `Dockable.Window` (a tab group)     | `<Panel>`                                                         | `selected` is still an index.                                                         |
+| `Dockable.Tab` (content + identity) | `<ViewType>` **and** `<View>`                                     | See below.                                                                            |
+| `layout` / `onChange`               | `document` / `onDocumentChange`                                   | A different, versioned format.                                                        |
+| `useDockableLocalStorage(version)`  | `storageKey` + `version` props                                    | Built in.                                                                             |
+| `theme`                             | `theme`                                                           | Same four presets, plus `"system"`.                                                   |
+| `gap`, `radius`                     | `tokens={{ "--trellis-gap": "6px", "--trellis-radius": "10px" }}` | All styling is CSS custom properties.                                                 |
+| `hideTabsWhenSingle`                | `tabbar="auto"` on a view type                                    |                                                                                       |
+| `hideTabs` / `chromeless`           | `tabbar="never"` on a view type                                   |                                                                                       |
+| `actions` (tab menu)                | `menu` on a view type                                             | Items use `run` instead of `onClick`; nest with `items`, separate with `"separator"`. |
 
 ## Tabs become view types and views
 
@@ -55,7 +55,11 @@ In react-dockable a `Tab` was both a piece of content and its place in the layou
   <ViewType id="layers" title="Layers" singleton>
     <Layers />
   </ViewType>
-  <ViewType id="canvas" title={(v) => String(v.params.file)} render={(v) => <Canvas file={v.params.file} />} />
+  <ViewType
+    id="canvas"
+    title={(v) => String(v.params.file)}
+    render={(v) => <Canvas file={v.params.file} />}
+  />
 
   <Split weights={[1, 3]}>
     <View type="layers" />

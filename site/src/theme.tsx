@@ -22,7 +22,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [explicit]);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0a0b0a" : "#f6f6f1");
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", theme === "dark" ? "#0a0b0a" : "#f6f6f1");
   }, [theme]);
   const toggle = () => {
     const next = theme === "dark" ? "light" : "dark";

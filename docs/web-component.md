@@ -56,51 +56,51 @@ Without a bundler, import `@danfessler/trellis-element/standalone` — a single 
 
 ### Template attributes
 
-| Attribute | Maps to |
-| --- | --- |
-| `data-view-type` | Type name. |
-| `data-title`, `data-icon` | `title`, `icon` (markup). |
-| `data-placement` | `placement` (`stage`, `side`, `tab`, `float`). |
-| `data-singleton`, `data-closable` | `singleton`, `closable` (present = true, `"false"` = false). |
-| `data-allow-stage`, `data-allow-side`, `data-allow-floating` | `allow` (`"false"` disallows). |
-| `data-min-width`, `data-min-height` | `minSize`. |
-| `data-gestures="workspace"` | `gestures`. |
-| `data-tabbar` | `tabbar` (`auto` or `never`). |
-| `data-class` | `className`. |
-| `data-iframe` | An iframe URL. `{param}` placeholders are replaced with URL-encoded params. |
+| Attribute                                                    | Maps to                                                                     |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| `data-view-type`                                             | Type name.                                                                  |
+| `data-title`, `data-icon`                                    | `title`, `icon` (markup).                                                   |
+| `data-placement`                                             | `placement` (`stage`, `side`, `tab`, `float`).                              |
+| `data-singleton`, `data-closable`                            | `singleton`, `closable` (present = true, `"false"` = false).                |
+| `data-allow-stage`, `data-allow-side`, `data-allow-floating` | `allow` (`"false"` disallows).                                              |
+| `data-min-width`, `data-min-height`                          | `minSize`.                                                                  |
+| `data-gestures="workspace"`                                  | `gestures`.                                                                 |
+| `data-tabbar`                                                | `tabbar` (`auto` or `never`).                                               |
+| `data-class`                                                 | `className`.                                                                |
+| `data-iframe`                                                | An iframe URL. `{param}` placeholders are replaced with URL-encoded params. |
 
 ### Layout elements
 
-| Element | Attributes |
-| --- | --- |
-| `<trellis-split>` | `axis="x"` (default) or `"y"`; `weights="1 3"` |
-| `<trellis-panel>` | `selected` (index), `panel-id` |
-| `<trellis-view>` | `type`, `params` (JSON), `title`, `view-id` (or `id`) |
-| `<trellis-stage>` | `stage-id` |
+| Element           | Attributes                                            |
+| ----------------- | ----------------------------------------------------- |
+| `<trellis-split>` | `axis="x"` (default) or `"y"`; `weights="1 3"`        |
+| `<trellis-panel>` | `selected` (index), `panel-id`                        |
+| `<trellis-view>`  | `type`, `params` (JSON), `title`, `view-id` (or `id`) |
+| `<trellis-stage>` | `stage-id`                                            |
 
 ## Element attributes
 
-| Attribute | Option |
-| --- | --- |
-| `theme` | `theme` |
-| `floating` | `floating` (`"false"`, `"stage"`, `"overlay"`) |
-| `navigation` | `navigation` (`"false"`, `"focus"`, `"free"`) |
-| `motion` | `motion` |
-| `panel-menu` | `panelMenu` |
-| `storage-key`, `version` | `persist` |
-| `label` | `label` |
+| Attribute                | Option                                         |
+| ------------------------ | ---------------------------------------------- |
+| `theme`                  | `theme`                                        |
+| `floating`               | `floating` (`"false"`, `"stage"`, `"overlay"`) |
+| `navigation`             | `navigation` (`"false"`, `"focus"`, `"free"`)  |
+| `motion`                 | `motion`                                       |
+| `panel-menu`             | `panelMenu`                                    |
+| `storage-key`, `version` | `persist`                                      |
+| `label`                  | `label`                                        |
 
 `theme`, `floating`, `navigation`, `motion` and `panel-menu` can change at any time.
 
 ## Properties
 
-| Property | Description |
-| --- | --- |
-| `workspace` | The [`WorkspaceHandle`](./core-api.md#workspacehandle), or `null` before the element connects. |
-| `types` | Extra `ViewTypeDefinition`s, merged over template types — for types with a `mount` function. |
-| `options` | Any other workspace options (`tokens`, `keymap`, …). |
-| `defaultLayout` | A layout spec or document, instead of layout markup. Set before the element connects. |
-| `document` | Read the current document, or set one (animated). |
+| Property        | Description                                                                                    |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| `workspace`     | The [`WorkspaceHandle`](./core-api.md#workspacehandle), or `null` before the element connects. |
+| `types`         | Extra `ViewTypeDefinition`s, merged over template types — for types with a `mount` function.   |
+| `options`       | Any other workspace options (`tokens`, `keymap`, …).                                           |
+| `defaultLayout` | A layout spec or document, instead of layout markup. Set before the element connects.          |
+| `document`      | Read the current document, or set one (animated).                                              |
 
 ```ts
 const el = document.querySelector("trellis-workspace")!;
@@ -114,12 +114,12 @@ el.addEventListener("trellis-ready", () => el.workspace!.open("chart", { placeme
 
 All bubble; `detail` carries the core event's payload.
 
-| Event | `detail` |
-| --- | --- |
-| `trellis-ready` | The `WorkspaceHandle`. |
-| `trellis-change` | The `LayoutDocument`. |
-| `trellis-open`, `trellis-close` | A `ViewInfo`. |
-| `trellis-focus` | The focused view id, or `null`. |
-| `trellis-navigate` | The framed node id, or `null`. |
+| Event                           | `detail`                        |
+| ------------------------------- | ------------------------------- |
+| `trellis-ready`                 | The `WorkspaceHandle`.          |
+| `trellis-change`                | The `LayoutDocument`.           |
+| `trellis-open`, `trellis-close` | A `ViewInfo`.                   |
+| `trellis-focus`                 | The focused view id, or `null`. |
+| `trellis-navigate`              | The framed node id, or `null`.  |
 
 The element initializes once its children have been parsed, and destroys its workspace when it's removed from the document.

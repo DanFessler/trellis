@@ -40,7 +40,9 @@ Every rule in it is wrapped in `:where()`, so it has zero specificity and any CS
 A workspace fills its host element (`width: 100%; height: 100%`) and never grows to fit its content. The host must have a height — the most common mistake is mounting into an element whose height is `auto`.
 
 ```css
-html, body, #app {
+html,
+body,
+#app {
   height: 100%;
   margin: 0;
 }

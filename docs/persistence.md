@@ -17,7 +17,9 @@ createWorkspace(el, { types, defaultLayout, persist: { key: "my-app", version: 1
 ```
 
 ```tsx
-<Workspace storageKey="my-app" version={1}>{/* … */}</Workspace>
+<Workspace storageKey="my-app" version={1}>
+  {/* … */}
+</Workspace>
 ```
 
 - The document is written to `localStorage[key]` shortly after each committed change (a short debounce, never mid-drag).
@@ -26,7 +28,7 @@ createWorkspace(el, { types, defaultLayout, persist: { key: "my-app", version: 1
 
 ### Versioning
 
-`version` is *your* layout version. When you change the default layout or rename view types in a way that makes old saved layouts wrong, bump it. A saved document with a different version is ignored and the default layout is used (and saved over it on the next change).
+`version` is _your_ layout version. When you change the default layout or rename view types in a way that makes old saved layouts wrong, bump it. A saved document with a different version is ignored and the default layout is used (and saved over it on the next change).
 
 ### Resetting
 
@@ -40,7 +42,7 @@ ws.reset();
 
 ## What is — and isn't — saved
 
-The document stores *layout*: where views are and what their `params` are. It doesn't store what's inside your content. If a view needs a little state to come back — a file path, a scroll position, a selected tab — put it in params:
+The document stores _layout_: where views are and what their `params` are. It doesn't store what's inside your content. If a view needs a little state to come back — a file path, a scroll position, a selected tab — put it in params:
 
 ```ts
 view.setParams({ scrollTop: el.scrollTop });
@@ -72,7 +74,13 @@ Pass `document` and `onDocumentChange` to own the document in React state:
 
 ```tsx
 import { useState } from "react";
-import { createDocument, layout as L, Workspace, ViewType, type LayoutDocument } from "@danfessler/trellis-react";
+import {
+  createDocument,
+  layout as L,
+  Workspace,
+  ViewType,
+  type LayoutDocument,
+} from "@danfessler/trellis-react";
 
 const initial = createDocument(L.row([L.view("files"), L.stage(L.view("doc"))], [1, 4]));
 

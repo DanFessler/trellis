@@ -156,7 +156,8 @@ export interface OpenOptions {
   placement?: Placement;
   reuse?: "none" | "type" | "params" | ((view: ViewInfo) => boolean);
   focus?: boolean;
-  /** Animate the new panel out of this element or rect (e.g. a launcher icon). */
+  /** Animate the new panel out of this element or rect (e.g. a launcher icon). Rects are in pixels
+   * relative to the workspace element. Ignored when an existing view is revealed. */
   from?: Element | Rect;
 }
 
@@ -230,7 +231,7 @@ export interface WorkspaceHandle {
   setParams(viewId: string, patch: object): void;
   navigation: {
     frame(target: string | string[] | "all" | "stage"): void;
-    /** Maximize a docked panel, or restore it if it is maximized. Returns false for floating or hidden panels. */
+    /** Maximize a docked or stage-floating panel, or restore it if it is maximized. Returns false for overlay floats, hidden panels, or when navigation is off. */
     toggle(panelOrViewId?: string): boolean;
     back(): void;
     forward(): void;

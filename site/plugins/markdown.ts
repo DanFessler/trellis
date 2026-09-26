@@ -45,14 +45,16 @@ export function parseFrontMatter(source: string): { data: Record<string, string>
 }
 
 export function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/<[^>]+>/g, "")
-    .replace(/&[a-z]+;/g, "")
-    .replace(/[`'"“”‘’()[\]{}:;,.!?/\\*+=<>|@#$%^&~]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
+  return (
+    text
+      .toLowerCase()
+      // Input is plain text (markup already removed), so "<ViewType>" is a literal name, not a tag.
+      .replace(/&[a-z]+;/g, "")
+      .replace(/[`'"“”‘’()[\]{}:;,.!?/\\*+=<>|@#$%^&~]/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+  );
 }
 
 const escapeHtml = (s: string) =>
@@ -71,12 +73,30 @@ export async function renderCode(code: string, lang: string, meta = ""): Promise
     themes: { light: "vitesse-light", dark: "vitesse-dark" },
     defaultColor: false,
   });
-  const label = title ?? ({ tsx: "TSX", ts: "TypeScript", jsx: "JSX", js: "JavaScript", bash: "Terminal", sh: "Terminal", css: "CSS", html: "HTML", json: "JSON", diff: "Diff" } as Record<string, string>)[language] ?? "";
-  return `<div class="code-block" data-lang="${language}">` +
+  const label =
+    title ??
+    (
+      {
+        tsx: "TSX",
+        ts: "TypeScript",
+        jsx: "JSX",
+        js: "JavaScript",
+        bash: "Terminal",
+        sh: "Terminal",
+        css: "CSS",
+        html: "HTML",
+        json: "JSON",
+        diff: "Diff",
+      } as Record<string, string>
+    )[language] ??
+    "";
+  return (
+    `<div class="code-block" data-lang="${language}">` +
     `<div class="code-head"><span class="code-title">${escapeHtml(label)}</span>` +
     `<button type="button" class="code-copy" data-copy aria-label="Copy code">${COPY_ICON}<span>Copy</span></button></div>` +
     html.replace(/ tabindex="0"/, "") +
-    `</div>`;
+    `</div>`
+  );
 }
 
 export async function renderMarkdown(source: string) {
@@ -89,7 +109,13 @@ export async function renderMarkdown(source: string) {
     renderer: {
       heading(this: any, token: Tokens.Heading) {
         const inner: string = this.parser.parseInline(token.tokens);
-        const plain = inner.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+        const plain = inner
+          .replace(/<[^>]+>/g, "")
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'");
         let id = slugify(plain) || "section";
         const n = used.get(id) ?? 0;
         used.set(id, n + 1);
@@ -115,7 +141,9 @@ export async function renderMarkdown(source: string) {
       table(this: any, token: Tokens.Table) {
         const cell = (c: Tokens.TableCell) => this.parser.parseInline(c.tokens);
         const head = token.header.map((c) => `<th>${cell(c)}</th>`).join("");
-        const rows = token.rows.map((r) => `<tr>${r.map((c) => `<td>${cell(c)}</td>`).join("")}</tr>`).join("");
+        const rows = token.rows
+          .map((r) => `<tr>${r.map((c) => `<td>${cell(c)}</td>`).join("")}</tr>`)
+          .join("");
         return `<div class="table-wrap"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>\n`;
       },
       blockquote(this: any, token: Tokens.Blockquote) {
@@ -165,7 +193,10 @@ export function markdown(options: { docsDir: string }): Plugin {
       const docs = readIndex();
       for (const d of docs) this.addWatchFile(path.join(docsDir, `${d.slug}.md`));
       const loaders = docs
-        .map((d) => `  ${JSON.stringify(d.slug)}: () => import(${JSON.stringify(path.join(docsDir, `${d.slug}.md`))}),`)
+        .map(
+          (d) =>
+            `  ${JSON.stringify(d.slug)}: () => import(${JSON.stringify(path.join(docsDir, `${d.slug}.md`))}),`,
+        )
         .join("\n");
       return `export const docs = ${JSON.stringify(docs)};\nexport const loaders = {\n${loaders}\n};\n`;
     },

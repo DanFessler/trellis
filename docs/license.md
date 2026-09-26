@@ -11,12 +11,12 @@ Trellis is source-available under a three-tier license. This page summarizes it;
 
 ## At a glance
 
-| Tier | Who | How |
-| --- | --- | --- |
-| **Non-commercial** | Personal, educational and other non-commercial projects. | Free. |
-| **Commercial — individual** | Individuals using Trellis commercially. | An active [GitHub Sponsorship](https://github.com/sponsors/danfessler) at or above the **$10/month** tier. |
-| **Commercial — studio** | Organizations with **10 or fewer** members. | An active GitHub Sponsorship at or above the **$100/month** tier (a studio-wide license). |
-| **Enterprise** | Organizations with **more than 10** members, or anyone needing priority support, custom terms or SLAs. | Contact [dan@danfessler.com](mailto:dan@danfessler.com). |
+| Tier                        | Who                                                                                                    | How                                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| **Non-commercial**          | Personal, educational and other non-commercial projects.                                               | Free.                                                                                                      |
+| **Commercial — individual** | Individuals using Trellis commercially.                                                                | An active [GitHub Sponsorship](https://github.com/sponsors/danfessler) at or above the **$10/month** tier. |
+| **Commercial — studio**     | Organizations with **10 or fewer** members.                                                            | An active GitHub Sponsorship at or above the **$100/month** tier (a studio-wide license).                  |
+| **Enterprise**              | Organizations with **more than 10** members, or anyone needing priority support, custom terms or SLAs. | Contact [dan@danfessler.com](mailto:dan@danfessler.com).                                                   |
 
 ## Non-commercial use
 

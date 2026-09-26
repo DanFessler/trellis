@@ -8,9 +8,15 @@ function MountsOnceArt() {
   }, []);
   return (
     <div className="art-mounts" aria-hidden="true">
-      <div className="art-slot s1"><span>side</span></div>
-      <div className="art-slot s2"><span>stage</span></div>
-      <div className="art-slot s3"><span>float</span></div>
+      <div className="art-slot s1">
+        <span>side</span>
+      </div>
+      <div className="art-slot s2">
+        <span>stage</span>
+      </div>
+      <div className="art-slot s3">
+        <span>float</span>
+      </div>
       <div className="art-mover">
         <div className="art-mover-bar">
           <i />
@@ -40,7 +46,12 @@ function MotionArt() {
         </defs>
         <path d="M8 108 H232" stroke="var(--line-strong)" strokeDasharray="2 4" />
         <path d="M8 30 H232" stroke="var(--line-strong)" strokeDasharray="2 4" />
-        <path d="M8 108 C 50 108, 58 18, 96 22 S 130 36, 150 31 S 190 29, 232 30" stroke="url(#motion-g)" strokeWidth="3" strokeLinecap="round" />
+        <path
+          d="M8 108 C 50 108, 58 18, 96 22 S 130 36, 150 31 S 190 29, 232 30"
+          stroke="url(#motion-g)"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
         <circle cx="232" cy="30" r="5" fill="currentColor" />
       </svg>
       <div className="art-motion-labels">
@@ -115,19 +126,19 @@ function ThemesArt() {
 function PersistArt() {
   return (
     <pre className="art-json" aria-hidden="true">
-      <span className="k">{'{'}</span>
-      {'\n  '}
-      <span className="p">"schema"</span>: <span className="n">1</span>,{'\n  '}
-      <span className="p">"root"</span>: {'{ '}
-      <span className="p">"kind"</span>: <span className="s">"split"</span>, …{' }'},{'\n  '}
-      <span className="p">"floating"</span>: [ … ],{'\n  '}
-      <span className="p">"hidden"</span>: [ … ],{'\n  '}
-      <span className="p">"views"</span>: {'{ '}
-      <span className="s">"doc-1"</span>: {'{ '}
+      <span className="k">{"{"}</span>
+      {"\n  "}
+      <span className="p">"schema"</span>: <span className="n">1</span>,{"\n  "}
+      <span className="p">"root"</span>: {"{ "}
+      <span className="p">"kind"</span>: <span className="s">"split"</span>, …{" }"},{"\n  "}
+      <span className="p">"floating"</span>: [ … ],{"\n  "}
+      <span className="p">"hidden"</span>: [ … ],{"\n  "}
+      <span className="p">"views"</span>: {"{ "}
+      <span className="s">"doc-1"</span>: {"{ "}
       <span className="p">"type"</span>: <span className="s">"doc"</span>
-      {' } }'}
-      {'\n'}
-      <span className="k">{'}'}</span>
+      {" } }"}
+      {"\n"}
+      <span className="k">{"}"}</span>
     </pre>
   );
 }
@@ -235,8 +246,8 @@ export function Features() {
             <br className="br-lg" /> without building a window manager.
           </h2>
           <p className="section-lede">
-            Docking libraries rearrange boxes. Trellis is built for tools people live in all day — where a remount
-            loses work, and motion tells you where things went.
+            Docking libraries rearrange boxes. Trellis is built for tools people live in all day — where a
+            remount loses work, and motion tells you where things went.
           </p>
         </header>
         <div className="bento">

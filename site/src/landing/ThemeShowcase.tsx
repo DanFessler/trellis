@@ -80,7 +80,11 @@ export function ThemeShowcase() {
   };
   const changed: [string, string][] = [];
   if (accent) changed.push(["--trellis-accent", accent]);
-  if (radius !== 10) changed.push(["--trellis-radius", `${radius}px`], ["--trellis-tab-radius", tokens["--trellis-tab-radius"]]);
+  if (radius !== 10)
+    changed.push(
+      ["--trellis-radius", `${radius}px`],
+      ["--trellis-tab-radius", tokens["--trellis-tab-radius"]],
+    );
   if (gap !== 6) changed.push(["--trellis-gap", `${gap}px`]);
   if (bar !== 34) changed.push(["--trellis-tabbar-height", `${bar}px`]);
 
@@ -91,8 +95,8 @@ export function ThemeShowcase() {
           <p className="eyebrow">Theming</p>
           <h2>Make it look like your product.</h2>
           <p className="section-lede">
-            Pick a built-in theme, then override any token. Everything below is a live Trellis workspace — try dragging
-            a tab while you tweak it.
+            Pick a built-in theme, then override any token. Everything below is a live Trellis workspace — try
+            dragging a tab while you tweak it.
           </p>
         </header>
         <div className="theming">
@@ -101,7 +105,13 @@ export function ThemeShowcase() {
               <span className="control-label">Theme</span>
               <div className="seg seg-block" role="radiogroup" aria-label="Theme">
                 {THEMES.map((t) => (
-                  <button key={t} type="button" role="radio" aria-checked={theme === t} onClick={() => setTheme(t)}>
+                  <button
+                    key={t}
+                    type="button"
+                    role="radio"
+                    aria-checked={theme === t}
+                    onClick={() => setTheme(t)}
+                  >
                     {t}
                   </button>
                 ))}
@@ -128,19 +138,37 @@ export function ThemeShowcase() {
               <span className="control-label">
                 Radius <output>{radius}px</output>
               </span>
-              <input type="range" min={0} max={18} value={radius} onChange={(e) => setRadius(Number(e.target.value))} />
+              <input
+                type="range"
+                min={0}
+                max={18}
+                value={radius}
+                onChange={(e) => setRadius(Number(e.target.value))}
+              />
             </label>
             <label className="control">
               <span className="control-label">
                 Gap <output>{gap}px</output>
               </span>
-              <input type="range" min={0} max={16} value={gap} onChange={(e) => setGap(Number(e.target.value))} />
+              <input
+                type="range"
+                min={0}
+                max={16}
+                value={gap}
+                onChange={(e) => setGap(Number(e.target.value))}
+              />
             </label>
             <label className="control">
               <span className="control-label">
                 Tab bar <output>{bar}px</output>
               </span>
-              <input type="range" min={28} max={44} value={bar} onChange={(e) => setBar(Number(e.target.value))} />
+              <input
+                type="range"
+                min={28}
+                max={44}
+                value={bar}
+                onChange={(e) => setBar(Number(e.target.value))}
+              />
             </label>
             <div className="control control-code">
               <span className="control-label">Your CSS</span>
@@ -148,7 +176,13 @@ export function ThemeShowcase() {
             </div>
           </div>
           <div className="theme-stage" data-theme-name={theme}>
-            <Workspace key={narrow ? "narrow" : "wide"} theme={theme} tokens={tokens} label="Theming demo workspace" navigation="focus">
+            <Workspace
+              key={narrow ? "narrow" : "wide"}
+              theme={theme}
+              tokens={tokens}
+              label="Theming demo workspace"
+              navigation="focus"
+            >
               <ViewType id="explorer" title="Explorer" singleton allow={{ stage: false }}>
                 <Explorer />
               </ViewType>

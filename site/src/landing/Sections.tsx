@@ -26,13 +26,31 @@ export function CodeSample() {
             docking, focus, motion and persistence; your content just renders.
           </p>
           <ul className="checks">
-            <li><Check /><span>Initial layout in JSX or with the <code>layout</code> builder</span></li>
-            <li><Check /><span><code>open()</code> with placement, reuse and singleton rules</span></li>
-            <li><Check /><span>Hooks for view state, titles, badges and close guards</span></li>
-            <li><Check /><span>One JSON document for persistence or controlled state</span></li>
+            <li>
+              <Check />
+              <span>
+                Initial layout in JSX or with the <code>layout</code> builder
+              </span>
+            </li>
+            <li>
+              <Check />
+              <span>
+                <code>open()</code> with placement, reuse and singleton rules
+              </span>
+            </li>
+            <li>
+              <Check />
+              <span>Hooks for view state, titles, badges and close guards</span>
+            </li>
+            <li>
+              <Check />
+              <span>One JSON document for persistence or controlled state</span>
+            </li>
           </ul>
           <div className="code-links">
-            <Link className="btn btn-ghost" href="/docs/quick-start-react">React quick start</Link>
+            <Link className="btn btn-ghost" href="/docs/quick-start-react">
+              React quick start
+            </Link>
             <Link className="text-link" href="/docs/quick-start-vanilla">
               Vanilla quick start <Arrow />
             </Link>
@@ -41,13 +59,24 @@ export function CodeSample() {
         <div className="code-panel">
           <div className="code-tabs" role="tablist" aria-label="Code sample language">
             {SAMPLES.map((s) => (
-              <button key={s.id} type="button" role="tab" aria-selected={tab === s.id} onClick={() => setTab(s.id)}>
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === s.id}
+                onClick={() => setTab(s.id)}
+              >
                 {s.label}
               </button>
             ))}
           </div>
           {SAMPLES.map((s) => (
-            <div key={s.id} role="tabpanel" hidden={tab !== s.id} dangerouslySetInnerHTML={{ __html: s.html }} />
+            <div
+              key={s.id}
+              role="tabpanel"
+              hidden={tab !== s.id}
+              dangerouslySetInnerHTML={{ __html: s.html }}
+            />
           ))}
         </div>
       </div>
@@ -64,10 +93,34 @@ interface ExampleInfo {
   shape: "paint" | "ide" | "desktop" | "vanilla";
 }
 const EXAMPLES: ExampleInfo[] = [
-  { name: "paint", title: "Paint", body: "An art program: documents on the stage, brush, color, layers and navigator palettes docked around it.", tags: ["React", "stage", "palettes"], shape: "paint" },
-  { name: "ide", title: "IDE", body: "Explorer, editor tabs, terminal, problems and outline — plus a live-preview iframe that keeps running through every move.", tags: ["React", "iframes", "persistence"], shape: "ide" },
-  { name: "desktop", title: "Desktop", body: "A desktop built only from primitives: windows are stage floats, the dock restores hidden panels, and you can zoom around it.", tags: ["React", "floating", "free zoom"], shape: "desktop" },
-  { name: "vanilla", title: "Ops dashboard", body: "No framework: live charts, logs and a runbook iframe with createWorkspace and plain DOM — plus a <trellis-workspace> version.", tags: ["TypeScript", "core", "custom element"], shape: "vanilla" },
+  {
+    name: "paint",
+    title: "Paint",
+    body: "An art program: documents on the stage, brush, color, layers and navigator palettes docked around it.",
+    tags: ["React", "stage", "palettes"],
+    shape: "paint",
+  },
+  {
+    name: "ide",
+    title: "IDE",
+    body: "Explorer, editor tabs, terminal, problems and outline — plus a live-preview iframe that keeps running through every move.",
+    tags: ["React", "iframes", "persistence"],
+    shape: "ide",
+  },
+  {
+    name: "desktop",
+    title: "Desktop",
+    body: "A desktop built only from primitives: windows are stage floats, the dock restores hidden panels, and you can zoom around it.",
+    tags: ["React", "floating", "free zoom"],
+    shape: "desktop",
+  },
+  {
+    name: "vanilla",
+    title: "Ops dashboard",
+    body: "No framework: live charts, logs and a runbook iframe with createWorkspace and plain DOM — plus a <trellis-workspace> version.",
+    tags: ["TypeScript", "core", "custom element"],
+    shape: "vanilla",
+  },
 ];
 
 function ExampleThumb({ shape }: { shape: ExampleInfo["shape"] }) {
@@ -75,26 +128,52 @@ function ExampleThumb({ shape }: { shape: ExampleInfo["shape"] }) {
   if (!failed)
     return (
       <div className="thumb thumb-shot" aria-hidden="true">
-        <img src={`/thumbs/${shape}.jpg`} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
+        <img
+          src={`/thumbs/${shape}.jpg`}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+        />
       </div>
     );
   return (
     <div className={`thumb thumb-${shape}`} aria-hidden="true">
       {shape === "paint" && (
         <>
-          <div className="t-col"><i /><i /></div>
-          <div className="t-stage"><div className="t-paper"><svg viewBox="0 0 100 60"><path d="M8 52 C 30 10, 55 60, 92 12" /></svg></div><div className="t-float" /></div>
-          <div className="t-col"><i /></div>
+          <div className="t-col">
+            <i />
+            <i />
+          </div>
+          <div className="t-stage">
+            <div className="t-paper">
+              <svg viewBox="0 0 100 60">
+                <path d="M8 52 C 30 10, 55 60, 92 12" />
+              </svg>
+            </div>
+            <div className="t-float" />
+          </div>
+          <div className="t-col">
+            <i />
+          </div>
         </>
       )}
       {shape === "ide" && (
         <>
-          <div className="t-col"><i /></div>
+          <div className="t-col">
+            <i />
+          </div>
           <div className="t-main">
-            <div className="t-editor">{Array.from({ length: 7 }, (_, i) => <b key={i} style={{ width: `${30 + ((i * 37) % 55)}%`, marginLeft: `${(i % 3) * 8}%` }} />)}</div>
+            <div className="t-editor">
+              {Array.from({ length: 7 }, (_, i) => (
+                <b key={i} style={{ width: `${30 + ((i * 37) % 55)}%`, marginLeft: `${(i % 3) * 8}%` }} />
+              ))}
+            </div>
             <div className="t-term" />
           </div>
-          <div className="t-col"><i /></div>
+          <div className="t-col">
+            <i />
+          </div>
         </>
       )}
       {shape === "desktop" && (
@@ -102,14 +181,26 @@ function ExampleThumb({ shape }: { shape: ExampleInfo["shape"] }) {
           <div className="t-wall" />
           <div className="t-win w1" />
           <div className="t-win w2" />
-          <div className="t-dock"><i /><i /><i /><i /></div>
+          <div className="t-dock">
+            <i />
+            <i />
+            <i />
+            <i />
+          </div>
         </>
       )}
       {shape === "vanilla" && (
         <>
-          <div className="t-col"><i /></div>
-          <div className="t-stage t-plain"><code>createWorkspace()</code></div>
-          <div className="t-col"><i /><i /></div>
+          <div className="t-col">
+            <i />
+          </div>
+          <div className="t-stage t-plain">
+            <code>createWorkspace()</code>
+          </div>
+          <div className="t-col">
+            <i />
+            <i />
+          </div>
         </>
       )}
     </div>
@@ -131,14 +222,21 @@ export function Examples() {
         <header className="section-head">
           <p className="eyebrow">Examples</p>
           <h2>Same engine. Very different tools.</h2>
-          <p className="section-lede">Complete applications built with Trellis. Open one in a new tab and rearrange everything.</p>
+          <p className="section-lede">
+            Complete applications built with Trellis. Open one in a new tab and rearrange everything.
+          </p>
         </header>
         <div className="examples">
           {EXAMPLES.map((e) => {
             const live = isLive(e.name);
             const Tag = live ? "a" : "div";
             return (
-              <Tag key={e.name} className="example" data-disabled={live ? undefined : ""} {...(live ? { href: `/examples/${e.name}/`, target: "_blank", rel: "noreferrer" } : {})}>
+              <Tag
+                key={e.name}
+                className="example"
+                data-disabled={live ? undefined : ""}
+                {...(live ? { href: `/examples/${e.name}/`, target: "_blank", rel: "noreferrer" } : {})}
+              >
                 <ExampleThumb shape={e.shape} />
                 <div className="example-copy">
                   <div className="example-title">
@@ -146,7 +244,11 @@ export function Examples() {
                     {live ? <External /> : <span className="soon">Coming soon</span>}
                   </div>
                   <p>{e.body}</p>
-                  <div className="tags">{e.tags.map((t) => <span key={t}>{t}</span>)}</div>
+                  <div className="tags">
+                    {e.tags.map((t) => (
+                      <span key={t}>{t}</span>
+                    ))}
+                  </div>
                 </div>
               </Tag>
             );
@@ -166,8 +268,8 @@ export function Pricing() {
           <p className="eyebrow">License</p>
           <h2>Free to explore. Fair to ship.</h2>
           <p className="section-lede">
-            Trellis is source-available. Non-commercial work is free; commercial use is licensed through GitHub
-            Sponsors; organizations with more than ten people get an enterprise agreement.
+            Trellis is source-available. Non-commercial work is free; commercial use is licensed through
+            GitHub Sponsors; organizations with more than ten people get an enterprise agreement.
           </p>
         </header>
         <div className="tiers">
@@ -176,20 +278,36 @@ export function Pricing() {
             <p className="price">Free</p>
             <p className="tier-desc">Personal, educational and other non-commercial projects.</p>
             <ul>
-              <li><Check /> Use, modify and share</li>
-              <li><Check /> Every package and feature</li>
-              <li><Check /> Community support</li>
+              <li>
+                <Check /> Use, modify and share
+              </li>
+              <li>
+                <Check /> Every package and feature
+              </li>
+              <li>
+                <Check /> Community support
+              </li>
             </ul>
-            <Link className="btn btn-ghost" href="/docs/installation">Install Trellis</Link>
+            <Link className="btn btn-ghost" href="/docs/installation">
+              Install Trellis
+            </Link>
           </article>
           <article className="tier">
             <h3>Individual</h3>
-            <p className="price">$10<small>/month</small></p>
+            <p className="price">
+              $10<small>/month</small>
+            </p>
             <p className="tier-desc">Commercial use by an individual, while you sponsor on GitHub.</p>
             <ul>
-              <li><Check /> Commercial projects & client work</li>
-              <li><Check /> Bundle in products you ship</li>
-              <li><Check /> Directly funds development</li>
+              <li>
+                <Check /> Commercial projects & client work
+              </li>
+              <li>
+                <Check /> Bundle in products you ship
+              </li>
+              <li>
+                <Check /> Directly funds development
+              </li>
             </ul>
             <a className="btn btn-ghost" href={SPONSORS_URL} target="_blank" rel="noreferrer">
               <Heart /> Sponsor
@@ -198,12 +316,20 @@ export function Pricing() {
           <article className="tier featured">
             <div className="tier-badge">Teams</div>
             <h3>Studio</h3>
-            <p className="price">$100<small>/month</small></p>
+            <p className="price">
+              $100<small>/month</small>
+            </p>
             <p className="tier-desc">A studio-wide commercial license for organizations of ten or fewer.</p>
             <ul>
-              <li><Check /> Everyone on the team is covered</li>
-              <li><Check /> Internal tools & products</li>
-              <li><Check /> Directly funds development</li>
+              <li>
+                <Check /> Everyone on the team is covered
+              </li>
+              <li>
+                <Check /> Internal tools & products
+              </li>
+              <li>
+                <Check /> Directly funds development
+              </li>
             </ul>
             <a className="btn btn-primary" href={SPONSORS_URL} target="_blank" rel="noreferrer">
               <Heart /> Sponsor on GitHub
@@ -212,17 +338,31 @@ export function Pricing() {
           <article className="tier">
             <h3>Enterprise</h3>
             <p className="price">Let’s talk</p>
-            <p className="tier-desc">More than ten people, or you need custom terms, priority support or SLAs.</p>
+            <p className="tier-desc">
+              More than ten people, or you need custom terms, priority support or SLAs.
+            </p>
             <ul>
-              <li><Check /> Custom licensing terms</li>
-              <li><Check /> Priority support</li>
-              <li><Check /> Legal review & SLAs</li>
+              <li>
+                <Check /> Custom licensing terms
+              </li>
+              <li>
+                <Check /> Priority support
+              </li>
+              <li>
+                <Check /> Legal review & SLAs
+              </li>
             </ul>
-            <a className="btn btn-ghost" href="mailto:dan@danfessler.com?subject=Trellis%20Enterprise%20License">Contact Dan</a>
+            <a
+              className="btn btn-ghost"
+              href="mailto:dan@danfessler.com?subject=Trellis%20Enterprise%20License"
+            >
+              Contact Dan
+            </a>
           </article>
         </div>
         <p className="tiers-foot">
-          Prices are GitHub Sponsors tiers. A summary, not legal advice — read the <Link href="/docs/license">license terms</Link>.
+          Prices are GitHub Sponsors tiers. A summary, not legal advice — read the{" "}
+          <Link href="/docs/license">license terms</Link>.
         </p>
       </div>
     </section>
@@ -242,7 +382,9 @@ export function FinalCta() {
             <Link className="btn btn-primary" href="/docs/quick-start-react">
               Read the quick start <Arrow />
             </Link>
-            <Link className="btn btn-ghost" href="/docs/concepts">Learn the concepts</Link>
+            <Link className="btn btn-ghost" href="/docs/concepts">
+              Learn the concepts
+            </Link>
           </div>
         </div>
       </div>
