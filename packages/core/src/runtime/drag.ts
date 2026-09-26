@@ -378,6 +378,12 @@ export function createDragController(host: DragHost) {
     const stage = findStage(doc.root);
     const stageIsDesktop = !!stage && !stage.child && layer === "stage";
     const overlayMove = d.fromFloat === "overlay";
+    // A window floating over a filled stage moves like an overlay float while it stays over the
+    // stage: its tab bars take tabs, a narrow edge band docks, and anywhere else repositions it.
+    const stageWorld = stage?.child ? d.dropBase.get(stage.id)?.rect : undefined;
+    // (A torn-out tab is also marked as a stage float, but it wasn't floating: it docks as usual.)
+    const stageMove = d.fromFloat === "stage" && !d.tabRollback && !!stageWorld && inside(point, stageWorld);
+    const floatMove = overlayMove || stageMove;
     let next: DropTarget | null = null;
 
     // Overlay floats are on top of everything; their centres take tabs.
@@ -410,10 +416,10 @@ export function createDragController(host: DragHost) {
       const bar = tabTarget(hoveredNode, p, screen);
       if (bar) next = bar;
       else {
-        const edge = overlayMove ? overlayEdge(p, screen) : dropEdge(point, d.dropBase.get(hovered)!.rect);
+        const edge = floatMove ? overlayEdge(p, screen) : dropEdge(point, d.dropBase.get(hovered)!.rect);
         next = edge
           ? { kind: "dock", spec: tileDropTarget(d.dropBase, hovered, edge) }
-          : overlayMove
+          : floatMove
             ? { kind: "float" }
             : { kind: "tab", panel: hovered };
       }
@@ -492,8 +498,8 @@ export function createDragController(host: DragHost) {
       const hostFloat = doc.floating.find((f) => f.panel.id === d.excludedHost);
       next = hostFloat && hostFloat.layer === "stage" ? { kind: "float" } : null;
     }
-    // Moving an overlay float over empty space keeps it floating.
-    if (!next && overlayMove && within) next = { kind: "float" };
+    // Moving an overlay float over empty space, or a stage float over the stage, keeps it floating.
+    if (!next && within && (overlayMove || stageMove)) next = { kind: "float" };
     settle(d, filter(d, next));
     void e;
   }

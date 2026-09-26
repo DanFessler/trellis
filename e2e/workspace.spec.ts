@@ -81,6 +81,26 @@ test.describe("vanilla workspace", () => {
     expect(await page.evaluate(() => (window as any).mounts.a)).toBe(1);
   });
 
+  test("a window floating over a filled stage moves where it's dropped", async ({ page }) => {
+    // Stage floats sit over the stage's content; views not allowed in the stage used to find no
+    // target there, so the move was cancelled.
+    await page.goto("/?scenario=vanilla&floating=stage");
+    await expect(tab(page, "a")).toBeVisible();
+    await panel(page, "right").locator("[data-trellis-part=panel-menu]").click();
+    await page.getByRole("menuitem", { name: "Float" }).click();
+    await expect(panel(page, "right")).toHaveAttribute("data-floating", "");
+    const before = (await doc(page)).floating[0].rect;
+    const stage = await box(panel(page, "docs"));
+    const bar = await box(panel(page, "right").locator("[data-trellis-part=tabbar]"));
+    const start = { x: bar.x + bar.width - 40, y: bar.y + bar.height / 2 };
+    await drag(page, start, { x: stage.x + stage.width / 2, y: stage.y + stage.height / 2 });
+    await page.waitForTimeout(500);
+    const after = (await doc(page)).floating;
+    expect(after).toHaveLength(1);
+    expect(after[0].rect).not.toEqual(before);
+    expect(await panelOf(page, "outline")).toBe("right");
+  });
+
   test("a split-off filled tab sits at the start of its row", async ({ page }) => {
     // The selected tab's flared corner once overflowed a full row, leaving it scrolled a few px.
     for (const inset of [4, 0]) {
@@ -152,10 +172,13 @@ test.describe("vanilla workspace", () => {
     expect((await doc(page)).floating).toHaveLength(1);
     await surface(page, "outline").locator("input").fill("kept");
     // Move by the tab bar.
+    const floated = (await doc(page)).floating[0].rect;
     const bar = await box(panel(page, "right").locator("[data-trellis-part=tabbar]"));
     const start = { x: bar.x + bar.width - 60, y: bar.y + bar.height / 2 };
     await drag(page, start, { x: start.x - 150, y: start.y + 100 });
     const moved = (await doc(page)).floating[0].rect;
+    expect(moved.x).toBeLessThan(floated.x);
+    expect(moved.y).toBeGreaterThan(floated.y);
     // Resize from the south-east corner.
     const f = await box(panel(page, "right"));
     await drag(

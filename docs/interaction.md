@@ -43,7 +43,7 @@ Drop targets **settle for 150 ms** before the preview changes, so sweeping acros
 
 Dropping a view onto itself changes nothing.
 
-**Overlay floats** moved by their tab bar pass over panels freely: only tab bars, seams, the frame band and a narrow 14% band along a panel's edges dock them. Everywhere else inside the workspace they stay floating, at the same size.
+**Overlay floats**, and stage floats moved over a stage that has content, pass over panels freely: only tab bars, seams, the frame band and a narrow 14% band along a panel's edges dock them. Everywhere else inside the workspace they stay floating, at the same size.
 
 **`allow` rules remove targets; they never reroute a drop.** A tool with `allow: { stage: false }` simply has no targets inside the stage — the drop doesn't turn into something else.
 
