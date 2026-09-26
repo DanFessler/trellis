@@ -526,6 +526,14 @@ export function createWorkspace(
     panelDoms.delete(panelId);
     lastRects.delete(panelId);
   }
+  /** Tab bar height for a panel; 0 when its views ask for no tab bar. */
+  function barHeight(panel: PanelNode | null): number {
+    if (!panel || drag?.lifted?.id === panel.id) return tabbarHeight;
+    const modes = panel.views.map((v) => typeOf(v).tabbar ?? "always");
+    if (modes.every((m) => m === "never")) return 0;
+    if (panel.views.length === 1 && modes[0] === "auto") return 0;
+    return tabbarHeight;
+  }
   function findPanel(panelId: string): PanelNode | null {
     if (drag?.lifted?.id === panelId) return drag.lifted;
     return locatePanel(doc, panelId)?.panel ?? leaving.get(panelId)?.panel ?? null;
@@ -936,15 +944,18 @@ export function createWorkspace(
       const float = doc.floating.find((f) => f.panel.id === panelId);
       const clip = float?.layer === "stage" && sScreen && drag?.lifted?.id !== panelId ? clipInset(r, sScreen) : "";
       setStyle(dom.el, "clipPath", clip);
-      setAttr(dom.el, "data-compact", r.w < 140 || r.h < tabbarHeight + 24 ? "" : null);
+      const bar = barHeight(panel);
+      setAttr(dom.el, "data-compact", r.w < 140 || r.h < bar + 24 ? "" : null);
+      setAttr(dom.el, "data-tabbar", bar ? null : "hidden");
       if (!onscreen) continue;
-      const body: Rect = { x: r.x, y: r.y + tabbarHeight, w: r.w, h: Math.max(0, r.h - tabbarHeight) };
+      const body: Rect = { x: r.x, y: r.y + bar, w: r.w, h: Math.max(0, r.h - bar) };
       for (const viewId of panel.views) {
         const record = records.get(viewId);
         if (!record) continue;
         shown.add(viewId);
         const selected = panel.selected === viewId;
         placeSurface(record, body, selected, z + 1, round, opacity, clip ? clipInset(body, sScreen!) : "");
+        setAttr(record.shell, "data-tabbar", bar ? null : "hidden");
       }
     }
     // Hide surfaces with no visible panel (hidden panels, offscreen).
@@ -1815,6 +1826,12 @@ export function createWorkspace(
     if (!d.active) {
       if (Math.hypot(ev.clientX - d.start.x, ev.clientY - d.start.y) < 5) return;
       d.active = true;
+      // Capture on the root (which never moves) so iframes can't swallow the rest of the drag.
+      try {
+        root.setPointerCapture(ev.pointerId);
+      } catch {
+        /* synthetic pointers can't be captured */
+      }
       menu.close(false);
       setAttr(root, "data-dragging", "");
       updateInteractivity();
@@ -1930,7 +1947,7 @@ export function createWorkspace(
       panels.push({
         id: panel.id,
         rect: r,
-        tabbar: { x: r.x, y: r.y, w: r.w, h: tabbarHeight },
+        tabbar: { x: r.x, y: r.y, w: r.w, h: barHeight(panel) },
         tabs: panel.views.map((v) => {
           const el = dom.tabs.get(v)?.el;
           return el ? { x: r.x + el.offsetLeft, y: r.y, w: el.offsetWidth, h: tabbarHeight } : { x: r.x, y: r.y, w: 0, h: 0 };
@@ -1980,7 +1997,7 @@ export function createWorkspace(
   }
   function pointInBar(panelId: string, p: { x: number; y: number }) {
     const r = targetRect(panelId);
-    return !!r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + tabbarHeight;
+    return !!r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + barHeight(findPanel(panelId));
   }
   function nearEdgeStrict(nodeId: string, p: { x: number; y: number }) {
     if (nodeId === doc.root?.id) return true;

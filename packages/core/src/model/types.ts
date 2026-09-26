@@ -91,4 +91,7 @@ export interface ViewRules {
   closable?: boolean;
   /** Content lays out at no less than this size and scales down below it. */
   minSize?: { width: number; height: number };
+  /** Tab bar visibility: "auto" hides it while the view is alone in its panel, "never" always
+   * (the panel can then only be rearranged from its menu or the API). Default "always". */
+  tabbar?: "always" | "auto" | "never";
 }

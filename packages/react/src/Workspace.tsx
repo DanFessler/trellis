@@ -1,6 +1,7 @@
 import {
   Children,
   createContext,
+  forwardRef,
   Fragment,
   isValidElement,
   useContext,
@@ -12,7 +13,9 @@ import {
   useState,
   useSyncExternalStore,
   type CSSProperties,
+  type ForwardRefExoticComponent,
   type ReactElement,
+  type RefAttributes,
   type ReactNode,
   type Ref,
 } from "react";
@@ -293,10 +296,11 @@ export interface WorkspaceProps {
   onMissingType?(type: string, id: string): "drop" | "placeholder";
   className?: string;
   style?: CSSProperties;
+  /** Receives the imperative workspace handle once mounted. */
   ref?: Ref<WorkspaceHandle>;
 }
 
-export function Workspace(props: WorkspaceProps) {
+function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
   const host = useRef<HTMLDivElement>(null);
   const [ws, setWs] = useState<WorkspaceHandle | null>(null);
   const parsed = parse(props.children);
@@ -325,6 +329,7 @@ export function Workspace(props: WorkspaceProps) {
     singleton: t.singleton,
     closable: t.closable,
     minSize: t.minSize,
+    tabbar: t.tabbar,
     gestures: t.gestures,
     className: t.className,
     icon: isMarkup(t.icon) ? t.icon : undefined,
@@ -347,6 +352,7 @@ export function Workspace(props: WorkspaceProps) {
         t.singleton,
         t.closable,
         t.minSize,
+        t.tabbar,
         t.gestures,
         t.className,
       ]),
@@ -424,7 +430,7 @@ export function Workspace(props: WorkspaceProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ws, typesKey]);
 
-  useImperativeHandle(props.ref, () => ws as WorkspaceHandle, [ws]);
+  useImperativeHandle(forwarded ?? props.ref, () => ws as WorkspaceHandle, [ws]);
 
   const surfaces = useSyncExternalStore(
     (notify) => (ws ? ws.on("surfaces", notify) : () => {}),
@@ -452,8 +458,14 @@ export function Workspace(props: WorkspaceProps) {
     </WorkspaceContext.Provider>
   );
 }
-Workspace.Empty = Empty;
-Workspace.Chrome = Chrome;
+type WorkspaceComponent = ForwardRefExoticComponent<Omit<WorkspaceProps, "ref"> & RefAttributes<WorkspaceHandle>> & {
+  /** Rendered when the workspace has nothing in it. */
+  Empty: typeof Empty;
+  /** A full-size layer above the workspace for your own overlays. */
+  Chrome: typeof Chrome;
+};
+/** A dockable workspace. Children declare view types, the initial layout and slots. */
+export const Workspace = Object.assign(forwardRef(WorkspaceImpl), { Empty, Chrome }) as WorkspaceComponent;
 const noSurfaces: readonly Surface[] = [];
 
 function SurfacePortal({ surface, type }: { surface: Surface; type: ViewTypeProps<any> | undefined }) {

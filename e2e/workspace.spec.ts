@@ -201,6 +201,28 @@ test.describe("vanilla workspace", () => {
     expect(result.float).toBe("floating");
   });
 
+  test("hides the tab bar for tabbar: auto views until they share a panel", async ({ page }) => {
+    const id = await page.evaluate(() => {
+      const ws = (window as any).ws;
+      ws.update({
+        types: {
+          files: { title: "Files" },
+          search: { title: "Search" },
+          editor: { title: "Editor", placement: "stage" },
+          outline: { title: "Outline" },
+          bare: { title: "Bare", tabbar: "auto" },
+        },
+      });
+      return ws.open("bare", { placement: "side" }).panelId;
+    });
+    await expect(panel(page, id)).toHaveAttribute("data-tabbar", "hidden");
+    const p = await box(panel(page, id));
+    const s = await box(page.locator(`[data-trellis-part=surface][data-view]`).last());
+    expect(Math.abs(s.y - p.y)).toBeLessThan(2);
+    await page.evaluate((pid) => (window as any).ws.open("outline", { placement: { into: pid } }), id);
+    await expect(panel(page, id)).not.toHaveAttribute("data-tabbar", "hidden");
+  });
+
   test("close guards and closable rules", async ({ page }) => {
     const vetoed = await page.evaluate(async () => {
       const ws = (window as any).ws;

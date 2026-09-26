@@ -118,3 +118,24 @@ if (scenario === "element") {
     </trellis-workspace>`;
   document.querySelector("trellis-workspace")!.addEventListener("trellis-ready", (e: any) => (w.ws = e.detail));
 }
+
+if (scenario === "stress") {
+  const cols = 6;
+  const rows = 6;
+  const types: WorkspaceOptions["types"] = { cell: { title: (v) => `Cell ${v.params.n}`, mount: input("cell") } };
+  let n = 0;
+  const ws = createWorkspace(app, {
+    types,
+    navigation: "free",
+    defaultLayout: L.row(
+      Array.from({ length: cols }, () =>
+        L.column(
+          Array.from({ length: rows }, () =>
+            L.panel(L.view("cell", { params: { n: n++ } }), L.view("cell", { params: { n: n++ } }), L.view("cell", { params: { n: n++ } })),
+          ),
+        ),
+      ),
+    ),
+  });
+  w.ws = ws;
+}
