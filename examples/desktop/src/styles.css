@@ -43,7 +43,7 @@ button {
   --trellis-gap: 8px;
   --trellis-radius: 12px;
   --trellis-tab-radius: 8px;
-  --trellis-tabbar-height: 46px;
+  --trellis-tabbar-height: 48px;
   --trellis-font: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --trellis-font-size: 13px;
   --trellis-tab-max-width: 320px;
@@ -200,6 +200,11 @@ button {
   [data-trellis-part="panel"]:has([data-trellis-part="tab"][data-selected][data-type="spotify"])
   [data-trellis-part="tabbar"] {
   background: #000;
+}
+/* Windows draw their own title bars (the prototype's pages); the Trellis bar overlays them. */
+.trellis [data-trellis-part="tabbar"][data-overlay] {
+  background: transparent;
+  box-shadow: none;
 }
 .trellis [data-trellis-part="tabs"] {
   align-items: center;
@@ -833,4 +838,12 @@ button {
   .minimap {
     display: none;
   }
+}
+
+/* The prototype's drop slot: a blurred pane of the scene where the window will land. */
+.trellis [data-trellis-part="drop-slot"] {
+  background: #ffffff14;
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  border-radius: 12px;
 }

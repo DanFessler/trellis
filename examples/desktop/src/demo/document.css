@@ -771,7 +771,12 @@ aside {
   color: #777;
 }
 .app-5 main {
-  background: linear-gradient(#355548 0, #243d32 170px, #151e19 290px, #121212 420px);
+  background: linear-gradient(
+    #355548 0,
+    #243d32 170px,
+    #151e19 290px,
+    #121212 420px
+  );
   border-radius: 7px;
   padding: 25px;
 }
@@ -1291,7 +1296,8 @@ body.app-1 .note {
 }
 
 body:not(.app-5) aside {
-  background: linear-gradient(130deg, #ffffff08, transparent), #24242655 !important;
+  background:
+    linear-gradient(130deg, #ffffff08, transparent), #24242655 !important;
   border-right: 1px solid #ffffff0c;
 }
 body:not(.app-5) .sidebar-item.selected {
@@ -1304,7 +1310,7 @@ body:not(.app-5) .statusbar {
   border-top: 1px solid #ffffff0c;
 }
 
-/* Trellis example additions: the window's title bar is the Trellis tab bar. */
+/* Trellis example additions. */
 [data-open-resource] {
   cursor: default;
 }

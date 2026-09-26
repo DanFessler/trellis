@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useView, useWorkspace } from "@danfessler/trellis-react";
 import { appIcon } from "./demo/icons";
 import { appById, pageFor, type AppDefinition, type AppParams } from "./apps";
-import { isZoomed, launch, minimize, raise, zoom } from "./desktop";
+import { isDocked, launch, minimize, raise, toggleDock } from "./desktop";
 
 /** The prototype's app artwork on its colored squircle. */
 export function AppIcon({ app, className = "app-icon" }: { app: AppDefinition; className?: string }) {
@@ -30,6 +30,25 @@ export function AppFrame({ app }: { app: AppDefinition }) {
   const viewRef = useRef(view);
   viewRef.current = view;
   useEffect(() => () => bridge.current?.abort(), []);
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  // The page draws its own title bar under Trellis's overlaid bar (the prototype's contract).
+  const applyChrome = () => {
+    const doc = frameRef.current?.contentDocument?.documentElement;
+    const content = viewRef.current.element;
+    if (!doc || !content) return;
+    const style = getComputedStyle(content);
+    doc.style.setProperty("--window-titlebar-height", style.getPropertyValue("--trellis-titlebar-height") || "48px");
+    doc.style.setProperty("--window-controls-inset", style.getPropertyValue("--trellis-titlebar-inset-end") || "88px");
+    doc.setAttribute("data-window-active", String(viewRef.current.focused));
+  };
+  useEffect(applyChrome);
+  // Title-bar metrics arrive as CSS variables on the content element; mirror them into the page.
+  useEffect(() => {
+    const observer = new MutationObserver(applyChrome);
+    observer.observe(view.element, { attributes: true, attributeFilter: ["style"] });
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view.element]);
 
   const connect = (frame: HTMLIFrameElement) => {
     bridge.current?.abort();
@@ -37,6 +56,7 @@ export function AppFrame({ app }: { app: AppDefinition }) {
     if (!doc) return;
     const controller = new AbortController();
     bridge.current = controller;
+    applyChrome();
     const { signal } = controller;
     const id = viewRef.current.id;
     // open() moves focus into the view before React has portaled the iframe in, so focus lands
@@ -104,6 +124,7 @@ export function AppFrame({ app }: { app: AppDefinition }) {
 
   return (
     <iframe
+      ref={frameRef}
       className="app-frame"
       title={page.title}
       sandbox="allow-same-origin"
@@ -113,25 +134,24 @@ export function AppFrame({ app }: { app: AppDefinition }) {
   );
 }
 
-/** Title-bar accessory: the page's subtitle and the traffic lights (zoom, minimize, close). */
+/** Title-bar accessory over the page's own title bar: dock toggle, minimize and close. */
 export function WindowControls({ app }: { app: AppDefinition }) {
   const view = useView<AppParams>();
   const ws = useWorkspace();
   const page = pageFor(app, view.params);
-  const zoomed = isZoomed(ws, view.id);
+  const docked = isDocked(ws, view.id);
   // view.title can still be the type id for function titles (see notes/desktop-agent.md), so name
   // the window from the page itself.
   const name = page.heading;
   return (
     <div className="window-accessory">
-      <span className="window-detail">{page.detail}</span>
       <div className="traffic-lights" data-focused={view.focused ? "" : undefined}>
         <button
           type="button"
           className="light light-zoom"
-          aria-label={zoomed ? `Restore ${name}` : `Zoom ${name}`}
-          title={zoomed ? "Restore" : "Zoom"}
-          onClick={() => zoom(ws, view.id)}
+          aria-label={docked ? `Float ${name} on the desktop` : `Dock ${name} beside the desktop`}
+          title={docked ? "Float on Desktop" : "Dock Beside Desktop"}
+          onClick={() => toggleDock(ws, view.id)}
         >
           <svg viewBox="0 0 12 12" aria-hidden="true">
             <path d="M3.5 5.2V3.5h1.7M8.5 6.8v1.7H6.8" />

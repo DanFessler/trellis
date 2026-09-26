@@ -436,7 +436,7 @@ export function createDragController(host: DragHost) {
         ];
         distances.sort((a, b) => a[1] - b[1]);
         const dimension = distances[0][0] === "left" || distances[0][0] === "right" ? s.w : s.h;
-        const nearEdge = doc.root?.id !== stage.id && distances[0][1] <= Math.min(DESKTOP_SPLIT_MAX_PX, dimension * 0.28);
+        const nearEdge = distances[0][1] <= Math.min(DESKTOP_SPLIT_MAX_PX, dimension * 0.28);
         next = nearEdge
           ? { kind: "dock", spec: tileDropTarget(d.dropBase, stage.id, distances[0][0]) }
           : stageIsDesktop

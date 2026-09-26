@@ -5,7 +5,7 @@ import {
   type Rect,
   type WorkspaceHandle,
 } from "@danfessler/trellis";
-import { APPS, STAGE_ID, type AppDefinition, type AppParams } from "./apps";
+import { STAGE_ID, type AppDefinition, type AppParams } from "./apps";
 
 /**
  * Window-management helpers for the desktop, built only on Trellis's public handle.
@@ -109,24 +109,19 @@ export function minimize(ws: WorkspaceHandle, viewId: string) {
   ws.hide(viewId, { toward: dockIcon(type) ?? undefined });
 }
 
-export function isZoomed(ws: WorkspaceHandle, viewId: string) {
-  const panel = ws.getSnapshot().views.find((v) => v.id === viewId)?.panelId;
-  return !!panel && ws.navigation.framed === panel;
+export function isDocked(ws: WorkspaceHandle, viewId: string) {
+  const view = ws.getSnapshot().views.find((v) => v.id === viewId);
+  return !!view && view.placement !== "floating" && view.placement !== "hidden";
 }
 
-/** Green button: zoom the camera onto the window (floating or docked), or back out. */
-export function zoom(ws: WorkspaceHandle, viewId: string) {
-  ws.navigation.toggle(viewId);
+/** Green button (the prototype's dock toggle): dock a window beside the desktop and frame both,
+ * or float it back onto the desktop at its previous size. */
+export function toggleDock(ws: WorkspaceHandle, viewId: string) {
+  ws.toggleDock(viewId);
 }
 
 /** Clicking into a window's iframe should raise it; iframes swallow the pointer, so the app
  * reports clicks itself. Focusing a floating window raises it. */
 export function raise(ws: WorkspaceHandle, viewId: string) {
   if (ws.getSnapshot().focusedView !== viewId) ws.focus(viewId);
-}
-
-export function floatOnDesktop(ws: WorkspaceHandle, viewId: string) {
-  const app = APPS.find((a) => a.id === ws.getDocument().views[viewId]?.type);
-  if (app) ws.float(viewId, windowRect(ws, app));
-  else ws.float(viewId);
 }

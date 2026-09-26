@@ -34,10 +34,14 @@ const expect = (ok, message) => {
   if (!ok) throw Error(message);
 };
 const settle = () => page.waitForTimeout(700);
-const panelFor = (title) =>
-  page.locator('[data-trellis-part="panel"]', {
-    has: page.locator(`[data-trellis-part="tab-title"]:text-is("${title}")`),
-  });
+// Window title bars are overlaid, so they live outside the panel element; they carry data-panel.
+const barFor = (title) =>
+  page.locator(`[data-trellis-part="tabbar"]:has([data-trellis-part="tab-title"]:text-is("${title}"))`).first();
+const panelFor = async (title) => {
+  const bar = barFor(title);
+  const id = (await bar.count()) ? await bar.getAttribute("data-panel") : "__none__";
+  return page.locator(`[data-trellis-part="panel"][data-panel="${id}"]`);
+};
 const notesText = () => page.frameLocator('iframe[title^="Notes"]').locator("textarea").inputValue();
 const TYPED = " Typed before docking and hiding.";
 
@@ -49,8 +53,8 @@ await check("boots with Finder and Notes floating on the desktop", async () => {
     (await page.locator('[data-trellis-part="panel"][data-floating]').count()) === 2,
     "expected two floating windows",
   );
-  expect(await panelFor("Studio").isVisible(), "Finder (Studio) window missing");
-  expect(await panelFor("Notes").isVisible(), "Notes window missing");
+  expect(await (await panelFor("Studio")).isVisible(), "Finder (Studio) window missing");
+  expect(await (await panelFor("Notes")).isVisible(), "Notes window missing");
 });
 
 await check("type into the Notes iframe", async () => {
@@ -64,7 +68,7 @@ await check("type into the Notes iframe", async () => {
 await check("launch Mail from the dock (second app)", async () => {
   await page.click('[data-dock-app="mail"]');
   await settle();
-  expect(await panelFor("Inbox").isVisible(), "Mail window did not open");
+  expect(await (await panelFor("Inbox")).isVisible(), "Mail window did not open");
   expect(
     (await page.locator('[data-dock-app="mail"][data-running]').count()) === 1,
     "Mail has no running indicator",
@@ -75,7 +79,7 @@ await check("drag Notes to the desktop's left edge to dock it", async () => {
   // Mail opened on top of Notes' title bar; the dock brings Notes forward first.
   await page.click('[data-dock-app="notes"]');
   await settle();
-  const tab = panelFor("Notes").locator('[data-trellis-part="tab-title"]');
+  const tab = barFor("Notes").locator('[data-trellis-part="tab-title"]');
   const box = await tab.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
@@ -85,26 +89,27 @@ await check("drag Notes to the desktop's left edge to dock it", async () => {
     await page.mouse.move(box.x + (6 - box.x) * t, box.y + (420 - box.y) * t);
     await page.waitForTimeout(12);
   }
-  await page.waitForTimeout(150);
+  // Targets settle for 150 ms before the layout opens a slot (prototype timing).
+  await page.waitForTimeout(400);
   expect(
-    (await page.locator('[data-trellis-part="drop-preview"][data-visible]').count()) === 1,
+    (await page.locator('[data-trellis-part="drop-slot"][data-visible]').count()) === 1,
     "no dock preview near the edge",
   );
   await page.screenshot({ path: `${shots}desktop-verify-1-dragging.png` });
   await page.mouse.up();
   await settle();
-  const region = await panelFor("Notes").getAttribute("data-region");
+  const region = await (await panelFor("Notes")).getAttribute("data-region");
   expect(region === "side", `Notes region is ${region}, expected side`);
   expect((await notesText()).includes(TYPED), "typed text lost after docking");
   await page.screenshot({ path: `${shots}desktop-verify-2-docked.png` });
 });
 
 await check("minimize Notes into the dock", async () => {
-  await panelFor("Notes").locator(".light-minimize").click();
+  await barFor("Notes").locator(".light-minimize").click();
   await page.waitForTimeout(120);
   await page.screenshot({ path: `${shots}desktop-verify-3-hiding.png` });
   await settle();
-  expect((await panelFor("Notes").count()) === 0, "Notes panel still visible");
+  expect((await barFor("Notes").count()) === 0, "Notes panel still visible");
   expect((await page.locator(".dock-minimized").count()) === 1, "no minimized tile in the dock");
   await page.screenshot({ path: `${shots}desktop-verify-4-hidden.png` });
 });
@@ -112,9 +117,9 @@ await check("minimize Notes into the dock", async () => {
 await check("restore Notes from the dock; iframe state survived", async () => {
   await page.click(".dock-minimized");
   await settle();
-  expect(await panelFor("Notes").isVisible(), "Notes did not come back");
+  expect(await (await panelFor("Notes")).isVisible(), "Notes did not come back");
   expect(
-    (await panelFor("Notes").getAttribute("data-region")) === "side",
+    (await (await panelFor("Notes")).getAttribute("data-region")) === "side",
     "Notes did not return to its docked spot",
   );
   const text = await notesText();
@@ -126,18 +131,24 @@ await check("restore Notes from the dock; iframe state survived", async () => {
 await check("double-click a desktop folder opens Finder there", async () => {
   await page.dblclick('.desktop-folder[data-folder="reference"]');
   await settle();
-  expect(await panelFor("Reference").isVisible(), "Finder did not open at Reference");
+  expect(await (await panelFor("Reference")).isVisible(), "Finder did not open at Reference");
 });
 
 await check("frame the docked Notes and step back", async () => {
-  await panelFor("Notes").locator(".light-zoom").click();
+  // Double-clicking a docked window's title bar maximizes it (the green button toggles docking).
+  const bar = await barFor("Notes").boundingBox();
+  await page.mouse.dblclick(bar.x + bar.width * 0.4, bar.y + bar.height / 2);
   await settle();
   expect((await page.locator(".trellis[data-framed]").count()) === 1, "workspace not framed");
   expect(await page.locator('button[aria-label="Previous view"]').isEnabled(), "back disabled while framed");
   await page.screenshot({ path: `${shots}desktop-verify-6-framed.png` });
   await page.click('button[aria-label="Previous view"]');
   await settle();
-  expect((await page.locator(".trellis[data-framed]").count()) === 0, "still framed after back");
+  // History records visits by their views: the first visit was the desktop alone, so going back
+  // frames the desktop again (prototype NAV-09/10), not the maximized Notes.
+  const notesId = await barFor("Notes").getAttribute("data-panel");
+  const framed = await page.evaluate(() => document.querySelector(".trellis [data-trellis-part=panel][data-framed]")?.getAttribute("data-panel") ?? null);
+  expect(framed !== notesId, "Notes still maximized after going back");
   expect((await notesText()).includes(TYPED), "typed text lost after framing");
 });
 

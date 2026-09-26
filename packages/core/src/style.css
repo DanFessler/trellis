@@ -485,19 +485,15 @@
   place-items: center;
 }
 /* An overlaid bar floats over content that draws its own title bar underneath. */
-:where(.trellis [data-trellis-part="panel"][data-tabbar="overlay"]) {
-  background: transparent;
-  pointer-events: none;
-}
-:where(.trellis [data-trellis-part="panel"][data-tabbar="overlay"] [data-trellis-part="tabbar"]),
-:where(.trellis [data-trellis-part="panel"][data-tabbar="overlay"] .trellis-handles) {
+:where(.trellis [data-trellis-part="tabbar"][data-overlay]) {
+  inset: auto;
+  left: 0;
+  top: 0;
   pointer-events: auto;
-}
-:where(.trellis [data-trellis-part="panel"][data-tabbar="overlay"] [data-trellis-part="tabbar"]) {
   background: transparent;
   box-shadow: none;
 }
-:where(.trellis [data-trellis-part="panel"][data-tabbar="overlay"] [data-trellis-part="tab"]) {
+:where(.trellis [data-trellis-part="tabbar"][data-overlay] [data-trellis-part="tab"]) {
   opacity: 0;
 }
 :where(.trellis [data-trellis-part="surface"][data-tabbar="overlay"]) {

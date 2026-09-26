@@ -12,7 +12,7 @@ import type { MenuEntry, WorkspaceHandle } from "@danfessler/trellis";
 import { APPS, DEFAULT_FOLDER, STAGE_ID, pageFor, type AppDefinition, type AppParams } from "./apps";
 import { AppFrame, AppIcon, WindowControls } from "./AppWindow";
 import { Bar } from "./Bar";
-import { desktopSize, floatOnDesktop, isZoomed, launch, minimize, zoom } from "./desktop";
+import { desktopSize, isDocked, launch, minimize, toggleDock } from "./desktop";
 import { Minimap } from "./Minimap";
 import { Wallpaper } from "./Wallpaper";
 
@@ -24,17 +24,12 @@ function windowMenu(view: ViewHandle<AppParams>): MenuEntry[] {
   const ws = view.workspace;
   const app = APPS.find((a) => a.id === view.type);
   const name = app ? pageFor(app, view.params).heading : view.title;
-  const floating = view.placement === "floating";
-  const zoomed = isZoomed(ws, view.id);
+  const docked = isDocked(ws, view.id);
+  const maximized = docked && ws.navigation.framed === view.panelId;
   return [
     { label: "Minimize to Dock", run: () => minimize(ws, view.id) },
-    { label: zoomed ? "Restore Size" : floating ? "Fill Desktop" : "Maximize", run: () => zoom(ws, view.id) },
-    floating
-      ? {
-          label: "Dock Beside Desktop",
-          run: () => ws.dock(view.id, { beside: STAGE_ID, edge: "left", share: 0.3 }),
-        }
-      : { label: "Float on Desktop", run: () => floatOnDesktop(ws, view.id) },
+    { label: docked ? "Float on Desktop" : "Dock Beside Desktop", run: () => toggleDock(ws, view.id) },
+    ...(docked ? [{ label: maximized ? "Restore" : "Maximize", run: () => void ws.navigation.toggle(view.panelId) }] : []),
     "separator",
     { label: `Close ${name}`, run: () => void view.close() },
   ];
@@ -68,7 +63,7 @@ function appType(app: AppDefinition) {
       title={(v) => pageFor(app, v.params).heading}
       placement="float"
       singleton={app.singleton}
-      minSize={{ width: 340, height: 260 }}
+      tabbar="overlay"
       icon={<AppIcon app={app} className="tab-app-icon" />}
       accessory={<WindowControls app={app} />}
       menu={windowMenu}

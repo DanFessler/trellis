@@ -478,7 +478,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       tabindex: "-1",
     });
     menuButton.innerHTML = icons.more;
-    const tabbar = h("div", { "data-trellis-part": "tabbar" }, tablist, accessories, menuButton);
+    const tabbar = h("div", { "data-trellis-part": "tabbar", "data-panel": panelId }, tablist, accessories, menuButton);
     el.append(tabbar);
     layer.append(el);
     const frameIcon = h("span", { "data-trellis-part": "frame-icon", "aria-hidden": "true" });
@@ -486,7 +486,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     dom = { id: panelId, el, tabbar, tablist, accessories, menuButton, tabs: new Map(), handles: null, frameIcon, endInset: 0 };
     panelDoms.set(panelId, dom);
     const d = dom;
-    lifetime.listen(el, "pointerdown", (e: PointerEvent) => {
+    const onPointerDown = (e: PointerEvent) => {
       const panel = findPanel(d.id);
       if (panel) focusView(panel.selected, false);
       if (doc.floating.some((f) => f.panel.id === d.id)) {
@@ -504,6 +504,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       if (tab) dragger.begin(e, panel, tab.dataset.view!);
       else if (target.closest("[data-trellis-part=tabbar]") || d.el.hasAttribute("data-frame-only"))
         dragger.begin(e, panel, null);
+    };
+    lifetime.listen(el, "pointerdown", onPointerDown);
+    // An overlaid tab bar lives outside the panel element.
+    lifetime.listen(tabbar, "pointerdown", (e: PointerEvent) => {
+      if (tabbar.parentElement !== el) onPointerDown(e);
     });
     lifetime.listen(tabbar, "dblclick", (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -544,6 +549,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const dom = panelDoms.get(panelId);
     if (!dom) return;
     dom.el.remove();
+    dom.tabbar.remove();
     panelDoms.delete(panelId);
     lastRects.delete(panelId);
   }
@@ -659,7 +665,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       const iconSource = records.get(panel.selected)?.icon.innerHTML ?? "";
       const icon = iconSource || `<b>${escapeHtml(titleOf(panel.selected).slice(0, 1).toUpperCase())}</b>`;
       if (dom.frameIcon.innerHTML !== icon) dom.frameIcon.innerHTML = icon;
-      if (barMode(panel) === "overlay") dom.endInset = dom.accessories.offsetWidth + dom.menuButton.offsetWidth + 12;
+      if (barMode(panel) === "overlay") dom.endInset = dom.accessories.offsetWidth + dom.menuButton.offsetWidth + 24;
       setAttr(dom.menuButton, "hidden", options.panelMenu === false && !menuFor(panel).length ? "" : null);
     }
     invalidate();
@@ -907,9 +913,20 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     for (const record of records.values()) {
       const s = record.controller.state;
       const size = (record as any).__size as { width: number; height: number } | undefined;
-      if (size && (size.width !== s.size.width || size.height !== s.size.height))
-        record.controller.update({ size });
+      if (size && (size.width !== s.size.width || size.height !== s.size.height)) record.controller.update({ size });
+      const scale = (record as any).__scale as number | undefined;
+      if (scale !== undefined && scale !== s.scale) record.controller.update({ scale });
     }
+    // Adapter-rendered accessories appear after the first sync; measure overlaid bars at rest.
+    for (const [id, dom] of panelDoms)
+      if (dom.tabbar.hasAttribute("data-overlay")) {
+        const inset = dom.accessories.offsetWidth + dom.menuButton.offsetWidth + 24;
+        if (inset !== dom.endInset) {
+          dom.endInset = inset;
+          const panel = findPanel(id);
+          if (panel) for (const v of panel.views) records.get(v)?.content.style.setProperty("--trellis-titlebar-inset-end", `${inset}px`);
+        }
+      }
     if (!settledState) {
       settledState = true;
       updateInteractivity();
@@ -1004,8 +1021,21 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       if (frameOnly) setStyle(dom.el, "--trellis-frame-icon-size", `${Math.max(0, Math.min(40, r.w - 12, r.h - 12))}px`);
       setAttr(dom.el, "data-compact", r.w < 140 || r.h < bar + 24 ? "" : null);
       setAttr(dom.el, "data-tabbar", mode === "normal" ? null : mode);
-      // An overlaid bar sits above the content it covers.
-      if (mode === "overlay") setStyle(dom.el, "zIndex", String(z + 2));
+      // An overlaid bar leaves the panel and sits above the content it covers.
+      if (mode === "overlay") {
+        if (dom.tabbar.parentElement !== layer) layer.append(dom.tabbar);
+        setAttr(dom.tabbar, "data-overlay", "");
+        setStyle(dom.tabbar, "zIndex", String(z + 2));
+        setStyle(dom.tabbar, "display", onscreen ? "" : "none");
+        setStyle(dom.tabbar, "opacity", opacity === 1 ? "" : String(opacity));
+        setStyle(dom.tabbar, "clipPath", clip ? clipInset({ x: r.x, y: r.y, w: r.w, h: tabbarHeight }, sScreen!) : "");
+        place(dom.tabbar, { x: r.x, y: r.y, w: r.w, h: tabbarHeight }, round);
+      } else if (dom.tabbar.parentElement !== dom.el) {
+        dom.el.prepend(dom.tabbar);
+        setAttr(dom.tabbar, "data-overlay", null);
+        for (const key of ["zIndex", "display", "opacity", "clipPath", "transform", "width", "height"])
+          setStyle(dom.tabbar, key, "");
+      }
       if (!onscreen) continue;
       const body: Rect = { x: r.x, y: r.y + bar, w: r.w, h: Math.max(0, r.h - bar) };
       for (const viewId of panel.views) {
@@ -1015,7 +1045,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         const selected = panel.selected === viewId;
         placeSurface(record, body, selected, z + 1, round, opacity, clip ? clipInset(body, sScreen!) : "", frameOnly);
         setAttr(record.shell, "data-tabbar", mode === "normal" ? null : mode);
-        const scale = record.controller.state.scale || 1;
+        const scale = (record as any).__scale || 1;
         setStyle(record.content, "--trellis-titlebar-height", mode === "overlay" ? `${tabbarHeight / scale}px` : "0px");
         setStyle(record.content, "--trellis-titlebar-inset-end", mode === "overlay" ? `${dom.endInset / scale}px` : "0px");
       }
@@ -1085,6 +1115,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     setAttr(shell, "data-scaled", safe < 0.999 ? "" : null);
     setAttr(shell, "inert", selected && !concealed ? null : "");
     (record as any).__size = { width: Math.round(width), height: Math.round(height) };
+    (record as any).__scale = Math.round(safe * 1000) / 1000;
     const panel =
       panelOfView(doc, controller.id) ?? (lifted()?.views.includes(controller.id) ? lifted() : null);
     const onscreen = body.x < viewport.w && body.y < viewport.h && body.x + body.w > 0 && body.y + body.h > 0;
@@ -1095,9 +1126,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       focused: focusedView === controller.id,
       placement: placementOf(controller.id),
       panelId: panel?.id ?? controller.state.panelId,
-      scale: Math.round(safe * 1000) / 1000,
       interactive: !busy && safe >= 0.999,
-      ...(moving() ? {} : { size: { width: Math.round(width), height: Math.round(height) } }),
+      // Size and scale settle once motion stops: views never re-render per frame.
+      ...(moving() ? {} : { size: { width: Math.round(width), height: Math.round(height) }, scale: Math.round(safe * 1000) / 1000 }),
     });
   }
   function renderDividers(round: boolean) {
