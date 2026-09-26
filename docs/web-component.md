@@ -80,17 +80,17 @@ Without a bundler, import `@danfessler/trellis-element/standalone` — a single 
 
 ## Element attributes
 
-| Attribute                | Option                                         |
-| ------------------------ | ---------------------------------------------- |
-| `theme`                  | `theme`                                        |
-| `tab-fill`               | `tabs.fill` (boolean attribute)                |
-| `tab-inset`              | `tabs.inset` in pixels                         |
-| `floating`               | `floating` (`"false"`, `"stage"`, `"overlay"`) |
-| `navigation`             | `navigation` (`"false"`, `"focus"`, `"free"`)  |
-| `motion`                 | `motion`                                       |
-| `panel-menu`             | `panelMenu`                                    |
-| `storage-key`, `version` | `persist`                                      |
-| `label`                  | `label`                                        |
+| Attribute                | Option                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------ |
+| `theme`                  | `theme`                                                                              |
+| `tab-fill`               | `tabs.fill` (boolean attribute)                                                      |
+| `tab-inset`              | `tabs.inset` in pixels                                                               |
+| `floating`               | `floating` (`"false"`, `"stage"`, `"overlay"`)                                       |
+| `navigation`             | `navigation` (`"false"`, `"focus"`, `"free"`)                                        |
+| `motion`                 | `motion`                                                                             |
+| `panel-menu`             | `panelMenu` as `true` / `false`. Set a function, or `renderMenu`, through `options`. |
+| `storage-key`, `version` | `persist`                                                                            |
+| `label`                  | `label`                                                                              |
 
 `theme`, `floating`, `navigation`, `motion`, `panel-menu`, `tab-fill` and `tab-inset` can change at any time.
 

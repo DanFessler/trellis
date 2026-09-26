@@ -1,6 +1,17 @@
 import { h, icons } from "./dom";
 import type { MenuEntry, MenuItem } from "./types";
 
+/** Drop leading, trailing and repeated separators. */
+export function tidyMenu(entries: MenuEntry[]): MenuEntry[] {
+  const out: MenuEntry[] = [];
+  for (const entry of entries) {
+    if (entry === "separator" && (!out.length || out[out.length - 1] === "separator")) continue;
+    out.push(entry);
+  }
+  while (out[out.length - 1] === "separator") out.pop();
+  return out;
+}
+
 /** A small accessible popup menu, positioned in the workspace's own coordinates. */
 export class Menu {
   private el: HTMLElement | null = null;
@@ -17,10 +28,7 @@ export class Menu {
     this.close(false);
     this.restoreFocus = document.activeElement as HTMLElement | null;
     const el = h("div", { class: "trellis-menu", role: "menu", "data-trellis-part": "menu" });
-    // Drop leading, trailing and repeated separators.
-    entries = entries.filter(
-      (e, i, all) => e !== "separator" || (i > 0 && i < all.length - 1 && all[i - 1] !== "separator"),
-    );
+    entries = tidyMenu(entries);
     for (const entry of entries) {
       if (entry === "separator") {
         el.append(h("div", { class: "trellis-menu-separator", role: "separator" }));

@@ -45,7 +45,8 @@ Creates a workspace inside `host` (appending a root element with class `trellis`
 | `defaultLayout` | `LayoutDocument \| LayoutSpec \| null`                  |                 | Initial layout when nothing is persisted or passed as `document`.                                                                                                             |
 | `document`      | `LayoutDocument`                                        |                 | Start from this document. Overrides persistence.                                                                                                                              |
 | `persist`       | `{ key: string; version?: string \| number }`           |                 | Save to and restore from `localStorage`.                                                                                                                                      |
-| `panelMenu`     | `boolean`                                               | `true`          | Include built-in panel menu items (Maximize, Float / Dock / Dock beside stage, Hide, Close…).                                                                                 |
+| `panelMenu`     | `boolean \| (entries, context) => MenuEntry[]`          | `true`          | Built-in panel menu items (Maximize, Float / Dock, Move to, Hide, Close…) on or off, or a function that edits every panel's menu. See [Panel menus](./menus.md).              |
+| `renderMenu`    | `(request: MenuRequest) => void`                        |                 | Show panel menus with your own component instead of the built-in one. See [Panel menus](./menus.md#render-menus-yourself).                                                    |
 | `tabs`          | `{ fill?: boolean; inset?: number }`                    |                 | Tab style. `fill` stretches tabs across the tab row; `inset` is the space around them in pixels (`0` is full-bleed). See [Theming](./theming.md#tab-styles).                  |
 | `hideToward`    | `(panelId) => Element \| Rect \| null \| undefined`     |                 | Where the built-in menu's **Hide** animates to — your dock or tray button. See [Hiding](./hiding.md#animating-toward-a-button).                                               |
 | `onMissingType` | `(type, id) => "drop" \| "placeholder"`                 | `"placeholder"` | Handle unregistered types in a document.                                                                                                                                      |
@@ -154,14 +155,14 @@ Animation targets (`open({ from })`, `hide({ toward })`, `restore({ from })`, `h
 
 ### Everything else
 
-| Member                           | Description                                                                                                                                                   |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `element`                        | The workspace root element (`.trellis`).                                                                                                                      |
-| `slots`                          | Elements you can render into. See [Slots](#slots).                                                                                                            |
-| `surfaces(): readonly Surface[]` | Mount points for every view. See [Surfaces](#surfaces).                                                                                                       |
-| `run(command)`                   | Run a keymap command, e.g. `"panel.next"`.                                                                                                                    |
-| `update(options)`                | Change options after creation: `types`, `theme`, `tokens`, `floating`, `navigation`, `motion`, `keymap`, `panelMenu`, `hideToward`, `onMissingType`, `label`. |
-| `destroy()`                      | Unmount everything and remove listeners.                                                                                                                      |
+| Member                           | Description                                                                                                                                                                 |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `element`                        | The workspace root element (`.trellis`).                                                                                                                                    |
+| `slots`                          | Elements you can render into. See [Slots](#slots).                                                                                                                          |
+| `surfaces(): readonly Surface[]` | Mount points for every view. See [Surfaces](#surfaces).                                                                                                                     |
+| `run(command)`                   | Run a keymap command, e.g. `"panel.next"`.                                                                                                                                  |
+| `update(options)`                | Change options after creation: `types`, `theme`, `tokens`, `floating`, `navigation`, `motion`, `keymap`, `panelMenu`, `renderMenu`, `hideToward`, `onMissingType`, `label`. |
+| `destroy()`                      | Unmount everything and remove listeners.                                                                                                                                    |
 
 ```ts
 ws.update({ theme: "light", tokens: { "--trellis-accent": "#e5484d" } }); // replaces the previous tokens

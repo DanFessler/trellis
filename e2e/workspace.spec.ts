@@ -222,6 +222,73 @@ test.describe("vanilla workspace", () => {
     expect(await panelOf(page, "b")).not.toBe("docs");
   });
 
+  test("a panelMenu function edits every panel's menu by item id", async ({ page }) => {
+    await page.evaluate(() => {
+      const w = window as any;
+      w.menuContexts = [];
+      w.ws.update({
+        panelMenu: (entries: any[], context: any) => {
+          w.menuContexts.push({ panelId: context.panelId, view: context.view.id, region: context.region });
+          return [
+            { id: "copy", label: `Copy ${context.view.id}`, run: () => (w.copied = context.view.id) },
+            "separator",
+            ...entries.filter((e) => e === "separator" || e.id !== "hide"),
+          ];
+        },
+      });
+    });
+    await panel(page, "docs").locator("[data-trellis-part=panel-menu]").click();
+    const items = page.getByRole("menu").getByRole("menuitem");
+    await expect(items.first()).toHaveText("Copy a");
+    await expect(page.getByRole("menuitem", { name: "Hide" })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: /^Close a\.ts/ })).toBeVisible();
+    await items.first().click();
+    expect(await page.evaluate(() => (window as any).copied)).toBe("a");
+    expect(await page.evaluate(() => (window as any).menuContexts.at(-1))).toEqual({
+      panelId: "docs",
+      view: "a",
+      region: "stage",
+    });
+    // An empty menu hides the button.
+    await page.evaluate(() => (window as any).ws.update({ panelMenu: () => [] }));
+    await expect(panel(page, "docs").locator("[data-trellis-part=panel-menu]")).toBeHidden();
+  });
+
+  test("renderMenu replaces the built-in menu", async ({ page }) => {
+    await page.evaluate(() => {
+      const w = window as any;
+      w.ws.update({
+        renderMenu: (request: any) => {
+          w.request = {
+            ids: request.entries.map((e: any) => (e === "separator" ? "-" : e.id)),
+            align: request.align,
+            anchored: !!request.anchor,
+            panelId: request.panelId,
+            x: request.x,
+          };
+          w.menuRequest = request;
+        },
+      });
+    });
+    const button = panel(page, "docs").locator("[data-trellis-part=panel-menu]");
+    await button.click();
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await expect(button).toHaveAttribute("aria-expanded", "true");
+    const request = await page.evaluate(() => (window as any).request);
+    expect(request.ids).toEqual(expect.arrayContaining(["maximize", "move", "hide", "close"]));
+    expect(request.ids[0]).not.toBe("-");
+    expect(request.ids.at(-1)).not.toBe("-");
+    expect(request).toMatchObject({ align: "end", anchored: true, panelId: "docs" });
+    expect(request.x).toBeCloseTo((await box(button)).x + (await box(button)).width, 0);
+    // Running an entry and closing work through the request.
+    await page.evaluate(() => {
+      const r = (window as any).menuRequest;
+      r.entries.find((e: any) => e.id === "hide").run();
+      r.close();
+    });
+    await expect(panel(page, "docs")).toBeHidden();
+  });
+
   test("hides and restores a panel with state", async ({ page }) => {
     await surface(page, "outline").locator("input").fill("still here");
     await page.evaluate(() => (window as any).ws.hide("right"));

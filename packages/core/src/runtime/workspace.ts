@@ -43,7 +43,7 @@ import type {
 import { h, icons, place, setAttr, setStyle } from "./dom";
 import { DEFAULT_KEYMAP, formatCombo, matches, type Command } from "./keymap";
 import { Emitter, Lifetime } from "./lifetime";
-import { Menu } from "./menu";
+import { Menu, tidyMenu } from "./menu";
 import { DOCK_EASE, DOCK_MS, lerpRect, LayoutTween, MOTION, RectSpring, sameRect } from "./motion";
 import type {
   IframeOptions,
@@ -696,7 +696,12 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       if (dom.frameIcon.innerHTML !== icon) dom.frameIcon.innerHTML = icon;
       if (barMode(panel) === "overlay")
         dom.endInset = dom.accessories.offsetWidth + dom.menuButton.offsetWidth + 24;
-      setAttr(dom.menuButton, "hidden", options.panelMenu === false && !menuFor(panel).length ? "" : null);
+      // The button shows whenever the panel has a menu. The built-ins alone always give one.
+      const hasMenu =
+        options.panelMenu === true || options.panelMenu === undefined
+          ? true
+          : panelMenuEntries(panel).length > 0;
+      setAttr(dom.menuButton, "hidden", hasMenu ? null : "");
     }
     invalidate();
   }
@@ -1689,88 +1694,129 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       typeof def.menu === "function" ? (controller ? def.menu(controller) : []) : (def.menu ?? []);
     return custom;
   }
+  /** The built-in items for a panel, each with a stable id. */
+  function builtInMenu(panel: PanelNode): MenuEntry[] {
+    const panelId = panel.id;
+    const region = regionOf(panelId);
+    const items: MenuEntry[] = [];
+    const keymap = { ...DEFAULT_KEYMAP, ...options.keymap };
+    const hint = (c: Command) => (keymap[c] ? formatCombo(keymap[c]!) : undefined);
+    if (navigationMode() && region !== "floating")
+      items.push({
+        id: "maximize",
+        label: framed() === panelId ? "Restore size" : "Maximize",
+        shortcut: hint("frame.toggle"),
+        run: () => toggleFrame(panelId),
+      });
+    if (region === "floating" && floatingLayer() === "stage") {
+      items.push({ id: "dock", label: "Dock beside stage", run: () => toggleDock(panelId) });
+    } else if (region === "floating") {
+      items.push({
+        id: "dock",
+        label: "Dock",
+        run: () =>
+          dock(
+            panelId,
+            findStage(doc.root) && allowed(panel.views, "stage")
+              ? "stage"
+              : { beside: doc.root?.id ?? "", edge: "right", share: 0.3 },
+          ),
+      });
+    } else if (floatingLayer() && allowed(panel.views, "floating")) {
+      items.push({
+        id: "float",
+        label: "Float",
+        run: () => (floatingLayer() === "stage" ? toggleDock(panelId) : float(panelId)),
+      });
+    }
+    // Keyboard-accessible alternative to dragging a tab.
+    const viewId = panel.selected;
+    const targets = [...panelsOf(doc.root), ...doc.floating.map((f) => f.panel)].filter(
+      (p) => p.id !== panelId && allowed([viewId], regionOf(p.id)),
+    );
+    const moves: MenuItem[] = targets.map((p) => ({
+      id: `move:${p.id}`,
+      label: p.views.length > 1 ? `${titleOf(p.selected)} +${p.views.length - 1}` : titleOf(p.selected),
+      run: () => {
+        dock(viewId, { into: p.id });
+        focusView(viewId, false);
+      },
+    }));
+    if (panel.views.length > 1 && region !== "floating")
+      moves.push(
+        {
+          id: "split-right",
+          label: "New split right",
+          run: () => dock(viewId, { beside: panelId, edge: "right" }),
+        },
+        {
+          id: "split-below",
+          label: "New split below",
+          run: () => dock(viewId, { beside: panelId, edge: "bottom" }),
+        },
+      );
+    if (moves.length) items.push({ id: "move", label: `Move ${titleOf(viewId)} to`, items: moves });
+    items.push({
+      id: "hide",
+      label: "Hide",
+      run: () => hide(panelId, { toward: options.hideToward?.(panelId) ?? undefined }),
+    });
+    const closable = panel.views.filter((v) => typeOf(v).closable !== false);
+    if (closable.length) {
+      items.push("separator");
+      if (typeOf(panel.selected).closable !== false)
+        items.push({
+          id: "close",
+          label: `Close ${titleOf(panel.selected)}`,
+          shortcut: hint("view.close"),
+          run: () => void close(panel.selected),
+        });
+      if (panel.views.length > 1)
+        items.push({
+          id: "close-others",
+          label: "Close other tabs",
+          run: () => panel.views.filter((v) => v !== panel.selected).forEach((v) => void close(v)),
+        });
+    }
+    return items;
+  }
+  /** The panel's full menu: the view type's items, the built-ins, then the `panelMenu` function. */
+  function panelMenuEntries(panel: PanelNode): MenuEntry[] {
+    const setting = options.panelMenu ?? true;
+    const entries = menuFor(panel);
+    if (setting === false) return tidyMenu(entries);
+    const builtIns = builtInMenu(panel);
+    const all: MenuEntry[] = entries.length ? [...entries, "separator", ...builtIns] : builtIns;
+    if (setting === true) return tidyMenu(all);
+    const view = records.get(panel.selected)?.controller;
+    if (!view) return tidyMenu(all);
+    return tidyMenu(setting(tidyMenu(all), { panelId: panel.id, view, region: regionOf(panel.id) }));
+  }
   function openPanelMenu(panelId: string, button: HTMLElement | null, at?: { x: number; y: number }) {
     const panel = findPanel(panelId);
     if (!panel) return;
-    const entries: MenuEntry[] = [...menuFor(panel)];
-    if (options.panelMenu !== false) {
-      const region = regionOf(panelId);
-      const builtIns: MenuEntry[] = [];
-      const keymap = { ...DEFAULT_KEYMAP, ...options.keymap };
-      const hint = (c: Command) => (keymap[c] ? formatCombo(keymap[c]!) : undefined);
-      if (navigationMode() && region !== "floating")
-        builtIns.push({
-          label: framed() === panelId ? "Restore size" : "Maximize",
-          shortcut: hint("frame.toggle"),
-          run: () => toggleFrame(panelId),
-        });
-      if (region === "floating" && floatingLayer() === "stage") {
-        builtIns.push({ label: "Dock beside stage", run: () => toggleDock(panelId) });
-      } else if (region === "floating") {
-        builtIns.push({
-          label: "Dock",
-          run: () =>
-            dock(
-              panelId,
-              findStage(doc.root) && allowed(panel.views, "stage")
-                ? "stage"
-                : { beside: doc.root?.id ?? "", edge: "right", share: 0.3 },
-            ),
-        });
-      } else if (floatingLayer() && allowed(panel.views, "floating")) {
-        builtIns.push({
-          label: "Float",
-          run: () => (floatingLayer() === "stage" ? toggleDock(panelId) : float(panelId)),
-        });
-      }
-      // Keyboard-accessible alternative to dragging a tab.
-      const viewId = panel.selected;
-      const targets = [...panelsOf(doc.root), ...doc.floating.map((f) => f.panel)].filter(
-        (p) => p.id !== panelId && allowed([viewId], regionOf(p.id)),
-      );
-      const moves: MenuEntry[] = targets.map((p) => ({
-        label: p.views.length > 1 ? `${titleOf(p.selected)} +${p.views.length - 1}` : titleOf(p.selected),
-        run: () => {
-          dock(viewId, { into: p.id });
-          focusView(viewId, false);
-        },
-      }));
-      if (panel.views.length > 1 && region !== "floating")
-        moves.push(
-          { label: "New split right", run: () => dock(viewId, { beside: panelId, edge: "right" }) },
-          { label: "New split below", run: () => dock(viewId, { beside: panelId, edge: "bottom" }) },
-        );
-      if (moves.length) builtIns.push({ label: `Move ${titleOf(viewId)} to`, items: moves as MenuItem[] });
-      builtIns.push({
-        label: "Hide",
-        run: () => hide(panelId, { toward: options.hideToward?.(panelId) ?? undefined }),
-      });
-      if (entries.length && builtIns.length) entries.push("separator");
-      entries.push(...builtIns);
-      const closable = panel.views.filter((v) => typeOf(v).closable !== false);
-      if (closable.length) {
-        entries.push("separator");
-        if (typeOf(panel.selected).closable !== false)
-          entries.push({
-            label: `Close ${titleOf(panel.selected)}`,
-            shortcut: hint("view.close"),
-            run: () => void close(panel.selected),
-          });
-        if (panel.views.length > 1)
-          entries.push({
-            label: "Close other tabs",
-            run: () => panel.views.filter((v) => v !== panel.selected).forEach((v) => void close(v)),
-          });
-      }
-    }
+    const entries = panelMenuEntries(panel);
     if (!entries.length) return;
-    if (button) {
-      const b = root.getBoundingClientRect();
-      const r = button.getBoundingClientRect();
-      setAttr(button, "aria-expanded", "true");
-      menuCloseHook = () => setAttr(button, "aria-expanded", null);
-      menu.show(entries, { x: r.right - b.left, y: r.bottom - b.top + 4, alignRight: true });
-    } else menu.show(entries, at ?? { x: 0, y: 0 });
+    const b = root.getBoundingClientRect();
+    const r = button?.getBoundingClientRect();
+    if (button) setAttr(button, "aria-expanded", "true");
+    const reset = () => button && setAttr(button, "aria-expanded", null);
+    if (options.renderMenu) {
+      menu.close();
+      options.renderMenu({
+        entries,
+        x: r ? r.right : b.left + (at?.x ?? 0),
+        y: r ? r.bottom + 4 : b.top + (at?.y ?? 0),
+        align: r ? "end" : "start",
+        anchor: button,
+        panelId,
+        close: reset,
+      });
+      return;
+    }
+    menuCloseHook = reset;
+    if (r) menu.show(entries, { x: r.right - b.left, y: r.bottom - b.top + 4, alignRight: true });
+    else menu.show(entries, at ?? { x: 0, y: 0 });
   }
 
   // ---------------------------------------------------------------- keyboard

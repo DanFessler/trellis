@@ -53,7 +53,8 @@ Creates a workspace in a `div` that fills its parent (`width: 100%; height: 100%
 | `navigation`         | `false \| "focus" \| "free"`                                | `"focus"`       | Maximize / zoom behaviour. See [Navigation](./navigation.md).                                                                              |
 | `motion`             | `"system" \| "full" \| "reduced"`                           | `"system"`      | Animation policy.                                                                                                                          |
 | `keymap`             | `Keymap`                                                    |                 | Partial command → combo map; `null` disables a command.                                                                                    |
-| `panelMenu`          | `boolean`                                                   | `true`          | Include the built-in panel menu items.                                                                                                     |
+| `panelMenu`          | `boolean \| (entries, context) => MenuEntry[]`              | `true`          | Built-in menu items on or off, or a function that edits every panel's menu. See [Panel menus](./menus.md).                                 |
+| `renderMenu`         | `(request: MenuRequest) => void`                            |                 | Show panel menus with your own component. See [Panel menus](./menus.md#render-menus-yourself).                                             |
 | `tabs`               | `{ fill?: boolean; inset?: number }`                        |                 | Tab style: `fill` stretches tabs across the tab row, `inset` is the space around them in pixels. See [Theming](./theming.md#tab-styles).   |
 | `hideToward`         | `(panelId: string) => Element \| Rect \| null \| undefined` |                 | Where the built-in **Hide** animates to, e.g. your dock. See [Hiding](./hiding.md#the-built-in-hide).                                      |
 | `label`              | `string`                                                    | `"Workspace"`   | Accessible name of the workspace region.                                                                                                   |
@@ -70,7 +71,7 @@ Creates a workspace in a `div` that fills its parent (`width: 100%; height: 100%
 | `className`, `style` |                                                             |                 | Applied to the host `div`.                                                                                                                 |
 | `ref`                | `Ref<WorkspaceHandle>`                                      |                 | The [imperative handle](./core-api.md#workspacehandle). `null` until mounted.                                                              |
 
-`theme`, `tokens`, `tabs`, `floating`, `navigation`, `motion`, `keymap`, `panelMenu` and `label` can change at any time. `storageKey`, `version` and the initial layout are read when the workspace mounts. Event props and `hideToward` always call the latest function.
+`theme`, `tokens`, `tabs`, `floating`, `navigation`, `motion`, `keymap`, `panelMenu` and `label` can change at any time. `storageKey`, `version` and the initial layout are read when the workspace mounts. Event props, `hideToward`, a `panelMenu` function and `renderMenu` always call the latest function.
 
 ### `<Workspace.Empty>`
 
@@ -185,8 +186,9 @@ Content precedence: `iframe`, then `mount`, then `render`, then `children`.
 ```ts
 type MenuEntry = MenuItem | "separator";
 interface MenuItem {
+  id?: string;
   label: string;
-  shortcut?: string; // display only, e.g. "⌘S"
+  shortcut?: string; // a hint such as "⌘S"; it doesn't bind the key
   disabled?: boolean;
   checked?: boolean;
   danger?: boolean;
@@ -195,17 +197,7 @@ interface MenuItem {
 }
 ```
 
-Consecutive separators, and separators at the start or end of a menu, are collapsed — so your items and the built-ins can each add them freely.
-
-```tsx
-<ViewType
-  id="doc"
-  menu={(view) => [
-    { label: "Save", shortcut: "⌘S", run: () => save(view.params.path) },
-    { label: "Word wrap", checked: wrap, run: toggleWrap },
-  ]}
-/>
-```
+See [Panel menus](./menus.md) for how view type items, the built-ins, `panelMenu` and `renderMenu` fit together.
 
 ## Layout components
 

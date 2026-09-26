@@ -30,6 +30,8 @@ import {
   type LayoutDocument,
   type LayoutSpec,
   type MenuEntry,
+  type MenuRequest,
+  type PanelMenuContext,
   type Params,
   type Placement,
   type Surface,
@@ -370,8 +372,12 @@ export interface WorkspaceProps {
   theme?: Theme;
   tokens?: Record<string, string>;
   keymap?: Keymap;
-  panelMenu?: boolean;
-  /** Tab layout: `fill` makes tabs share the bar; `inset` (px) is the margin around them (0 = full-bleed). */
+  /** `true` adds the built-in items, `false` leaves only each type's `menu`, and a function
+   * receives the full menu and returns the entries to show. Always calls the latest function. */
+  panelMenu?: boolean | ((entries: MenuEntry[], context: PanelMenuContext) => MenuEntry[]);
+  /** Show panel menus with your own component. Always calls the latest function. */
+  renderMenu?(request: MenuRequest): void;
+  /** Tab layout: `fill` makes tabs share the tab row; `inset` (px) is the space around them. */
   tabs?: { fill?: boolean; inset?: number };
   /** Where the built-in "Hide" animates to, e.g. your dock or tray button. */
   hideToward?(panelId: string): Element | { x: number; y: number; w: number; h: number } | null | undefined;
@@ -453,6 +459,15 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       ]),
     )
     .join("\n");
+  // Function options go through stable wrappers that call the latest render's function.
+  const panelMenuOption = (value: WorkspaceProps["panelMenu"]) =>
+    typeof value === "function"
+      ? (entries: MenuEntry[], context: PanelMenuContext) => {
+          const current = latest.current.props.panelMenu;
+          return typeof current === "function" ? current(entries, context) : entries;
+        }
+      : value;
+  const renderMenuOption = (request: MenuRequest) => latest.current.props.renderMenu?.(request);
   const buildTypes = () => {
     const out: Record<string, ViewTypeDefinition> = {};
     for (const t of latest.current.parsed.types) out[t.id] = toDefinition(t);
@@ -469,7 +484,8 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       theme: p.theme,
       tokens: p.tokens,
       keymap: p.keymap,
-      panelMenu: p.panelMenu,
+      panelMenu: panelMenuOption(p.panelMenu),
+      renderMenu: p.renderMenu ? renderMenuOption : undefined,
       tabs: p.tabs,
       label: p.label,
       document: p.document,
@@ -520,7 +536,8 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       theme: props.theme,
       tokens: props.tokens,
       keymap: props.keymap,
-      panelMenu: props.panelMenu,
+      panelMenu: panelMenuOption(props.panelMenu),
+      renderMenu: props.renderMenu ? renderMenuOption : undefined,
       label: props.label,
       tabs: props.tabs,
     });
@@ -533,7 +550,8 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
     props.theme,
     tokensKey,
     keymapKey,
-    props.panelMenu,
+    typeof props.panelMenu === "function" ? "function" : props.panelMenu,
+    !!props.renderMenu,
     props.label,
     props.tabs?.fill,
     props.tabs?.inset,

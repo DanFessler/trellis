@@ -14,8 +14,11 @@ import type { LayoutSpec } from "../model/builder";
 export type Cleanup = void | (() => void);
 
 export interface MenuItem {
+  /** Identifies the item, e.g. to find or remove it in a `panelMenu` function. Built-in items
+   * use the ids in `BuiltInMenuId`. */
+  id?: string;
   label: string;
-  /** Shown right-aligned, e.g. "⌘S". */
+  /** A hint shown right-aligned, e.g. "⌘S". Display only: it doesn't bind the key. */
   shortcut?: string;
   disabled?: boolean;
   checked?: boolean;
@@ -24,6 +27,35 @@ export interface MenuItem {
   items?: MenuItem[];
 }
 export type MenuEntry = MenuItem | "separator";
+
+/** Ids of the built-in panel menu items. `move` is the "Move to" submenu; its entries are
+ * `move:<panelId>`, then `split-right` and `split-below`. */
+export type BuiltInMenuId =
+  "maximize" | "float" | "dock" | "move" | "split-right" | "split-below" | "hide" | "close" | "close-others";
+
+/** What a `panelMenu` function knows about the menu being opened. */
+export interface PanelMenuContext {
+  panelId: string;
+  /** The panel's selected view, whose `menu` items lead the menu. */
+  view: ViewHandle;
+  region: "stage" | "side" | "floating";
+}
+
+/** A menu for `renderMenu` to show in place of the built-in one. */
+export interface MenuRequest {
+  /** The final entries, with leading, trailing and repeated separators removed. */
+  entries: MenuEntry[];
+  /** Where to show it, in viewport (client) pixels. */
+  x: number;
+  y: number;
+  /** "end" when opened from the panel menu button: align the menu's right edge to `x`. */
+  align: "start" | "end";
+  /** The panel menu button, when the menu was opened from it. */
+  anchor: HTMLElement | null;
+  panelId: string;
+  /** Call when your menu closes, so Trellis can reset the button's expanded state. */
+  close(): void;
+}
 
 export interface ViewTypeDefinition<P extends object = Params> extends ViewRules {
   /** Tab label. A view can override it with `setTitle()`. */
@@ -178,12 +210,17 @@ export interface WorkspaceOptions {
   document?: LayoutDocument;
   /** Save to and restore from localStorage. */
   persist?: { key: string; version?: string | number };
-  /** Tab layout. `fill`: tabs share the bar's width (a lone tab becomes a full-width header).
-   * `inset`: margin in px around the tab row; 0 makes tabs full-bleed with the panel. Defaults:
-   * `{ fill: false, inset: 4 }`. Also available as the `--trellis-tab-inset` token. */
+  /** Tab layout. `fill`: tabs grow to share the tab row. `inset`: space in px between the tabs and
+   * the bar's top and sides; 0 makes them meet the edges. Defaults: `{ fill: false, inset: 4 }`.
+   * Also available as the `--trellis-tab-inset` token. */
   tabs?: { fill?: boolean; inset?: number };
-  /** Built-in panel menu items. Default true. */
-  panelMenu?: boolean;
+  /** The panel menu. `true` (default) adds the built-in items after each view type's `menu` items;
+   * `false` leaves only the view type's items. A function receives the full menu (view type items,
+   * then built-ins) and returns the entries to show: filter, reorder or add items for every panel.
+   * Return an empty list for no menu. */
+  panelMenu?: boolean | ((entries: MenuEntry[], context: PanelMenuContext) => MenuEntry[]);
+  /** Show panel menus with your own component instead of the built-in one. */
+  renderMenu?(request: MenuRequest): void;
   /** Where the built-in "Hide" animates to, e.g. your dock or tray button. */
   hideToward?(panelId: string): Element | Rect | null | undefined;
   /** Unknown view types in a restored document. Default "placeholder". */

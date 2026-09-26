@@ -82,7 +82,7 @@ Each tab strip is a `tablist` with roving focus — only the selected tab is in 
 | <kbd>Delete</kbd>                                  | Close the selected view (if closable).  |
 | <kbd>Shift</kbd>+<kbd>F10</kbd> or <kbd>Menu</kbd> | Open the panel menu.                    |
 
-With a pointer: middle-click a tab to close it; right-click a tab bar for the panel menu.
+With a pointer: middle-click a tab to close it; right-click a tab bar for the panel menu. If you [render menus yourself](./menus.md#render-menus-yourself), your menu takes over its keyboard support.
 
 Clicking a tab selects it and makes its view the focused view, but leaves DOM focus on the tab, so keyboard navigation of the tab strip keeps working. Content that wants keyboard focus when its view becomes focused can react to `view.focused` or the view's `focus` event.
 

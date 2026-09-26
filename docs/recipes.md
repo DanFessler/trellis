@@ -110,7 +110,7 @@ Why it works:
 - Windows can still be docked side by side against the desktop's edges. To forbid that, add `allow={{ side: false }}`.
 - For windows that draw their own title bar, set `tabbar="overlay"`: the tab bar becomes a transparent drag strip over the content, which gets `--trellis-titlebar-height` and `--trellis-titlebar-inset-end` to lay out around it. The desktop example does this.
 
-Want custom window menus? `panelMenu={false}` removes the built-ins, and each type's `menu` supplies its own.
+Want custom window menus? Each type's `menu` adds its own items, a `panelMenu` function can drop built-ins such as `hide` for every window, and `renderMenu` lets you draw the menu yourself. See [Panel menus](./menus.md).
 
 ## A live preview iframe
 
