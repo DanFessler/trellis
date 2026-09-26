@@ -62,19 +62,14 @@ function CssView({ lines }: { lines: [string, string][] }) {
   );
 }
 
-const TAB_STYLES = {
-  Separate: { fill: false, inset: 4 },
-  Filled: { fill: true, inset: 4 },
-  "Full-bleed": { fill: true, inset: 0 },
-} as const;
-
 export function ThemeShowcase() {
   const [theme, setTheme] = useState<Exclude<Theme, "system">>("medium");
   const [accent, setAccent] = useState("");
   const [radius, setRadius] = useState(10);
   const [gap, setGap] = useState(6);
   const [bar, setBar] = useState(34);
-  const [tabStyle, setTabStyle] = useState<keyof typeof TAB_STYLES>("Separate");
+  const [tabFill, setTabFill] = useState(false);
+  const [tabInset, setTabInset] = useState(4);
   const narrow = useMedia("(max-width: 640px)");
 
   const tokens: Record<string, string> = {
@@ -178,21 +173,36 @@ export function ThemeShowcase() {
               />
             </label>
             <div className="control">
-              <span className="control-label">Tabs</span>
-              <div className="seg seg-block" role="radiogroup" aria-label="Tab style">
-                {(Object.keys(TAB_STYLES) as (keyof typeof TAB_STYLES)[]).map((t) => (
+              <span className="control-label">Tab width</span>
+              <div className="seg seg-block" role="radiogroup" aria-label="Tab width">
+                {[
+                  ["Fit title", false],
+                  ["Fill bar", true],
+                ].map(([label, fill]) => (
                   <button
-                    key={t}
+                    key={String(label)}
                     type="button"
                     role="radio"
-                    aria-checked={tabStyle === t}
-                    onClick={() => setTabStyle(t)}
+                    aria-checked={tabFill === fill}
+                    onClick={() => setTabFill(fill as boolean)}
                   >
-                    {t}
+                    {label}
                   </button>
                 ))}
               </div>
             </div>
+            <label className="control">
+              <span className="control-label">
+                Tab inset <output>{tabInset}px</output>
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={8}
+                value={tabInset}
+                onChange={(e) => setTabInset(Number(e.target.value))}
+              />
+            </label>
             <div className="control control-code">
               <span className="control-label">Your CSS</span>
               <CssView lines={changed} />
@@ -203,7 +213,7 @@ export function ThemeShowcase() {
               key={narrow ? "narrow" : "wide"}
               theme={theme}
               tokens={tokens}
-              tabs={TAB_STYLES[tabStyle]}
+              tabs={{ fill: tabFill, inset: tabInset }}
               label="Theming demo workspace"
               navigation="focus"
             >

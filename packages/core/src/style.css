@@ -238,8 +238,11 @@
 }
 
 /* ------------------------------------------------------------------ tab bar */
-/* Tab layout tokens: --trellis-tab-inset is the margin around the tab row (0 = full-bleed tabs);
- * data-tab-fill on the root makes tabs share the bar's width. Defaults keep compact inset tabs. */
+/* Two independent tab options (the `tabs` workspace option):
+ * - fill (data-tab-fill on the root): tabs grow to share the tab row's width. Nothing else changes.
+ * - inset (--trellis-tab-inset, data-tab-bleed at 0): the space between the tabs and the bar's
+ *   top and sides. At 0 the tabs meet the bar's edges.
+ * Neither affects the accessories or the panel menu button, which always sit on the bar itself. */
 :where(.trellis [data-trellis-part="tabbar"]) {
   position: absolute;
   inset: 0 0 auto 0;
@@ -247,7 +250,7 @@
   display: flex;
   align-items: stretch;
   gap: 2px;
-  padding: 0 calc(var(--trellis-tab-inset) / 2) 0 0;
+  padding: 0 2px 0 0;
   background: var(--trellis-tabbar);
   border-radius: var(--trellis-radius) var(--trellis-radius) 0 0;
   box-shadow: inset 0 -1px 0 var(--trellis-border);
@@ -348,38 +351,12 @@
   color: var(--trellis-text);
   cursor: grabbing;
 }
-/* Fill: tabs share the bar's width; a lone tab becomes a full-width header. */
+/* Fill: tabs share the tab row's width. */
 :where(.trellis[data-tab-fill] [data-trellis-part="tab"]) {
   flex: 1 1 0;
   max-width: none;
 }
-/* A lone filled tab reads as a header, not a tab: one continuous hairline under the whole bar. */
-:where(.trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single]) {
-  background: var(--trellis-tab-active);
-}
-:where(
-  .trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single] [data-trellis-part="tab"][data-selected]
-) {
-  background: transparent;
-  box-shadow: none;
-}
-:where(
-  .trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single] [data-trellis-part="tab"][data-selected]
-)::before,
-:where(
-  .trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single] [data-trellis-part="tab"][data-selected]
-)::after {
-  display: none;
-}
-:where(
-  .trellis[data-tab-fill]
-    [data-trellis-part="tabbar"][data-single][data-focused]
-    [data-trellis-part="tab"][data-selected]
-) {
-  background: linear-gradient(var(--trellis-accent), var(--trellis-accent)) center top / calc(100% - 16px) 2px
-    no-repeat;
-}
-/* Full-bleed (no inset): tabs meet the panel's edges, so no flares and square inner corners. */
+/* No inset: tabs meet the bar's top and sides, so their corners are square and the flares go. */
 :where(.trellis[data-tab-bleed] [data-trellis-part="tab"]) {
   border-radius: 0;
 }
@@ -403,6 +380,8 @@
   height: 16px;
 }
 :where(.trellis [data-trellis-part="tab-title"]) {
+  /* The title takes any spare width, so the close button always sits at the tab's right edge. */
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;

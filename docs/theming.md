@@ -197,25 +197,29 @@ Both are `0px` for views without an overlaid bar. In a tab group, the bar sits a
 
 ## Tab styles
 
-The `tabs` option controls how tabs sit in their bar. Both settings are off by default, which gives separate tabs with space around them.
+The `tabs` option has two independent settings. The defaults give tabs that fit their titles, with 4px of space around them.
 
-| Setting | Default | Effect                                                                                                                 |
-| ------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `fill`  | `false` | Tabs grow to share the bar's width. A lone tab becomes a header: it takes the whole bar, with no tab shape or outline. |
-| `inset` | `4`     | Space around the tabs in pixels. `0` makes them full-bleed, with square corners and edges that meet the bar.           |
+| Setting | Default | Effect                                                                                                                   |
+| ------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `fill`  | `false` | Tabs grow to share the tab row's width. Nothing else about them changes, whether there's one tab or many.                |
+| `inset` | `4`     | Space in pixels between the tabs and the bar's top and sides. At `0` the tabs meet the bar's edges, with square corners. |
 
 ```tsx
+<Workspace tabs={{ fill: true }} />
+<Workspace tabs={{ inset: 0 }} />
 <Workspace tabs={{ fill: true, inset: 0 }} />
 ```
 
 ```ts
 createWorkspace(el, { types, tabs: { fill: true, inset: 0 } });
-ws.update({ tabs: { fill: false } }); // back to the default look
+ws.update({ tabs: { fill: false } }); // back to tabs that fit their titles
 ```
 
-With `fill: true, inset: 0`, a lone view looks like a plain header. Only the panel menu button marks it as a tab. The button is always there unless you pass `panelMenu: false` and the view type has no `menu` items, because the built-in actions (Maximize, Float or Dock, Move to, Hide and Close) always apply.
+Neither setting touches the rest of the bar: view accessories and the panel menu button keep their place and the bar's own background. The menu button shows unless you pass `panelMenu: false` and the view type has no `menu` items, because the built-in actions (Maximize, Float or Dock, Move to, Hide and Close) always apply.
 
-The root reflects the settings as `data-tab-fill` and `data-tab-bleed`, and as the `--trellis-tab-inset` token, so your own CSS can follow them.
+The close button always sits at the tab's right edge.
+
+The root reflects the settings as `data-tab-fill` and `data-tab-bleed` (when `inset` is `0`), and as the `--trellis-tab-inset` token, so your own CSS can follow them.
 
 ## Examples
 
