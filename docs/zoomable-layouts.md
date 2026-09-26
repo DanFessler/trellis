@@ -9,7 +9,7 @@ order: 13.5
 
 A Trellis layout is a space people move through. Panels can nest inside panels to any depth, and the view zooms to whichever part someone needs right now. Everything outside the view keeps running.
 
-Try it on the [home page](/): the demo's **Zoom tour** zooms into a palette where each colour sits one level deeper than the last.
+Try it on the [home page](/). Each panel in the demo sits one level deeper than the last, and its **Zoom tour** reads them in order.
 
 ## Why nest deeply
 

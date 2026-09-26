@@ -52,12 +52,12 @@ export function Landing() {
               <Arrow />
             </Link>
             <h1>
-              What happens when your
-              <br /> layout is <span className="grow">fractal</span>?
+              <span className="grow">Fractal</span> layouts
+              <br /> for web apps
             </h1>
             <p className="hero-sub">
-              Trellis lets people nest panels inside panels as deep as they like, then zoom to whichever part
-              they need. Everything else stays live. It's a dockable workspace for web tools such as art
+              Trellis lets people nest panels inside panels to any depth and zoom to the part they need, while
+              everything else stays live. It's a dockable workspace for tools people work in all day, like art
               programs and IDEs.
             </p>
             <div className="hero-ctas">
