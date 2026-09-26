@@ -717,6 +717,58 @@
   pointer-events: none;
 }
 
+/* ------------------------------------------------------------------ navigation feedback */
+:where(.trellis [data-trellis-part="snap-preview"], .trellis [data-trellis-part="marquee-target"]) {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3500;
+  display: none;
+  pointer-events: none;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.13);
+  border-radius: calc(var(--trellis-radius) + 3px);
+}
+:where(.trellis [data-trellis-part="snap-preview"][data-visible], .trellis [data-trellis-part="marquee-target"][data-visible]) {
+  display: block;
+}
+:where(.trellis [data-trellis-part="snap-preview"] span, .trellis [data-trellis-part="marquee-target"] span) {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  transform: translateX(-50%);
+  padding: 7px 11px;
+  border-radius: 20px;
+  background: rgba(40, 44, 40, 0.75);
+  backdrop-filter: blur(16px);
+  color: #fff;
+  font-size: 10px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+:where(.trellis [data-trellis-part="marquee"]) {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3400;
+  display: none;
+  pointer-events: none;
+  border: 1px solid var(--trellis-accent);
+  background: color-mix(in srgb, var(--trellis-accent) 12%, transparent);
+  border-radius: 4px;
+}
+:where(.trellis[data-marquee] [data-trellis-part="marquee"]) {
+  display: block;
+}
+:where(.trellis[data-marquee]) {
+  cursor: crosshair;
+  user-select: none;
+}
+:where(.trellis[data-drag-zoom]) {
+  cursor: zoom-in;
+  user-select: none;
+}
+
 /* ------------------------------------------------------------------ menu */
 :where(.trellis .trellis-menu) {
   position: absolute;

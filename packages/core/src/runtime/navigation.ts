@@ -125,6 +125,7 @@ export function createNavigator(host: NavigationHost) {
   }
   function endGesture() {
     host.lifetime.clearTimeout(wheelTimer);
+    snapEl.removeAttribute("data-visible");
     if (gesture) {
       gesture = false;
       host.setGesture(false);
@@ -235,6 +236,11 @@ export function createNavigator(host: NavigationHost) {
     next.y = Math.max(-next.h * 0.3, Math.min(1 - next.h * 0.7, next.y));
     host.camera.jump(next);
     host.render();
+    const candidate = entries.get(bestFit(host.camera.value, entries));
+    if (candidate) {
+      place(snapEl, host.panelScreen(candidate.rect));
+      snapEl.setAttribute("data-visible", "");
+    }
   }
   /** After a gesture, frame whatever fits the camera best. */
   function finishGesture() {
@@ -304,6 +310,10 @@ export function createNavigator(host: NavigationHost) {
 
   // Shift+drag: marquee framing. Alt+drag: zoom around the press point (mouse pinch proxy).
   const marqueeEl = h("div", { "data-trellis-part": "marquee", "aria-hidden": "true" });
+  // While a gesture drives the camera, outline what releasing will frame (prototype snap preview).
+  const snapEl = h("div", { "data-trellis-part": "snap-preview", "aria-hidden": "true" }, h("span", {}, "Release to focus"));
+  host.root.append(snapEl);
+  host.lifetime.add(() => snapEl.remove());
   const candidateEl = h("div", { "data-trellis-part": "marquee-target", "aria-hidden": "true" }, h("span"));
   host.root.append(marqueeEl, candidateEl);
   host.lifetime.add(() => {
