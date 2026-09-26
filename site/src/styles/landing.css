@@ -499,7 +499,7 @@
   }
 }
 
-/* art: endless zoom into nested panels */
+/* art: endless zoom into nested panels (drawn per frame in pixels; see ZoomArt) */
 .card-zoom .card-art {
   height: 250px;
   padding: 0;
@@ -515,41 +515,20 @@
   display: block;
   overflow: hidden;
 }
-.art-zoom-g {
-  transform-box: view-box;
-  transform-origin: 100% 100%;
-  animation: art-zoom 6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-}
-.art-zoom rect {
+.art-zoom .art-zoom-body {
   fill: var(--surface-3, var(--surface));
   stroke: var(--line-strong);
-  stroke-width: 0.25;
+  stroke-width: 1;
 }
-.art-zoom [data-even] rect {
+.art-zoom [data-even] .art-zoom-body {
   fill: var(--accent-soft);
   stroke: var(--accent-line);
 }
 .art-zoom .art-zoom-bar {
   fill: var(--line);
-  stroke: none;
 }
 .art-zoom [data-even] .art-zoom-bar {
   fill: var(--accent-line);
-}
-@keyframes art-zoom {
-  0%,
-  25% {
-    transform: scale(1);
-  }
-  85%,
-  100% {
-    transform: scale(2.618034);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .art-zoom-g {
-    animation: none;
-  }
 }
 
 /* art: mounts once */

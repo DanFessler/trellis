@@ -1,47 +1,116 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /** A stack of panels that nests into itself: each level splits off a square and leaves a smaller
- * copy of the whole. Zooming by φ² into the corner lands on an identical picture, so it loops. */
-function ZoomArt() {
-  const PHI = (1 + Math.sqrt(5)) / 2;
-  const tiles: { x: number; y: number; s: number; i: number }[] = [];
+ * copy of the whole. Zooming by φ² into the corner lands on an identical picture, so it loops.
+ * Like real Trellis chrome, gaps, corners and tab bars stay the same size on screen while the
+ * panels zoom, so each frame is drawn in pixels rather than by scaling the drawing. */
+const PHI = (1 + Math.sqrt(5)) / 2;
+const ZOOM_TILES = (() => {
+  const tiles: { x: number; y: number; s: number }[] = [];
   let x = 0,
     y = 0,
-    w = PHI * 100,
-    h = 100;
-  for (let i = 0; i < 16; i++) {
+    w = PHI,
+    h = 1;
+  for (let i = 0; i < 20; i++) {
     if (i % 2 === 0) {
-      tiles.push({ x, y, s: h, i });
+      tiles.push({ x, y, s: h });
       x += h;
       w -= h;
     } else {
-      tiles.push({ x, y, s: w, i });
+      tiles.push({ x, y, s: w });
       y += w;
       h -= w;
     }
   }
+  return tiles;
+})();
+const ZOOM = { period: 6000, gap: 3, radius: 7, bar: 8, stroke: 1 };
+
+function ZoomArt() {
+  const host = useRef<HTMLDivElement>(null);
+  const svg = useRef<SVGSVGElement>(null);
+  const bodies = useRef<(SVGPathElement | null)[]>([]);
+  const bars = useRef<(SVGPathElement | null)[]>([]);
+
+  useEffect(() => {
+    const el = host.current!;
+    let width = 0,
+      height = 0,
+      frame = 0,
+      visible = true;
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const rounded = (x: number, y: number, w: number, h: number, r: number, bottom = true) =>
+      `M${x} ${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w} ${y + r}` +
+      (bottom
+        ? `V${y + h - r}A${r} ${r} 0 0 1 ${x + w - r} ${y + h}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}Z`
+        : `V${y + h}H${x}Z`);
+
+    const draw = (time: number) => {
+      if (!width || !height) return;
+      // Hold, zoom two levels deeper at a constant apparent speed, hold, then start over.
+      const p = reduced ? 0 : (time % ZOOM.period) / ZOOM.period;
+      const t = Math.min(1, Math.max(0, (p - 0.25) / 0.6));
+      const eased = t * t * (3 - 2 * t);
+      const zoom = PHI ** (2 * eased);
+      // Fill the width and keep the bottom-right corner (where the stack converges) in view.
+      const unit = Math.max(width / PHI, height) * zoom;
+      const cx = (width + Math.max(width / PHI, height) * PHI) / 2;
+      const cy = height;
+      ZOOM_TILES.forEach((tile, i) => {
+        const body = bodies.current[i]!;
+        const bar = bars.current[i]!;
+        const x = cx + (tile.x - PHI) * unit + ZOOM.gap;
+        const y = cy + (tile.y - 1) * unit + ZOOM.gap;
+        const size = tile.s * unit - ZOOM.gap * 2;
+        const offscreen = x > width || y > height || x + size < 0 || y + size < 0;
+        if (size < 3 || offscreen) {
+          body.style.display = bar.style.display = "none";
+          return;
+        }
+        const r = Math.min(ZOOM.radius, size / 4);
+        body.style.display = "";
+        body.setAttribute("d", rounded(x, y, size, size, r));
+        if (size < ZOOM.bar * 4) {
+          bar.style.display = "none";
+        } else {
+          bar.style.display = "";
+          bar.setAttribute("d", rounded(x, y, size, ZOOM.bar, r, false));
+        }
+      });
+    };
+    const loop = (time: number) => {
+      draw(time);
+      if (!reduced && visible) frame = requestAnimationFrame(loop);
+    };
+    const resize = new ResizeObserver(([entry]) => {
+      width = entry.contentRect.width;
+      height = entry.contentRect.height;
+      svg.current!.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      draw(performance.now());
+    });
+    resize.observe(el);
+    const seen = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      cancelAnimationFrame(frame);
+      if (visible && !reduced) frame = requestAnimationFrame(loop);
+    });
+    seen.observe(el);
+    return () => {
+      cancelAnimationFrame(frame);
+      resize.disconnect();
+      seen.disconnect();
+    };
+  }, []);
+
   return (
-    <div className="art-zoom" aria-hidden="true">
-      <svg viewBox={`0 0 ${PHI * 100} 100`} preserveAspectRatio="xMidYMax slice">
-        <g className="art-zoom-g">
-          {tiles.map((t) => {
-            const inset = t.s * 0.035;
-            const size = t.s - inset * 2;
-            return (
-              <g key={t.i} data-even={t.i % 2 === 0 || undefined}>
-                <rect x={t.x + inset} y={t.y + inset} width={size} height={size} rx={t.s * 0.06} />
-                <rect
-                  className="art-zoom-bar"
-                  x={t.x + inset}
-                  y={t.y + inset}
-                  width={size}
-                  height={t.s * 0.11}
-                  rx={t.s * 0.06}
-                />
-              </g>
-            );
-          })}
-        </g>
+    <div className="art-zoom" ref={host} aria-hidden="true">
+      <svg ref={svg}>
+        {ZOOM_TILES.map((_, i) => (
+          <g key={i} data-even={i % 2 === 0 || undefined}>
+            <path ref={(el) => void (bodies.current[i] = el)} className="art-zoom-body" />
+            <path ref={(el) => void (bars.current[i] = el)} className="art-zoom-bar" />
+          </g>
+        ))}
       </svg>
     </div>
   );
