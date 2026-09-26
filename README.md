@@ -6,7 +6,9 @@
   Trellis
 </h1>
 
-Trellis is a layout engine for web apps where users arrange their own workspace, with tabbed panels they can drag, split, float, hide and maximize.
+Trellis is a layout engine for web apps where users arrange their own workspace. Panels nest inside panels as deep as users like, and the view zooms to whichever part they need, with every view kept mounted. Users can also drag, split, float and hide tabbed panels.
+
+See the idea in the [2-minute video](https://www.youtube.com/watch?v=Kd9AbKawwhg) that started the project.
 
 ## Packages
 

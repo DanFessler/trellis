@@ -6,13 +6,14 @@ import {
   ViewType,
   Workspace,
   type WorkspaceHandle,
+  type LayoutSpec,
   type WorkspaceSnapshot,
 } from "@danfessler/trellis-react";
 import { useSiteTheme } from "../../theme";
 import { useMedia } from "../../components/useMedia";
 import { Reset } from "../../components/icons";
 import { LogoMark } from "../../components/Logo";
-import { Brush, CodeView, ColorPicker, Inspector, Layers, PREVIEW_URL, Sketch } from "./panels";
+import { Brush, CodeView, ColorPicker, Inspector, Layers, PREVIEW_URL, Sketch, Swatch } from "./panels";
 import { aliveSince, DemoProvider, useDemo } from "./store";
 
 const ICONS = {
@@ -22,8 +23,33 @@ const ICONS = {
   color: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="5.8"/><circle cx="8" cy="5.2" r="1.2" fill="currentColor"/><circle cx="5.4" cy="9.2" r="1.2" fill="currentColor"/><circle cx="10.6" cy="9.2" r="1.2" fill="currentColor"/></svg>`,
   brush: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M13.5 2.5 7 9"/><path d="M6.5 9.5c-2 0-3 1.3-3 2.6 0 .8-.6 1.4-1.4 1.4 1 .8 2.3 1 3.4 1 2 0 3-1.6 3-3"/></svg>`,
   inspect: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="2" y="2.5" width="12" height="11" rx="2"/><path d="M5 6h6M5 8.5h4M5 11h5"/></svg>`,
+  swatch: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="2.5"/><path d="M2.5 9.5h11" opacity=".55"/></svg>`,
   preview: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.8" y="3" width="12.4" height="10" rx="2"/><path d="M1.8 6h12.4"/></svg>`,
 };
+
+/** The palette nests into itself: each level splits what's left, alternating direction. The deepest
+ * swatches are too small to use until you zoom in, where they're full-size panels. */
+const PALETTE: [string, string][] = [
+  ["Moss", "#2f7d32"],
+  ["Leaf", "#6fbf3a"],
+  ["Sky", "#3a86c8"],
+  ["Plum", "#7b61d1"],
+  ["Rose", "#d04e7b"],
+  ["Ember", "#e0663d"],
+  ["Gold", "#e8b73a"],
+];
+const swatchPanel = (i: number) =>
+  L.panel(
+    { id: `p-sw-${i}` },
+    L.view("swatch", { id: `sw-${i}`, params: { name: PALETTE[i][0], color: PALETTE[i][1] } }),
+  );
+function palette(i = 0, axis: "x" | "y" = "x"): LayoutSpec {
+  if (i === PALETTE.length - 1) return swatchPanel(i);
+  return L.split(axis, [swatchPanel(i), palette(i + 1, axis === "x" ? "y" : "x")], { weights: [1.618, 1] });
+}
+/** The zoom tour frames deeper and deeper levels of the palette, then returns to the whole layout. */
+const panelsFrom = (i: number) => PALETTE.slice(i).map((_, k) => `p-sw-${i + k}`);
+const TOUR = [panelsFrom(0), panelsFrom(2), panelsFrom(4), panelsFrom(5)];
 
 function desktopLayout() {
   return createDocument(
@@ -43,13 +69,19 @@ function desktopLayout() {
             L.view("code", { id: "code" }),
           ),
         ),
-        L.panel(
-          { id: "p-inspect" },
-          L.view("inspector", { id: "inspector" }),
-          L.view("preview", { id: "preview" }),
+        L.column(
+          [
+            L.panel(
+              { id: "p-inspect" },
+              L.view("inspector", { id: "inspector" }),
+              L.view("preview", { id: "preview" }),
+            ),
+            palette(),
+          ],
+          [1.15, 1],
         ),
       ],
-      [1, 3.3, 1.3],
+      [1, 3.1, 1.5],
     ),
     {
       floating: [
@@ -73,11 +105,17 @@ function compactLayout() {
             L.view("code", { id: "code" }),
           ),
         ),
-        L.panel(
-          { id: "p-tools" },
-          L.view("layers", { id: "layers" }),
-          L.view("color", { id: "color" }),
-          L.view("inspector", { id: "inspector" }),
+        L.row(
+          [
+            L.panel(
+              { id: "p-tools" },
+              L.view("layers", { id: "layers" }),
+              L.view("color", { id: "color" }),
+              L.view("inspector", { id: "inspector" }),
+            ),
+            palette(0, "y"),
+          ],
+          [1.3, 1],
         ),
       ],
       [1.6, 1],
@@ -112,6 +150,51 @@ function HeroWorkspace() {
   const trayRef = useRef<HTMLDivElement>(null);
   const counter = useRef(1);
   const defaultLayout = useMemo(() => (compact ? compactLayout() : desktopLayout()), [compact]);
+  const windowRef = useRef<HTMLDivElement>(null);
+  const [touring, setTouring] = useState(false);
+  const tourTimers = useRef<number[]>([]);
+
+  const stopTour = () => {
+    tourTimers.current.forEach(clearTimeout);
+    tourTimers.current = [];
+    setTouring(false);
+  };
+  const startTour = () => {
+    if (!ws) return;
+    stopTour();
+    setTouring(true);
+    const steps = [...TOUR.map((ids) => () => ws.navigation.frame(ids)), () => ws.navigation.overview()];
+    steps.forEach((step, i) => tourTimers.current.push(window.setTimeout(step, 400 + i * 1700)));
+    tourTimers.current.push(window.setTimeout(() => setTouring(false), 400 + steps.length * 1700));
+  };
+
+  // Show the zoom once, when the demo first comes into view. Any input from the visitor stops it.
+  useEffect(() => {
+    const el = windowRef.current;
+    if (!ws || !el || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let started = false;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (started || !entry.isIntersecting) return;
+        started = true;
+        tourTimers.current.push(window.setTimeout(startTour, 900));
+      },
+      { threshold: 0.6 },
+    );
+    observer.observe(el);
+    const interrupt = (e: Event) => {
+      if ((e.target as HTMLElement).closest?.("[data-tour-button]")) return;
+      started = true;
+      stopTour();
+    };
+    for (const type of ["pointerdown", "wheel", "keydown"]) el.addEventListener(type, interrupt, true);
+    return () => {
+      observer.disconnect();
+      for (const type of ["pointerdown", "wheel", "keydown"]) el.removeEventListener(type, interrupt, true);
+      tourTimers.current.forEach(clearTimeout);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ws]);
 
   // Iframe views have no React content; start their clocks when they open.
   useEffect(() => {
@@ -166,7 +249,7 @@ function HeroWorkspace() {
 
   return (
     <>
-      <div className="hero-window" data-compact={compact || undefined}>
+      <div className="hero-window" ref={windowRef} data-compact={compact || undefined}>
         <div className="hero-bar">
           <div className="hero-bar-title">
             <LogoMark className="hero-bar-mark" />
@@ -202,6 +285,15 @@ function HeroWorkspace() {
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              className="hero-bar-btn"
+              data-tour-button
+              onClick={() => (touring ? stopTour() : startTour())}
+              aria-pressed={touring}
+            >
+              {touring ? "Stop tour" : "Zoom tour"}
+            </button>
             <button type="button" className="hero-bar-btn" onClick={newSketch}>
               + Sketch
             </button>
@@ -288,6 +380,15 @@ function HeroWorkspace() {
             >
               <Inspector />
             </ViewType>
+            <ViewType
+              id="swatch"
+              title={(v) => String(v.params.name)}
+              icon={ICONS.swatch}
+              allow={{ stage: false }}
+              closable={false}
+              minSize={{ width: 140, height: 90 }}
+              render={() => <Swatch />}
+            />
             <ViewType
               id="preview"
               title="Preview"

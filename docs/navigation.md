@@ -10,6 +10,8 @@ nav: Navigation and maximize
 
 Navigation moves an animated camera over the docked layout and the stage. Maximizing a panel means framing it: the camera zooms until that panel fills the workspace. Everything else slides out of view but stays mounted and running.
 
+This page is the reference. For why deep nesting and zooming help, and how to design a layout for it, start with [Zoomable layouts](./zoomable-layouts.md).
+
 ## Modes
 
 Set `navigation` on the workspace:

@@ -384,3 +384,24 @@ body{display:grid;place-items:center;text-align:center}
 <div class="t" id="t">0:00</div><div>iframe uptime · not reloaded</div></div>
 <script>var s=Date.now();setInterval(function(){var x=Math.floor((Date.now()-s)/1000);document.getElementById("t").textContent=Math.floor(x/60)+":"+String(x%60).padStart(2,"0")},250)</script></body></html>`;
 export const PREVIEW_URL = "data:text/html;charset=utf-8," + encodeURIComponent(PREVIEW_HTML);
+
+// ------------------------------------------------------------------ Palette (nested spiral)
+/** One colour from the nested palette. Selecting it sets the brush colour. */
+export function Swatch() {
+  const view = useView<{ name: string; color: string }>();
+  const demo = useDemo();
+  const { name, color } = view.params;
+  const active = demo.color.toLowerCase() === color.toLowerCase();
+  return (
+    <button
+      type="button"
+      className="d-swatch"
+      style={{ background: color }}
+      data-active={active || undefined}
+      onClick={() => demo.setColor(color)}
+    >
+      <span className="d-swatch-name">{name}</span>
+      <span className="d-swatch-hex">{active ? "Brush colour" : color.toUpperCase()}</span>
+    </button>
+  );
+}

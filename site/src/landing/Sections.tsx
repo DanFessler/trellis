@@ -110,7 +110,7 @@ const EXAMPLES: ExampleInfo[] = [
   {
     name: "desktop",
     title: "Desktop",
-    body: "A desktop with no window code of its own. Windows are panels floating on the stage, and the dock restores hidden ones.",
+    body: "The fractal desktop from the video, rebuilt on Trellis. Dock windows beside each other, nest them as deep as you like, and scroll to move between levels.",
     tags: ["React", "floating", "free zoom"],
     shape: "desktop",
   },

@@ -106,6 +106,23 @@
   gap: 12px;
   margin-top: 30px;
 }
+.hero-video {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 18px;
+  color: var(--text-2);
+  font-size: 14px;
+  text-decoration: none;
+}
+.hero-video:hover,
+.hero-video:focus-visible {
+  color: var(--accent);
+}
+.hero-video svg {
+  width: 14px;
+  height: 14px;
+}
 .install {
   display: inline-flex;
   align-items: center;
@@ -870,6 +887,59 @@
   }
 }
 
+/* art: endless zoom into nested panels */
+.card-zoom .card-art {
+  height: 250px;
+  padding: 0;
+}
+.art-zoom {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.art-zoom svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: hidden;
+}
+.art-zoom-g {
+  transform-box: view-box;
+  transform-origin: 100% 100%;
+  animation: art-zoom 6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.art-zoom rect {
+  fill: var(--surface-3, var(--surface));
+  stroke: var(--line-strong);
+  stroke-width: 0.25;
+}
+.art-zoom [data-even] rect {
+  fill: var(--accent-soft);
+  stroke: var(--accent-line);
+}
+.art-zoom .art-zoom-bar {
+  fill: var(--line);
+  stroke: none;
+}
+.art-zoom [data-even] .art-zoom-bar {
+  fill: var(--accent-line);
+}
+@keyframes art-zoom {
+  0%,
+  25% {
+    transform: scale(1);
+  }
+  85%,
+  100% {
+    transform: scale(2.618034);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .art-zoom-g {
+    animation: none;
+  }
+}
+
 /* art: mounts once */
 .art-mounts {
   position: relative;
@@ -1019,67 +1089,6 @@
   color: var(--text-3);
   font-family: var(--font-mono);
   font-size: 11px;
-}
-
-/* art: primitives */
-.art-prims {
-  position: relative;
-  width: 100%;
-  max-width: 300px;
-  height: 150px;
-}
-.art-prims > div {
-  position: absolute;
-  border-radius: 7px;
-}
-.p-side {
-  left: 0;
-  top: 0;
-  width: 20%;
-  height: 100%;
-  background: var(--surface-3);
-  box-shadow: 0 0 0 1px var(--line) inset;
-}
-.p-side.r {
-  left: auto;
-  right: 0;
-}
-.p-stage {
-  left: 22%;
-  top: 0;
-  width: 56%;
-  height: 100%;
-  background: var(--accent-soft);
-  box-shadow: 0 0 0 1px var(--accent-line) inset;
-  display: grid;
-  place-items: start;
-  padding: 6px 8px;
-}
-.p-stage span,
-.p-float {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--accent);
-}
-.p-float {
-  left: 46%;
-  top: 44%;
-  width: 40%;
-  height: 44%;
-  background: var(--surface);
-  box-shadow:
-    0 0 0 1px var(--line-strong),
-    0 16px 30px -12px rgba(0, 0, 0, 0.55);
-  display: grid;
-  place-items: center;
-  color: var(--text-2);
-}
-.p-frame {
-  inset: -8px -8px -8px 18% !important;
-  left: 18% !important;
-  border: 1.5px dashed var(--accent);
-  opacity: 0.5;
-  animation: frame 6s var(--ease) infinite;
 }
 @keyframes frame {
   0%,
@@ -2006,4 +2015,38 @@ a.example:hover .thumb-shot img {
   .hero-bar-btn:not(.icon) {
     display: none;
   }
+}
+
+/* Nested palette: each swatch fills its panel; selecting one sets the brush colour. */
+.d-swatch {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  padding: 10px 12px;
+  border: 0;
+  color: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.d-swatch-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+.d-swatch-hex {
+  font-size: 11.5px;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+.d-swatch[data-active] {
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.75);
+}
+.d-swatch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
 }

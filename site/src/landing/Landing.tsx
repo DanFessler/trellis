@@ -33,7 +33,7 @@ function Lattice({ className }: { className: string }) {
 export function Landing() {
   const { location } = useRouter();
   useEffect(() => {
-    document.title = "Trellis · Dockable, zoomable workspaces for web tools";
+    document.title = "Trellis · Fractal, dockable workspaces for web tools";
     if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -52,13 +52,13 @@ export function Landing() {
               <Arrow />
             </Link>
             <h1>
-              Give your tools
-              <br /> room to <span className="grow">grow</span>.
+              What happens when your
+              <br /> layout is <span className="grow">fractal</span>?
             </h1>
             <p className="hero-sub">
-              Trellis is a dockable, zoomable workspace for web tools such as art programs and IDEs. Users can
-              drag tabs anywhere, float panels and zoom in on one of them. Moving a view doesn't remount its
-              content.
+              Trellis lets people nest panels inside panels as deep as they like, then zoom to whichever part
+              they need. Everything else stays live. It's a dockable workspace for web tools such as art
+              programs and IDEs.
             </p>
             <div className="hero-ctas">
               <Link className="btn btn-primary" href="/docs/quick-start-react">
@@ -77,21 +77,30 @@ export function Landing() {
                 <span className="sr-only">Copy</span>
               </button>
             </div>
+            <a
+              className="hero-video"
+              href="https://www.youtube.com/watch?v=Kd9AbKawwhg"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Watch the 2-minute video that started it <Arrow />
+            </a>
           </div>
           <div className="container hero-demo">
             <HeroDemo />
             <ul className="hints" aria-label="Things to try">
               <li>
+                <span className="hint-key">Double-click</span> any tab bar to zoom to it
+              </li>
+              <li>
+                <kbd>Esc</kbd> steps back out one level
+              </li>
+              <li>
+                <span className="hint-key">Free zoom</span> then <kbd>Shift</kbd>+scroll to move through
+                levels
+              </li>
+              <li>
                 <span className="hint-key">Drag</span> a tab onto a panel edge to dock it
-              </li>
-              <li>
-                <span className="hint-key">Double-click</span> a tab bar to maximize
-              </li>
-              <li>
-                <span className="hint-key">Float</span> a panel from its ⋯ menu
-              </li>
-              <li>
-                <kbd>Esc</kbd> to zoom back out
               </li>
             </ul>
           </div>

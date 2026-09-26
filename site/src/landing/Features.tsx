@@ -1,5 +1,52 @@
 import { useEffect, useState } from "react";
 
+/** A stack of panels that nests into itself: each level splits off a square and leaves a smaller
+ * copy of the whole. Zooming by φ² into the corner lands on an identical picture, so it loops. */
+function ZoomArt() {
+  const PHI = (1 + Math.sqrt(5)) / 2;
+  const tiles: { x: number; y: number; s: number; i: number }[] = [];
+  let x = 0,
+    y = 0,
+    w = PHI * 100,
+    h = 100;
+  for (let i = 0; i < 16; i++) {
+    if (i % 2 === 0) {
+      tiles.push({ x, y, s: h, i });
+      x += h;
+      w -= h;
+    } else {
+      tiles.push({ x, y, s: w, i });
+      y += w;
+      h -= w;
+    }
+  }
+  return (
+    <div className="art-zoom" aria-hidden="true">
+      <svg viewBox={`0 0 ${PHI * 100} 100`} preserveAspectRatio="xMidYMax slice">
+        <g className="art-zoom-g">
+          {tiles.map((t) => {
+            const inset = t.s * 0.035;
+            const size = t.s - inset * 2;
+            return (
+              <g key={t.i} data-even={t.i % 2 === 0 || undefined}>
+                <rect x={t.x + inset} y={t.y + inset} width={size} height={size} rx={t.s * 0.06} />
+                <rect
+                  className="art-zoom-bar"
+                  x={t.x + inset}
+                  y={t.y + inset}
+                  width={size}
+                  height={t.s * 0.11}
+                  rx={t.s * 0.06}
+                />
+              </g>
+            );
+          })}
+        </g>
+      </svg>
+    </div>
+  );
+}
+
 function MountsOnceArt() {
   const [n, setN] = useState(0);
   useEffect(() => {
@@ -59,20 +106,6 @@ function MotionArt() {
         <span>overshoot</span>
         <span>settle</span>
       </div>
-    </div>
-  );
-}
-
-function PrimitivesArt() {
-  return (
-    <div className="art-prims" aria-hidden="true">
-      <div className="p-side" />
-      <div className="p-stage">
-        <span>stage</span>
-      </div>
-      <div className="p-side r" />
-      <div className="p-float">float</div>
-      <div className="p-frame" />
     </div>
   );
 }
@@ -185,8 +218,14 @@ function KeysArt() {
 
 const FEATURES = [
   {
-    key: "mounts",
+    key: "zoom",
     wide: true,
+    title: "Nest panels as deep as you like, then zoom in",
+    body: "Split panels inside panels to any depth. The view zooms to a panel, a group or a run of neighbours and resizes it to fill the workspace. Panels too small to use show as icons until you zoom in, and everything stays mounted the whole time.",
+    art: <ZoomArt />,
+  },
+  {
+    key: "mounts",
     title: "Views stay mounted when they move",
     body: "Each view renders once, into a container that stays put in the DOM. Docking, tabbing, floating and hiding move the container with CSS, so an iframe keeps its session and React keeps its state.",
     art: <MountsOnceArt />,
@@ -196,12 +235,6 @@ const FEATURES = [
     title: "Animated drags and zoom",
     body: "Drags, drops and zooms animate, so users can see where each panel went. Views resize when the motion settles, not on every frame.",
     art: <MotionArt />,
-  },
-  {
-    key: "prims",
-    title: "A stage, floating panels and zoom",
-    body: "Documents open on a central stage. Panels can float over the stage or the whole app, and users can maximize a panel or zoom around the layout.",
-    art: <PrimitivesArt />,
   },
   {
     key: "adapters",
@@ -242,12 +275,13 @@ export function Features() {
         <header className="section-head">
           <p className="eyebrow">Features</p>
           <h2>
-            Users arrange panels however they like,
-            <br className="br-lg" /> and your views keep their state.
+            A layout people can move through,
+            <br className="br-lg" /> with every view kept alive.
           </h2>
           <p className="section-lede">
-            Trellis is built for tools people keep open all day. Moving a panel doesn't reload an iframe or
-            reset a canvas, and animation shows where each panel went.
+            Trellis is built for tools people keep open all day. They can pack in as many panels as they need
+            and zoom to the part they're working on. Moving or zooming never reloads an iframe or resets a
+            canvas.
           </p>
         </header>
         <div className="bento">

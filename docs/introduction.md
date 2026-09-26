@@ -7,17 +7,19 @@ order: 1
 
 # Introduction
 
-Trellis is a layout engine for web apps where people arrange their own workspace, such as an art program or an IDE. Users drag tabs between panels, dock them against any edge, float them, hide them to a tray, and zoom into a single panel.
+Trellis is a layout engine for web apps where people arrange their own workspace, such as an art program or an IDE. Panels nest inside panels as deep as people like, and the view zooms to whichever part they need. Users drag tabs between panels, dock them against any edge, float them and hide them to a tray.
 
 Trellis succeeds react-dockable. It's a rewrite from scratch: a framework-agnostic engine with thin adapters, and animated motion throughout.
 
 ## What makes it different
 
+The layout is a space people move through. Nesting has no depth limit, so a workspace can hold far more tools than fit at once. People zoom to a panel, a group or a run of neighbours, step out a level with <kbd>Esc</kbd>, and come back to saved places. Panels too small to use show as icons until someone zooms in. See [Zoomable layouts](./zoomable-layouts.md).
+
 Each view renders once, into a container that stays put in the DOM. Docking, tabbing, floating, hiding and zooming move the container, not the content. An `<iframe>` keeps its session, a `<canvas>` keeps its pixels and WebGL context, and React components keep their state. Content remounts only when what it renders changes, such as an iframe's URL.
 
 Picking up a panel, dropping it, maximizing and hiding are all animated. While you drag, the layout opens a slot where the panel will land. Views learn their new size after motion settles, not on every frame, so expensive content doesn't re-layout sixty times a second.
 
-A workspace can have a _stage_, the primary region where documents open. Panels can float over the stage or over the whole app. You can maximize any docked panel with an animated zoom. In _free_ navigation, users move around the workspace like a canvas by scrolling, pinching and marquee-selecting, and the camera snaps to whatever fits best.
+A workspace can have a _stage_, the primary region where documents open. Panels can float over the stage or over the whole app. In _free_ navigation, users move around the workspace like a canvas by scrolling, pinching and marquee-selecting, and the camera snaps to whatever fits best.
 
 View types declare rules in place of callbacks. A type says where it may be docked (`allow`), where it opens (`placement`), whether only one may exist (`singleton`), whether it can be closed, and its minimum layout size. Trellis enforces these rules during drags and in `open()`.
 
@@ -68,5 +70,6 @@ Users can drag the Layers tab to any edge of the workspace, float it from its me
 
 - [Installation](./installation.md) covers the packages, the stylesheet and sizing the host element.
 - [Quick start (React)](./quick-start-react.md) and [Quick start (vanilla)](./quick-start-vanilla.md) build a working workspace in a few minutes.
+- [Zoomable layouts](./zoomable-layouts.md) explains nesting and zooming, and why they help.
 - [Concepts](./concepts.md) explains view types, views, panels, splits, the stage, floating and navigation.
 - [Interaction model](./interaction.md) describes how dragging, docking and navigation behave.
