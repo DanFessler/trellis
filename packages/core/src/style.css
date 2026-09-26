@@ -296,6 +296,10 @@
     background-color 120ms,
     color 120ms;
 }
+/* The right padding assumes the close button's own space; without one, match the left. */
+:where(.trellis [data-trellis-part="tab"]:has(> [data-trellis-part="tab-close"][hidden])) {
+  padding-right: 10px;
+}
 :where(.trellis [data-trellis-part="tab"]:hover) {
   background: var(--trellis-tab-hover);
   color: var(--trellis-text);
