@@ -9,3 +9,4 @@ playwright-report
 packages/*/dist
 packages/*/LICENSE*.md
 notes/
+.vscode/

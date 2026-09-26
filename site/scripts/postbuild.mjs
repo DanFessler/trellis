@@ -24,12 +24,15 @@ const front = (src) => {
     }
   return data;
 };
-const page = (title, description) =>
+// Attributes may be split across lines by the formatter, so match any whitespace between them.
+const page = (title, description, url) =>
   template
     .replace(/<title>[^<]*<\/title>/, `<title>${escape(title)}</title>`)
-    .replace(/(<meta name="description" content=")[^"]*(")/, `$1${escape(description)}$2`)
-    .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${escape(title)}$2`)
-    .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${escape(description)}$2`);
+    .replace(/(<meta\s+name="description"\s+content=")[^"]*(")/, `$1${escape(description)}$2`)
+    .replace(/(<meta\s+property="og:title"\s+content=")[^"]*(")/, `$1${escape(title)}$2`)
+    .replace(/(<meta\s+property="og:description"\s+content=")[^"]*(")/, `$1${escape(description)}$2`)
+    .replace(/(<meta\s+property="og:url"\s+content=")[^"]*(")/, `$1${escape(url)}$2`);
+const SITE = "https://trellisui.com";
 
 let count = 0;
 for (const file of fs.readdirSync(docsDir).filter((f) => f.endsWith(".md") && !f.startsWith("_"))) {
@@ -39,11 +42,14 @@ for (const file of fs.readdirSync(docsDir).filter((f) => f.endsWith(".md") && !f
   fs.mkdirSync(out, { recursive: true });
   fs.writeFileSync(
     path.join(out, "index.html"),
-    page(`${data.title ?? slug} — Trellis`, data.description ?? ""),
+    page(`${data.title ?? slug} · Trellis`, data.description ?? "", `${SITE}/docs/${slug}`),
   );
   count++;
 }
 fs.mkdirSync(path.join(dist, "docs"), { recursive: true });
-fs.writeFileSync(path.join(dist, "docs", "index.html"), page("Docs — Trellis", "Trellis documentation."));
-fs.writeFileSync(path.join(dist, "404.html"), page("Not found — Trellis", ""));
+fs.writeFileSync(
+  path.join(dist, "docs", "index.html"),
+  page("Docs · Trellis", "Trellis documentation.", `${SITE}/docs`),
+);
+fs.writeFileSync(path.join(dist, "404.html"), page("Not found · Trellis", "", SITE));
 console.log(`postbuild: wrote ${count} docs pages and 404.html`);

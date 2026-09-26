@@ -43,5 +43,8 @@
   "scripts": {
     "build": "tsup && cp ../../LICENSE*.md .",
     "prepack": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
