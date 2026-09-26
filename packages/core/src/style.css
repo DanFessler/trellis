@@ -330,6 +330,9 @@
   flex: none;
   color: inherit;
 }
+:where(.trellis [data-trellis-part="tab-icon"]:empty) {
+  display: none;
+}
 :where(.trellis [data-trellis-part="tab-icon"] svg, .trellis [data-trellis-part="tab-icon"] img) {
   width: 16px;
   height: 16px;

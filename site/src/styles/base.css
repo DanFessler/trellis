@@ -381,6 +381,9 @@ kbd {
   grid-template-columns: 1.6fr repeat(3, 1fr);
   gap: 40px;
 }
+.footer .brand {
+  color: var(--text);
+}
 .footer h4 {
   margin: 0 0 12px;
   color: var(--text);
@@ -472,6 +475,7 @@ kbd {
   color: var(--accent);
 }
 .code-block pre.shiki {
+  font-variant-ligatures: none;
   margin: 0;
   padding: 16px 18px 18px;
   overflow-x: auto;

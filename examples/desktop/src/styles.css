@@ -162,8 +162,8 @@ button {
     0 0 0 1px #ffffff2e,
     var(--trellis-shadow-lifted);
 }
-/* Spotify is opaque in the prototype. Panels don't expose their view type, so match the icon. */
-.trellis [data-trellis-part="panel"]:has([data-trellis-part="tab"][data-selected] [data-app="spotify"]) {
+/* Spotify is opaque in the prototype. Panels don't carry a view type; tabs do (data-type). */
+.trellis [data-trellis-part="panel"]:has([data-trellis-part="tab"][data-selected][data-type="spotify"]) {
   background: #000;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -196,7 +196,7 @@ button {
 .trellis [data-trellis-part="panel"][data-focused] [data-trellis-part="tabbar"] {
   background: #303033e6;
 }
-.trellis [data-trellis-part="panel"]:has([data-app="spotify"]) [data-trellis-part="tabbar"] {
+.trellis [data-trellis-part="panel"]:has([data-trellis-part="tab"][data-selected][data-type="spotify"]) [data-trellis-part="tabbar"] {
   background: #000;
 }
 .trellis [data-trellis-part="tabs"] {
@@ -241,6 +241,10 @@ button {
 }
 .trellis [data-trellis-part="tab-close"] {
   display: none;
+}
+/* React icons are portaled in after Trellis marks an empty icon slot [hidden] (see notes). */
+.trellis [data-trellis-part="tab-icon"][hidden]:not(:empty) {
+  display: inline-grid !important;
 }
 /* Two or more windows dragged into one title bar become tabs. */
 .trellis [data-trellis-part="tabs"]:has(> [data-trellis-part="tab"] + [data-trellis-part="tab"]) [data-trellis-part="tab"] {
@@ -439,11 +443,6 @@ button {
   stroke: #e6e6ee;
   stroke-width: 1.25;
   pointer-events: none;
-  transition:
-    x 380ms cubic-bezier(0.22, 1, 0.36, 1),
-    y 380ms cubic-bezier(0.22, 1, 0.36, 1),
-    width 380ms cubic-bezier(0.22, 1, 0.36, 1),
-    height 380ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* ------------------------------------------------------------------ bottom bar */
@@ -799,6 +798,14 @@ button {
   color: #28282a;
 }
 
+@media (max-width: 1200px) {
+  .minimap {
+    right: 14px;
+    bottom: 14px;
+    scale: 0.75;
+    transform-origin: 100% 100%;
+  }
+}
 @media (max-width: 900px) {
   .bar-count,
   .bar-button span,
@@ -810,10 +817,5 @@ button {
   }
   .minimap {
     display: none;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .minimap-frame {
-    transition: none;
   }
 }

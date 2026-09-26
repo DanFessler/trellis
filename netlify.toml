@@ -1,0 +1,10 @@
+# Trellis website (site/). Docs pages are emitted as real HTML files by site/scripts/postbuild.mjs;
+# the rewrite below is a fallback for any other client-side route.
+[build]
+  command = "npm ci && npm run build -w trellis-site"
+  publish = "site/dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

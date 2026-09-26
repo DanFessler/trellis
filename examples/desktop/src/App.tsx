@@ -1,19 +1,21 @@
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import { Stage, ViewType, Workspace, useWorkspace, type ViewHandle } from "@danfessler/trellis-react";
+import { Stage, ViewType, Workspace, WorkspaceProvider, useOptionalWorkspace, useWorkspace, type ViewHandle } from "@danfessler/trellis-react";
 import type { MenuEntry, WorkspaceHandle } from "@danfessler/trellis";
 import { APPS, DEFAULT_FOLDER, STAGE_ID, pageFor, type AppDefinition, type AppParams } from "./apps";
 import { AppFrame, AppIcon, WindowControls } from "./AppWindow";
 import { Bar } from "./Bar";
-import { floatOnDesktop, isZoomed, launch, minimize, zoom } from "./desktop";
+import { desktopSize, floatOnDesktop, isZoomed, launch, minimize, zoom } from "./desktop";
 import { Minimap } from "./Minimap";
 import { Wallpaper } from "./Wallpaper";
 
-const WALLPAPER = `${import.meta.env.BASE_URL}wallpapers/sierra-dusk.jpg`;
+// Absolute, so the url() in the --wallpaper custom property doesn't resolve against the CSS file.
+const WALLPAPER = new URL(`${import.meta.env.BASE_URL}wallpapers/sierra-dusk.jpg`, document.baseURI).href;
 
 /** Right-click a title bar. Replaces the built-in panel menu so "Minimize" can fly into the dock. */
 function windowMenu(view: ViewHandle<AppParams>): MenuEntry[] {
   const ws = view.workspace;
+  const app = APPS.find((a) => a.id === view.type);
+  const name = app ? pageFor(app, view.params).heading : view.title;
   const floating = view.placement === "floating";
   const zoomed = isZoomed(ws, view.id);
   return [
@@ -23,7 +25,7 @@ function windowMenu(view: ViewHandle<AppParams>): MenuEntry[] {
       ? { label: "Dock Beside Desktop", run: () => ws.dock(view.id, { beside: STAGE_ID, edge: "left", share: 0.3 }) }
       : { label: "Float on Desktop", run: () => floatOnDesktop(ws, view.id) },
     "separator",
-    { label: `Close ${view.title}`, run: () => void view.close() },
+    { label: `Close ${name}`, run: () => void view.close() },
   ];
 }
 
@@ -31,8 +33,11 @@ function windowMenu(view: ViewHandle<AppParams>): MenuEntry[] {
 const booted = new WeakSet<WorkspaceHandle>();
 function boot(ws: WorkspaceHandle) {
   const [finder, notes] = [APPS[0], APPS[1]];
-  launch(ws, finder, { folder: DEFAULT_FOLDER }, { x: 88, y: 56 });
-  launch(ws, notes, undefined, { x: 548, y: 214 });
+  const desk = desktopSize(ws);
+  // Leave the desktop folders (top right) uncovered and overlap the two windows a little.
+  const notesW = Math.min(notes.size.w, desk.w * 0.86);
+  launch(ws, finder, { folder: DEFAULT_FOLDER }, { x: desk.w * 0.06, y: desk.h * 0.07 });
+  launch(ws, notes, undefined, { x: Math.max(desk.w * 0.2, desk.w - notesW - 140), y: desk.h * 0.26 });
 }
 function Boot() {
   const ws = useWorkspace();
@@ -62,43 +67,41 @@ function appType(app: AppDefinition) {
   );
 }
 
-export function App() {
-  const [bar, setBar] = useState<HTMLElement | null>(null);
-  const [map, setMap] = useState(true);
-  const [ws, setWs] = useState<WorkspaceHandle | null>(null);
+/** The bottom bar lives outside the workspace; <WorkspaceProvider> lets it use Trellis's hooks. */
+function BottomBar({ map, onToggleMap }: { map: boolean; onToggleMap(): void }) {
+  const ws = useOptionalWorkspace();
+  if (!ws) return null;
   return (
-    <div className="shell" style={{ "--wallpaper": `url("${WALLPAPER}")` } as React.CSSProperties}>
-      <main className="shell-workspace">
-        <Workspace
-          ref={setWs}
-          theme="dark"
-          floating="stage"
-          navigation="free"
-          panelMenu={false}
-          label="Desktop"
-        >
-          {APPS.map(appType)}
-          <Stage id={STAGE_ID} backdrop={<Wallpaper />} />
-          <Workspace.Chrome>
-            <Boot />
-            {map && <Minimap wallpaper={WALLPAPER} />}
-            {bar &&
-              createPortal(
-                <Bar
-                  map={map}
-                  onToggleMap={() => setMap((m) => !m)}
-                  onReset={() => {
-                    if (!ws) return;
-                    ws.reset();
-                    boot(ws);
-                  }}
-                />,
-                bar,
-              )}
-          </Workspace.Chrome>
-        </Workspace>
-      </main>
-      <footer className="shell-bar" ref={setBar} />
-    </div>
+    <Bar
+      map={map}
+      onToggleMap={onToggleMap}
+      onReset={() => {
+        ws.reset();
+        boot(ws);
+      }}
+    />
+  );
+}
+
+export function App() {
+  const [map, setMap] = useState(true);
+  return (
+    <WorkspaceProvider>
+      <div className="shell" style={{ "--wallpaper": `url("${WALLPAPER}")` } as React.CSSProperties}>
+        <main className="shell-workspace">
+          <Workspace theme="dark" floating="stage" navigation="free" panelMenu={false} label="Desktop">
+            {APPS.map(appType)}
+            <Stage id={STAGE_ID} backdrop={<Wallpaper />} />
+            <Workspace.Chrome>
+              <Boot />
+              {map && <Minimap wallpaper={WALLPAPER} />}
+            </Workspace.Chrome>
+          </Workspace>
+        </main>
+        <footer className="shell-bar">
+          <BottomBar map={map} onToggleMap={() => setMap((m) => !m)} />
+        </footer>
+      </div>
+    </WorkspaceProvider>
   );
 }

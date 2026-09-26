@@ -33,8 +33,9 @@ export interface ViewTypeDefinition<P extends object = Params> extends ViewRules
   /** Mount vanilla content. Called once per view; never again for moves.
    * `parts` holds the view's tab icon and tab-bar accessory containers. */
   mount?(element: HTMLElement, view: ViewHandle<P>, parts: { icon: HTMLElement; accessory: HTMLElement }): Cleanup;
-  /** Render an iframe with this URL. Its state survives docking and tabbing. */
-  iframe?: string | ((view: ViewHandle<P>) => string);
+  /** Render an iframe: a URL, or attributes such as `srcdoc` and `sandbox`. Its state survives
+   * docking and tabbing; changing what this returns (e.g. via params) reloads it. */
+  iframe?: string | IframeOptions | ((view: ViewHandle<P>) => string | IframeOptions);
   /** Items at the top of the panel menu while this view is selected. */
   menu?: MenuEntry[] | ((view: ViewHandle<P>) => MenuEntry[]);
   /** "workspace" lets navigation gestures start over this view's content. */
@@ -43,6 +44,14 @@ export interface ViewTypeDefinition<P extends object = Params> extends ViewRules
   className?: string;
 }
 export type ViewTypes = Record<string, ViewTypeDefinition<any>>;
+export interface IframeOptions {
+  src?: string;
+  srcdoc?: string;
+  sandbox?: string;
+  allow?: string;
+  referrerPolicy?: string;
+  title?: string;
+}
 
 export type ViewPlacement = "docked" | "stage" | "floating" | "hidden";
 
@@ -143,6 +152,8 @@ export interface OpenOptions {
   placement?: Placement;
   reuse?: "none" | "type" | "params" | ((view: ViewInfo) => boolean);
   focus?: boolean;
+  /** Animate the new panel out of this element or rect (e.g. a launcher icon). */
+  from?: Element | Rect;
 }
 
 export interface WorkspaceOptions {
@@ -164,6 +175,8 @@ export interface WorkspaceOptions {
   persist?: { key: string; version?: string | number };
   /** Built-in panel menu items. Default true. */
   panelMenu?: boolean;
+  /** Where the built-in "Hide" animates to, e.g. your dock or tray button. */
+  hideToward?(panelId: string): Element | Rect | null | undefined;
   /** Unknown view types in a restored document. Default "placeholder". */
   onMissingType?(type: string, id: string): "drop" | "placeholder";
   /** Accessible name for the workspace region. */

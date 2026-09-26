@@ -21,7 +21,9 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import {
+  createDocument,
   createWorkspace,
+  type FloatSpec,
   type Edge,
   type FloatingLayer,
   type Keymap,
@@ -188,7 +190,7 @@ export interface ViewTypeProps<P extends object = Params> extends ViewRules {
   render?: (view: ViewApi<P>) => ReactNode;
   /** Shown in the tab bar while this view is selected. */
   accessory?: Renderable<P>;
-  iframe?: string | ((view: ViewHandle<P>) => string);
+  iframe?: ViewTypeDefinition<P>["iframe"];
   mount?: ViewTypeDefinition<P>["mount"];
   menu?: MenuEntry[] | ((view: ViewHandle<P>) => MenuEntry[]);
   gestures?: "content" | "workspace";
@@ -241,8 +243,28 @@ export interface StageProps {
 export function Stage(_props: StageProps): null {
   return null;
 }
+export interface FloatingProps {
+  /** Position and size as fractions (0–1) of the layer. */
+  rect: { x: number; y: number; w: number; h: number };
+  /** Defaults to "overlay". */
+  layer?: "stage" | "overlay";
+  /** A `<Panel>` or a `<View>`. */
+  children?: ReactNode;
+}
+/** Initial layout: a floating panel. Place it anywhere among the workspace's children. */
+export function Floating(_props: FloatingProps): null {
+  return null;
+}
 /** Rendered when the workspace has nothing in it. */
 function Empty(_props: { children?: ReactNode }): null {
+  return null;
+}
+/** Behind the stage's panels; same as `<Stage backdrop>`, usable with data layouts. */
+function Backdrop(_props: { children?: ReactNode }): null {
+  return null;
+}
+/** Shown while the stage is empty; same as `<Stage empty>`, usable with data layouts. */
+function StageEmpty(_props: { children?: ReactNode }): null {
   return null;
 }
 /** A full-size layer above the workspace for your own overlays. */
@@ -254,9 +276,12 @@ function Chrome(_props: { children?: ReactNode }): null {
 interface Parsed {
   types: ViewTypeProps<any>[];
   layout: LayoutSpec | null;
+  floating: FloatSpec[];
   stage: StageProps | null;
   empty: ReactNode;
   chrome: ReactNode;
+  backdrop: ReactNode;
+  stageEmpty: ReactNode;
 }
 function flatten(children: ReactNode): ReactElement[] {
   const out: ReactElement[] = [];
@@ -268,7 +293,16 @@ function flatten(children: ReactNode): ReactElement[] {
   return out;
 }
 function parse(children: ReactNode): Parsed {
-  const parsed: Parsed = { types: [], layout: null, stage: null, empty: null, chrome: null };
+  const parsed: Parsed = {
+    types: [],
+    layout: null,
+    floating: [],
+    stage: null,
+    empty: null,
+    chrome: null,
+    backdrop: null,
+    stageEmpty: null,
+  };
   const layouts: LayoutSpec[] = [];
   const toSpec = (el: ReactElement): LayoutSpec | null => {
     const props = el.props as any;
@@ -298,7 +332,14 @@ function parse(children: ReactNode): Parsed {
     if (el.type === ViewType) parsed.types.push(el.props as ViewTypeProps);
     else if (el.type === Empty) parsed.empty = (el.props as any).children;
     else if (el.type === Chrome) parsed.chrome = (el.props as any).children;
-    else {
+    else if (el.type === Backdrop) parsed.backdrop = (el.props as any).children;
+    else if (el.type === StageEmpty) parsed.stageEmpty = (el.props as any).children;
+    else if (el.type === Floating) {
+      const props = el.props as FloatingProps;
+      const inner = flatten(props.children).map(toSpec)[0];
+      if (inner && (inner.kind === "panel" || inner.kind === "view"))
+        parsed.floating.push({ panel: inner, rect: props.rect, layer: props.layer });
+    } else {
       const spec = toSpec(el);
       if (spec) layouts.push(spec);
     }
@@ -321,6 +362,8 @@ export interface WorkspaceProps {
   tokens?: Record<string, string>;
   keymap?: Keymap;
   panelMenu?: boolean;
+  /** Where the built-in "Hide" animates to, e.g. your dock or tray button. */
+  hideToward?(panelId: string): Element | { x: number; y: number; w: number; h: number } | null | undefined;
   label?: string;
   /** Persist to localStorage under this key. Bump `version` when your default layout changes. */
   storageKey?: string;
@@ -385,7 +428,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
         t.id,
         typeof t.title === "function" ? "ƒ" : t.title,
         isMarkup(t.icon) ? t.icon : "",
-        typeof t.iframe === "function" ? "ƒ" : t.iframe,
+        typeof t.iframe === "function" ? "ƒ" : JSON.stringify(t.iframe ?? null),
         !!t.mount,
         t.menu === undefined,
         t.placement,
@@ -418,9 +461,13 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       panelMenu: p.panelMenu,
       label: p.label,
       document: p.document,
-      defaultLayout: initial.layout ?? p.defaultLayout ?? null,
+      defaultLayout:
+        initial.layout || initial.floating.length
+          ? createDocument(initial.layout, { floating: initial.floating })
+          : (p.defaultLayout ?? null),
       persist: p.storageKey ? { key: p.storageKey, version: p.version } : undefined,
       onMissingType: (type, id) => latest.current.props.onMissingType?.(type, id) ?? "placeholder",
+      hideToward: (panelId) => latest.current.props.hideToward?.(panelId),
     });
     const offs = [
       handle.on("change", (doc) => {
@@ -462,9 +509,10 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       tokens: props.tokens,
       keymap: props.keymap,
       panelMenu: props.panelMenu,
+      label: props.label,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ws, props.floating, props.navigation, props.motion, props.theme, tokensKey, keymapKey, props.panelMenu]);
+  }, [ws, props.floating, props.navigation, props.motion, props.theme, tokensKey, keymapKey, props.panelMenu, props.label]);
   // Type registrations: data changes by key; functions refreshed every render through getters.
   useIsomorphicLayoutEffect(() => {
     if (ws) ws.update({ types: buildTypes() });
@@ -499,8 +547,10 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
         surfaces.map((surface) => (
           <SurfacePortal key={surface.view.id} surface={surface} type={typeById.get(surface.view.type)} />
         ))}
-      {ws && parsed.stage?.backdrop != null && createPortal(parsed.stage.backdrop, ws.slots.backdrop)}
-      {ws && parsed.stage?.empty != null && createPortal(parsed.stage.empty, ws.slots.stageEmpty)}
+      {ws && (parsed.stage?.backdrop ?? parsed.backdrop) != null &&
+        createPortal(parsed.stage?.backdrop ?? parsed.backdrop, ws.slots.backdrop)}
+      {ws && (parsed.stage?.empty ?? parsed.stageEmpty) != null &&
+        createPortal(parsed.stage?.empty ?? parsed.stageEmpty, ws.slots.stageEmpty)}
       {ws && parsed.empty != null && createPortal(parsed.empty, ws.slots.empty)}
       {ws && parsed.chrome != null && createPortal(parsed.chrome, ws.slots.chrome)}
     </WorkspaceContext.Provider>
@@ -509,11 +559,20 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
 type WorkspaceComponent = ForwardRefExoticComponent<Omit<WorkspaceProps, "ref"> & RefAttributes<WorkspaceHandle>> & {
   /** Rendered when the workspace has nothing in it. */
   Empty: typeof Empty;
+  /** Behind the stage's panels (like `<Stage backdrop>`, but usable with data layouts). */
+  Backdrop: typeof Backdrop;
+  /** Shown while the stage is empty (like `<Stage empty>`, but usable with data layouts). */
+  StageEmpty: typeof StageEmpty;
   /** A full-size layer above the workspace for your own overlays. */
   Chrome: typeof Chrome;
 };
 /** A dockable workspace. Children declare view types, the initial layout and slots. */
-export const Workspace = Object.assign(forwardRef(WorkspaceImpl), { Empty, Chrome }) as WorkspaceComponent;
+export const Workspace = Object.assign(forwardRef(WorkspaceImpl), {
+  Empty,
+  Chrome,
+  Backdrop,
+  StageEmpty,
+}) as WorkspaceComponent;
 const noSurfaces: readonly Surface[] = [];
 
 function SurfacePortal({ surface, type }: { surface: Surface; type: ViewTypeProps<any> | undefined }) {

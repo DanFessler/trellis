@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import reactSample from "../snippets/react-sample.md";
 import vanillaSample from "../snippets/vanilla-sample.md";
+import elementSample from "../snippets/element-sample.md";
 import { Arrow, Check, External, Heart } from "../components/icons";
 import { SPONSORS_URL } from "../components/Nav";
 import { Link } from "../router";
@@ -9,6 +10,7 @@ import { Link } from "../router";
 const SAMPLES = [
   { id: "react", label: "React", html: reactSample.html },
   { id: "vanilla", label: "Vanilla TS", html: vanillaSample.html },
+  { id: "element", label: "Web component", html: elementSample.html },
 ];
 
 export function CodeSample() {
@@ -24,10 +26,10 @@ export function CodeSample() {
             docking, focus, motion and persistence; your content just renders.
           </p>
           <ul className="checks">
-            <li><Check /> Initial layout in JSX or with the <code>layout</code> builder</li>
-            <li><Check /> <code>open()</code> with placement, reuse and singleton rules</li>
-            <li><Check /> Hooks for view state, titles, badges and close guards</li>
-            <li><Check /> One JSON document for persistence or controlled state</li>
+            <li><Check /><span>Initial layout in JSX or with the <code>layout</code> builder</span></li>
+            <li><Check /><span><code>open()</code> with placement, reuse and singleton rules</span></li>
+            <li><Check /><span>Hooks for view state, titles, badges and close guards</span></li>
+            <li><Check /><span>One JSON document for persistence or controlled state</span></li>
           </ul>
           <div className="code-links">
             <Link className="btn btn-ghost" href="/docs/quick-start-react">React quick start</Link>
@@ -62,13 +64,20 @@ interface ExampleInfo {
   shape: "paint" | "ide" | "desktop" | "vanilla";
 }
 const EXAMPLES: ExampleInfo[] = [
-  { name: "paint", title: "Paint", body: "An art program: a canvas on the stage, tool palettes docked at the sides, and floating pickers.", tags: ["React", "stage", "floating"], shape: "paint" },
-  { name: "ide", title: "IDE", body: "A code editor with a file tree, editor tabs, a terminal and live-preview iframes that survive every move.", tags: ["React", "iframes", "persistence"], shape: "ide" },
-  { name: "desktop", title: "Desktop", body: "A desktop environment built only from primitives: windows are floats, the dock is a hide/restore tray.", tags: ["React", "hide/restore", "free zoom"], shape: "desktop" },
-  { name: "vanilla", title: "Vanilla", body: "No framework at all — createWorkspace, the layout builder and plain DOM mount functions.", tags: ["TypeScript", "core only"], shape: "vanilla" },
+  { name: "paint", title: "Paint", body: "An art program: documents on the stage, brush, color, layers and navigator palettes docked around it.", tags: ["React", "stage", "palettes"], shape: "paint" },
+  { name: "ide", title: "IDE", body: "Explorer, editor tabs, terminal, problems and outline — plus a live-preview iframe that keeps running through every move.", tags: ["React", "iframes", "persistence"], shape: "ide" },
+  { name: "desktop", title: "Desktop", body: "A desktop built only from primitives: windows are stage floats, the dock restores hidden panels, and you can zoom around it.", tags: ["React", "floating", "free zoom"], shape: "desktop" },
+  { name: "vanilla", title: "Ops dashboard", body: "No framework: live charts, logs and a runbook iframe with createWorkspace and plain DOM — plus a <trellis-workspace> version.", tags: ["TypeScript", "core", "custom element"], shape: "vanilla" },
 ];
 
 function ExampleThumb({ shape }: { shape: ExampleInfo["shape"] }) {
+  const [failed, setFailed] = useState(false);
+  if (!failed)
+    return (
+      <div className="thumb thumb-shot" aria-hidden="true">
+        <img src={`/thumbs/${shape}.jpg`} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
+      </div>
+    );
   return (
     <div className={`thumb thumb-${shape}`} aria-hidden="true">
       {shape === "paint" && (
@@ -122,7 +131,7 @@ export function Examples() {
         <header className="section-head">
           <p className="eyebrow">Examples</p>
           <h2>Same engine. Very different tools.</h2>
-          <p className="section-lede">Full applications built with Trellis. Open one, rearrange everything, and reload — your layout comes back.</p>
+          <p className="section-lede">Complete applications built with Trellis. Open one in a new tab and rearrange everything.</p>
         </header>
         <div className="examples">
           {EXAMPLES.map((e) => {
@@ -157,32 +166,43 @@ export function Pricing() {
           <p className="eyebrow">License</p>
           <h2>Free to explore. Fair to ship.</h2>
           <p className="section-lede">
-            Trellis is source-available under a three-tier license. Personal and non-commercial work is free; small
-            commercial teams sponsor; larger organizations get an enterprise agreement.
+            Trellis is source-available. Non-commercial work is free; commercial use is licensed through GitHub
+            Sponsors; organizations with more than ten people get an enterprise agreement.
           </p>
         </header>
         <div className="tiers">
           <article className="tier">
             <h3>Non-commercial</h3>
             <p className="price">Free</p>
-            <p className="tier-desc">Personal projects, learning, open-source and other non-commercial use.</p>
+            <p className="tier-desc">Personal, educational and other non-commercial projects.</p>
             <ul>
-              <li><Check /> Use, modify and distribute</li>
-              <li><Check /> All packages and features</li>
-              <li><Check /> Community support on GitHub</li>
+              <li><Check /> Use, modify and share</li>
+              <li><Check /> Every package and feature</li>
+              <li><Check /> Community support</li>
             </ul>
             <Link className="btn btn-ghost" href="/docs/installation">Install Trellis</Link>
           </article>
-          <article className="tier featured">
-            <div className="tier-badge">Most teams</div>
-            <h3>Commercial</h3>
-            <p className="price">
-              GitHub Sponsors <small>· ≤ 10 developers</small>
-            </p>
-            <p className="tier-desc">For commercial products built by organizations with ten or fewer developers.</p>
+          <article className="tier">
+            <h3>Individual</h3>
+            <p className="price">$10<small>/month</small></p>
+            <p className="tier-desc">Commercial use by an individual, while you sponsor on GitHub.</p>
             <ul>
-              <li><Check /> Commercial license while you sponsor</li>
-              <li><Check /> Everything in Non-commercial</li>
+              <li><Check /> Commercial projects & client work</li>
+              <li><Check /> Bundle in products you ship</li>
+              <li><Check /> Directly funds development</li>
+            </ul>
+            <a className="btn btn-ghost" href={SPONSORS_URL} target="_blank" rel="noreferrer">
+              <Heart /> Sponsor
+            </a>
+          </article>
+          <article className="tier featured">
+            <div className="tier-badge">Teams</div>
+            <h3>Studio</h3>
+            <p className="price">$100<small>/month</small></p>
+            <p className="tier-desc">A studio-wide commercial license for organizations of ten or fewer.</p>
+            <ul>
+              <li><Check /> Everyone on the team is covered</li>
+              <li><Check /> Internal tools & products</li>
               <li><Check /> Directly funds development</li>
             </ul>
             <a className="btn btn-primary" href={SPONSORS_URL} target="_blank" rel="noreferrer">
@@ -192,7 +212,7 @@ export function Pricing() {
           <article className="tier">
             <h3>Enterprise</h3>
             <p className="price">Let’s talk</p>
-            <p className="tier-desc">More than ten developers, or you need custom terms, priority support or SLAs.</p>
+            <p className="tier-desc">More than ten people, or you need custom terms, priority support or SLAs.</p>
             <ul>
               <li><Check /> Custom licensing terms</li>
               <li><Check /> Priority support</li>
@@ -202,7 +222,7 @@ export function Pricing() {
           </article>
         </div>
         <p className="tiers-foot">
-          Not legal advice — the <Link href="/docs/license">license terms</Link> are what count.
+          Prices are GitHub Sponsors tiers. A summary, not legal advice — read the <Link href="/docs/license">license terms</Link>.
         </p>
       </div>
     </section>

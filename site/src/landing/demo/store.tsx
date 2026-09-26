@@ -6,6 +6,8 @@ export interface Stroke {
   color: string;
   size: number;
   points: Point[];
+  /** Closed shapes are filled with this color. */
+  fill?: string;
 }
 export interface Layer {
   id: string;
@@ -56,7 +58,7 @@ function seed(): Stroke[] {
       const width = Math.sin(t * Math.PI) * len * 0.34 * side;
       pts.push([cx + Math.cos(angle) * along - Math.sin(angle) * width, cy + Math.sin(angle) * along + Math.cos(angle) * width]);
     }
-    return { layer: "leaves", color, size: 5, points: pts };
+    return { layer: "leaves", color: "#3f7a26", size: 3, points: pts, fill: color };
   };
   const leaves: [number, number, number, number, string][] = [
     [170, 520, -2.2, 70, "#6fbf3a"],
@@ -76,7 +78,7 @@ function seed(): Stroke[] {
       const r = 16 + Math.sin(a * 5) * 7;
       petals.push([x + Math.cos(a) * r, y + Math.sin(a) * r]);
     }
-    strokes.push({ layer: "leaves", color: "#e98a5a", size: 5, points: petals });
+    strokes.push({ layer: "leaves", color: "#d9683f", size: 3, points: petals, fill: "#f2a07a" });
     strokes.push({ layer: "leaves", color: "#f2d45c", size: 9, points: [[x, y], [x + 0.5, y + 0.5]] });
   }
   return strokes;

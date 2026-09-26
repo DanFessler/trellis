@@ -26,6 +26,11 @@ function drawStroke(ctx: CanvasRenderingContext2D, s: Stroke) {
     ctx.quadraticCurveTo(pts[i][0], pts[i][1], mx, my);
   }
   if (pts.length > 1) ctx.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
+  if (s.fill) {
+    ctx.closePath();
+    ctx.fillStyle = s.fill;
+    ctx.fill();
+  }
   ctx.stroke();
 }
 

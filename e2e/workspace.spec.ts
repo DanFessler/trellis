@@ -366,3 +366,34 @@ test.describe("custom element", () => {
     await expect(surface(page, id).locator(".note")).toHaveText("Note second");
   });
 });
+
+test.describe("stage-floating windows", () => {
+  test("can be framed, and free zoom snaps to them", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&floating=stage&navigation=free");
+    await expect(tab(page, "a")).toBeVisible();
+    const id = await page.evaluate(() => (window as any).ws.open("files", { placement: "float" }).panelId);
+    expect(await page.evaluate((p) => (window as any).ws.navigation.toggle(p), id)).toBe(true);
+    await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).toBe(id);
+    await expect.poll(async () => (await box(panel(page, id))).width).toBeGreaterThan(1100);
+    await page.evaluate(() => (window as any).ws.navigation.back());
+    await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).toBeNull();
+  });
+  test("overlay floats cannot be framed", async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    const ok = await page.evaluate(() => {
+      const ws = (window as any).ws;
+      const p = ws.open("files", { placement: "float" }).panelId;
+      return ws.navigation.toggle(p);
+    });
+    expect(ok).toBe(false);
+  });
+  test("tokens removed from options are cleared", async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await page.evaluate(() => (window as any).ws.update({ tokens: { "--trellis-panel": "rgb(1, 2, 3)" } }));
+    const bg = () => page.locator("[data-trellis-part=panel]").first().evaluate((e) => getComputedStyle(e).backgroundColor);
+    expect(await bg()).toBe("rgb(1, 2, 3)");
+    await page.evaluate(() => (window as any).ws.update({ tokens: {} }));
+    expect(await bg()).not.toBe("rgb(1, 2, 3)");
+  });
+});

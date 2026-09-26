@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWorkspace, useWorkspaceState } from "@danfessler/trellis-react";
 import type { LayoutNode, PanelNode, Rect } from "@danfessler/trellis";
 import { STAGE_ID, appById, pageFor } from "./apps";
@@ -22,8 +22,8 @@ function panelsOf(node: LayoutNode | null | undefined): PanelNode[] {
 }
 
 /**
- * Layout + framed region, drawn from the workspace snapshot. Trellis does not publish the live
- * camera, so the frame outline eases between framings with CSS rather than tracking gestures.
+ * Layout from the workspace snapshot (React), plus the live camera drawn imperatively from
+ * `ws.on("camera")` so zoom/pan gestures are tracked every frame without re-rendering.
  */
 export function Minimap({ wallpaper }: { wallpaper: string }) {
   const ws = useWorkspace();
@@ -39,6 +39,19 @@ export function Minimap({ wallpaper }: { wallpaper: string }) {
   }, [ws]);
 
   const H = Math.round(WIDTH * aspect);
+  const cameraEl = useRef<SVGRectElement>(null);
+  useEffect(() => {
+    const draw = (r: Rect) => {
+      const el = cameraEl.current;
+      if (!el) return;
+      el.setAttribute("x", String(r.x * WIDTH + 0.75));
+      el.setAttribute("y", String(r.y * H + 0.75));
+      el.setAttribute("width", String(Math.max(1, r.w * WIDTH - 1.5)));
+      el.setAttribute("height", String(Math.max(1, r.h * H - 1.5)));
+    };
+    draw(ws.navigation.camera);
+    return ws.on("camera", draw);
+  }, [ws, H]);
   const doc = state.document;
   const rects = worldRects(doc.root);
   const toMap = (r: Rect, pad = 1.5) => ({
@@ -49,7 +62,6 @@ export function Minimap({ wallpaper }: { wallpaper: string }) {
   });
   const stage = rects.get(STAGE_ID) ?? { x: 0, y: 0, w: 1, h: 1 };
   const stageMap = toMap(stage, 1);
-  const frame = toMap(state.framed ? (rects.get(state.framed) ?? { x: 0, y: 0, w: 1, h: 1 }) : { x: 0, y: 0, w: 1, h: 1 }, 0.75);
   const focusedPanel = state.focusedPanel;
 
   const label = (panel: PanelNode) => {
@@ -110,7 +122,7 @@ export function Minimap({ wallpaper }: { wallpaper: string }) {
             return tile(f.panel, { x: c.x + f.rect.x * c.w, y: c.y + f.rect.y * c.h, w: f.rect.w * c.w, h: f.rect.h * c.h }, true);
           })}
         </g>
-        <rect className="minimap-frame" style={{ x: frame.x, y: frame.y, width: frame.width, height: frame.height }} rx={3.5} />
+        <rect ref={cameraEl} className="minimap-frame" rx={3.5} />
       </svg>
     </aside>
   );

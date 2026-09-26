@@ -47,6 +47,7 @@ import { Emitter, Lifetime } from "./lifetime";
 import { Menu } from "./menu";
 import { lerpRect, LayoutTween, MOTION, RectSpring, sameRect } from "./motion";
 import type {
+  IframeOptions,
   MenuEntry,
   MenuItem,
   OpenOptions,
@@ -241,10 +242,16 @@ export function createWorkspace(
   }
 
   // ---------------------------------------------------------------- theme
+  let appliedTokens = new Set<string>();
   function applyTheme() {
     setAttr(root, "data-theme", options.theme ?? "system");
-    for (const [key, value] of Object.entries(options.tokens ?? {}))
-      root.style.setProperty(key, value);
+    setAttr(root, "aria-label", options.label ?? "Workspace");
+    const tokens = options.tokens ?? {};
+    for (const key of appliedTokens) if (!(key in tokens)) root.style.removeProperty(key);
+    for (const [key, value] of Object.entries(tokens))
+      if (value === "" || value == null) root.style.removeProperty(key);
+      else root.style.setProperty(key, value);
+    appliedTokens = new Set(Object.keys(tokens));
     setAttr(root, "data-navigation", String(navigationMode()));
     readMetrics();
   }
@@ -384,6 +391,8 @@ export function createWorkspace(
       surface: { view: controller, content, icon, accessory },
     };
     records.set(viewId, record);
+    // Title functions receive the view handle, which only exists now.
+    controller.update({ title: titleOf(viewId) });
     lifetime.listen(shell, "pointerdown", () => focusView(viewId, false), { capture: true });
     lifetime.listen(shell, "focusin", () => focusView(viewId, false));
     mountContent(record);
@@ -395,12 +404,9 @@ export function createWorkspace(
     const def = typeOf(record.controller.id);
     record.mountedWith = def;
     setAttr(record.shell, "class", def.className ?? null);
-    const src = def.iframe
-      ? typeof def.iframe === "function"
-        ? def.iframe(record.controller)
-        : def.iframe
-      : null;
-    const key: unknown = src !== null ? `iframe:${src}` : (def.mount ?? null);
+    const raw = def.iframe ? (typeof def.iframe === "function" ? def.iframe(record.controller) : def.iframe) : null;
+    const frame: IframeOptions | null = raw === null ? null : typeof raw === "string" ? { src: raw } : raw;
+    const key: unknown = frame ? `iframe:${JSON.stringify(frame)}` : (def.mount ?? null);
     if (key !== record.mountKey) {
       if (record.mountKey !== null) {
         try {
@@ -412,8 +418,16 @@ export function createWorkspace(
         record.content.replaceChildren();
       }
       record.mountKey = key;
-      if (src !== null) {
-        const frameEl = h("iframe", { src, title: titleOf(record.controller.id), "data-trellis-iframe": "" });
+      if (frame) {
+        const frameEl = h("iframe", {
+          src: frame.src,
+          srcdoc: frame.srcdoc,
+          sandbox: frame.sandbox,
+          allow: frame.allow,
+          referrerpolicy: frame.referrerPolicy,
+          title: frame.title ?? titleOf(record.controller.id),
+          "data-trellis-iframe": "",
+        });
         record.content.append(frameEl);
         record.cleanup = () => frameEl.remove();
       } else if (def.mount) {
@@ -490,7 +504,7 @@ export function createWorkspace(
     lifetime.listen(tabbar, "dblclick", (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest("button:not([data-trellis-part=tab]), [data-trellis-part=accessory]")) return;
-      if (navigationMode() && !doc.floating.some((f) => f.panel.id === d.id)) toggleFrame(d.id);
+      if (navigationMode()) toggleFrame(d.id);
     });
     lifetime.listen(menuButton, "click", (e: MouseEvent) => {
       e.stopPropagation();
@@ -622,7 +636,7 @@ export function createWorkspace(
         const record = records.get(viewId);
         if (record) {
           setAttr(record.accessory, "hidden", selected ? null : "");
-          setAttr(record.icon, "hidden", record.icon.childNodes.length ? null : "");
+          if (record.controller.state.title !== title) record.controller.update({ title });
         }
       }
       setAttr(dom.el, "data-focused", focusedPanel === panelId ? "" : null);
@@ -1100,17 +1114,24 @@ export function createWorkspace(
   function focusView(viewId: string, moveDom: boolean) {
     if (!doc.views[viewId]) return;
     setFocus(viewId);
-    if (moveDom) {
-      const record = records.get(viewId);
-      const target = record?.content.querySelector<HTMLElement>(
-        "[autofocus], iframe, input, textarea, select, button, [tabindex]:not([tabindex='-1'])",
-      );
-      if (target) target.focus({ preventScroll: true });
-      else {
-        const dom = panelDoms.get(panelOfView(doc, viewId)?.id ?? "");
-        dom?.tabs.get(viewId)?.el.focus({ preventScroll: true });
-      }
-    }
+    raiseIfFloating(viewId);
+    // Adapters render content asynchronously; move DOM focus once it has had a frame to mount.
+    if (moveDom) lifetime.frame(() => moveFocusInto(viewId));
+  }
+  function raiseIfFloating(viewId: string) {
+    const panel = panelOfView(doc, viewId);
+    if (!panel || drag?.active) return;
+    const raised = raiseFloat(doc, panel.id);
+    if (raised !== doc) commit(raised, { animate: false, silent: true });
+  }
+  function moveFocusInto(viewId: string) {
+    if (focusedView !== viewId) return;
+    const record = records.get(viewId);
+    const target = record?.content.querySelector<HTMLElement>(
+      "[autofocus], iframe, input, textarea, select, button, [tabindex]:not([tabindex='-1'])",
+    );
+    if (target) target.focus({ preventScroll: true });
+    else panelDoms.get(panelOfView(doc, viewId)?.id ?? "")?.tabs.get(viewId)?.el.focus({ preventScroll: true });
   }
   function selectAndFocus(viewId: string) {
     const next = selectView(doc, viewId);
@@ -1270,9 +1291,10 @@ export function createWorkspace(
     };
     const panel: PanelNode = { kind: "panel", id: uid("panel"), views: [id], selected: id };
     const next = placePanel(withRecord, panel, o.placement ?? defaultPlacement(type));
-    commit(next);
+    const from = o.from ? new Map([[panel.id, towardRect(o.from, { x: 0, y: 0, w: 0, h: 0 })]]) : undefined;
+    commit(next, { from });
     const appeared = panelDoms.get(panel.id);
-    if (appeared) appear(appeared.el, panel.views);
+    if (appeared && !from) appear(appeared.el, panel.views);
     if (o.focus !== false) {
       const target = panelOfView(doc, id);
       if (target && doc.floating.some((f) => f.panel.id === target.id)) commit(raiseFloat(doc, target.id), { silent: true, animate: false });
@@ -1314,7 +1336,16 @@ export function createWorkspace(
   function ensureFramedVisible(viewId: string) {
     if (!framed) return;
     const panel = panelOfView(doc, viewId);
-    if (!panel || regionOf(panel.id) === "floating") return;
+    if (!panel) return;
+    const float = doc.floating.find((f) => f.panel.id === panel.id);
+    if (float) {
+      // A window floating in the stage is visible when the frame contains the stage (or is the window).
+      const stage = findStage(doc.root);
+      const frameNode = findNode(doc.root, framed);
+      if (float.layer === "overlay" || framed === panel.id || (stage && frameNode && findNode(frameNode, stage.id))) return;
+      frameTo(null);
+      return;
+    }
     const frameNode = findNode(doc.root, framed);
     if (frameNode && findNode(frameNode, panel.id)) return;
     frameTo(null);
@@ -1348,6 +1379,9 @@ export function createWorkspace(
     if (owner && owner.views.length > 1 && !doc.hidden.some((x) => x.panel.id === owner.id)) {
       const alone: PanelNode = { kind: "panel", id: uid("panel"), views: [id], selected: id };
       const detached = detachView(doc, id);
+      const from = lastRects.get(owner.id);
+      if (from && !reduced())
+        leaving.set(alone.id, { panel: alone, from, to: towardRect(o.toward, from), start: performance.now(), duration: 300 });
       commit({ ...detached, hidden: [...detached.hidden, { panel: alone, restore: { kind: "tab", panel: owner.id } }] });
       return;
     }
@@ -1468,7 +1502,7 @@ export function createWorkspace(
       const builtIns: MenuEntry[] = [];
       const keymap = { ...DEFAULT_KEYMAP, ...options.keymap };
       const hint = (c: Command) => (keymap[c] ? formatCombo(keymap[c]!) : undefined);
-      if (navigationMode() && region !== "floating")
+      if (navigationMode() && frameRect(panelId))
         builtIns.push({
           label: framed === panelId ? "Restore size" : "Maximize",
           shortcut: hint("frame.toggle"),
@@ -1497,7 +1531,10 @@ export function createWorkspace(
           { label: "New split below", run: () => dock(viewId, { beside: panelId, edge: "bottom" }) },
         );
       if (moves.length) builtIns.push({ label: `Move ${titleOf(viewId)} to`, items: moves as MenuItem[] });
-      builtIns.push({ label: "Hide", run: () => hide(panelId) });
+      builtIns.push({
+        label: "Hide",
+        run: () => hide(panelId, { toward: options.hideToward?.(panelId) ?? undefined }),
+      });
       if (entries.length && builtIns.length) entries.push("separator");
       entries.push(...builtIns);
       const closable = panel.views.filter((v) => typeOf(v).closable !== false);
@@ -1627,14 +1664,21 @@ export function createWorkspace(
   // ---------------------------------------------------------------- navigation
   function nodeForFrame(target: string | string[] | "all" | "stage"): string | null {
     if (target === "all") return null;
-    if (target === "stage") return findStage(doc.root)?.id ?? null;
+    if (target === "stage") {
+      const stage = findStage(doc.root)?.id ?? null;
+      return stage === doc.root?.id ? null : stage;
+    }
     const ids = (Array.isArray(target) ? target : [target])
-      .map((id) => (findNode(doc.root, id) ? id : (panelOfView(doc, id)?.id ?? null)))
-      .filter((id): id is string => !!id && !!findNode(doc.root, id));
+      .map((id) => (frameRect(id) ? id : (panelOfView(doc, id)?.id ?? null)))
+      .filter((id): id is string => !!id && !!frameRect(id));
     if (!ids.length) return null;
+    // A single floating window frames itself.
+    if (ids.length === 1 && !findNode(doc.root, ids[0])) return ids[0];
+    const docked = ids.filter((id) => findNode(doc.root, id));
+    if (!docked.length) return null;
     let best: Entry | null = null;
     for (const entry of entries.values()) {
-      if (!ids.every((id) => findNode(entry.node, id))) continue;
+      if (!docked.every((id) => findNode(entry.node, id))) continue;
       if (!best || entry.rect.w * entry.rect.h < best.rect.w * best.rect.h) best = entry;
     }
     const id = best?.node.id ?? null;
@@ -1656,21 +1700,30 @@ export function createWorkspace(
     emitChange();
   }
   function retarget() {
-    if (framed && !findNode(doc.root, framed)) {
+    if (framed && !frameRect(framed)) {
       framed = null;
       setAttr(root, "data-framed", null);
     }
-    const target = framed ? (entries.get(framed)?.rect ?? UNIT) : UNIT;
+    const target = framed ? (frameRect(framed) ?? UNIT) : UNIT;
     if (!sameRect(camera.target, target)) {
       camera.target = { ...target };
       if (reduced()) camera.finish();
       schedule();
     }
   }
+  /** World rect a node or stage-floating panel can be framed at; null if it can't be framed. */
+  function frameRect(id: string): Rect | null {
+    const entry = entries.get(id);
+    if (entry) return entry.rect;
+    const float = doc.floating.find((f) => f.panel.id === id);
+    if (!float || float.layer !== "stage") return null;
+    const s = stageWorld();
+    return { x: s.x + float.rect.x * s.w, y: s.y + float.rect.y * s.h, w: float.rect.w * s.w, h: float.rect.h * s.h };
+  }
   function toggleFrame(id: string): boolean {
     if (!navigationMode()) return false;
-    const nodeId = findNode(doc.root, id) ? id : (panelOfView(doc, id)?.id ?? null);
-    if (!nodeId || !findNode(doc.root, nodeId)) return false;
+    const nodeId = frameRect(id) ? id : (panelOfView(doc, id)?.id ?? null);
+    if (!nodeId || !frameRect(nodeId)) return false;
     if (framed === nodeId) back();
     else frameTo(nodeId === doc.root?.id ? null : nodeId);
     return true;
@@ -1679,14 +1732,14 @@ export function createWorkspace(
     if (historyIndex > 0) {
       historyIndex--;
       const id = history[historyIndex];
-      frameTo(id && findNode(doc.root, id) ? id : null, false);
+      frameTo(id && frameRect(id) ? id : null, false);
     } else if (framed) frameTo(null);
   }
   function forward() {
     if (historyIndex < history.length - 1) {
       historyIndex++;
       const id = history[historyIndex];
-      frameTo(id && findNode(doc.root, id) ? id : null, false);
+      frameTo(id && frameRect(id) ? id : null, false);
     }
   }
 
@@ -1754,9 +1807,9 @@ export function createWorkspace(
     const c = camera.value;
     let best: string | null = null;
     let score = Infinity;
-    for (const [id, e] of entries) {
-      if (e.node.kind === "stage" && e.node.child) continue;
-      const r = e.rect;
+    const candidates: [string, Rect][] = [...entries].filter(([, e]) => !(e.node.kind === "stage" && e.node.child)).map(([id, e]) => [id, e.rect]);
+    for (const f of doc.floating) if (f.layer === "stage") candidates.push([f.panel.id, frameRect(f.panel.id)!]);
+    for (const [id, r] of candidates) {
       const size = Math.abs(Math.log(r.w / c.w)) + Math.abs(Math.log(r.h / c.h));
       const distance = Math.hypot(
         (r.x + r.w / 2 - c.x - c.w / 2) / c.w,
@@ -1770,7 +1823,7 @@ export function createWorkspace(
     }
     const nodeId = best === doc.root?.id ? null : best;
     if (nodeId === framed) {
-      camera.target = { ...(framed ? entries.get(framed)!.rect : UNIT) };
+      camera.target = { ...(framed ? (frameRect(framed) ?? UNIT) : UNIT) };
       schedule();
     } else frameTo(nodeId);
   }
@@ -2316,7 +2369,7 @@ export function createWorkspace(
     framings = prepared.navigation?.framings ?? framings;
     commit(prepared, { animate: o.animate ?? true });
     const frameId = prepared.navigation?.frame?.[0];
-    if (frameId && findNode(doc.root, frameId)) frameTo(frameId);
+    if (frameId && frameRect(frameId)) frameTo(frameId);
   }
   applyTheme();
   const ro = new ResizeObserver(() => {
@@ -2342,13 +2395,13 @@ export function createWorkspace(
     framings = doc.navigation?.framings ?? [];
     sync();
     const frameId = doc.navigation?.frame?.[0];
-    if (frameId && findNode(doc.root, frameId) && navigationMode()) {
+    if (frameId && frameRect(frameId) && navigationMode()) {
       framed = frameId;
       history = [null, frameId];
       historyIndex = 1;
       setAttr(root, "data-framed", "");
     }
-    camera.jump(framed ? entries.get(framed)!.rect : UNIT);
+    camera.jump(framed ? (frameRect(framed) ?? UNIT) : UNIT);
     const first = panelsOf(doc.root)[0] ?? doc.floating[0]?.panel;
     if (first) setFocus(first.selected, false);
     render();
@@ -2443,7 +2496,7 @@ export function createWorkspace(
     update(patch) {
       const typesChanged = patch.types && patch.types !== options.types;
       options = { ...options, ...patch };
-      if ("theme" in patch || "tokens" in patch || "navigation" in patch) applyTheme();
+      if ("theme" in patch || "tokens" in patch || "navigation" in patch || "label" in patch) applyTheme();
       if ("navigation" in patch && !navigationMode()) frameTo(null, false);
       if (typesChanged) {
         for (const record of records.values()) mountContent(record);

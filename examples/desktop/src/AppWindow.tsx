@@ -39,6 +39,9 @@ export function AppFrame({ app }: { app: AppDefinition }) {
     bridge.current = controller;
     const { signal } = controller;
     const id = viewRef.current.id;
+    // open() moves focus into the view before React has portaled the iframe in, so focus lands
+    // on the tab. Hand it to the document once it exists.
+    if (viewRef.current.focused && document.activeElement?.closest("[data-trellis-part=tab]")) frame.focus();
 
     doc.addEventListener("pointerdown", () => raise(ws, id), { capture: true, signal });
 
@@ -116,6 +119,9 @@ export function WindowControls({ app }: { app: AppDefinition }) {
   const ws = useWorkspace();
   const page = pageFor(app, view.params);
   const zoomed = isZoomed(ws, view.id);
+  // view.title can still be the type id for function titles (see notes/desktop-agent.md), so name
+  // the window from the page itself.
+  const name = page.heading;
   return (
     <div className="window-accessory">
       <span className="window-detail">{page.detail}</span>
@@ -123,7 +129,7 @@ export function WindowControls({ app }: { app: AppDefinition }) {
         <button
           type="button"
           className="light light-zoom"
-          aria-label={zoomed ? `Restore ${view.title}` : `Zoom ${view.title}`}
+          aria-label={zoomed ? `Restore ${name}` : `Zoom ${name}`}
           title={zoomed ? "Restore" : "Zoom"}
           onClick={() => zoom(ws, view.id)}
         >
@@ -134,7 +140,7 @@ export function WindowControls({ app }: { app: AppDefinition }) {
         <button
           type="button"
           className="light light-minimize"
-          aria-label={`Minimize ${view.title}`}
+          aria-label={`Minimize ${name}`}
           title="Minimize to Dock"
           onClick={() => minimize(ws, view.id)}
         >
@@ -145,7 +151,7 @@ export function WindowControls({ app }: { app: AppDefinition }) {
         <button
           type="button"
           className="light light-close"
-          aria-label={`Close ${view.title}`}
+          aria-label={`Close ${name}`}
           title="Close"
           onClick={() => void view.close()}
         >

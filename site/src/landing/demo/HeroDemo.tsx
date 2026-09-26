@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { createPortal } from "react-dom";
 import { createDocument, layout as L, ViewType, Workspace, type WorkspaceHandle, type WorkspaceSnapshot } from "@danfessler/trellis-react";
 import { useSiteTheme } from "../../theme";
+import { useMedia } from "../../components/useMedia";
 import { Reset } from "../../components/icons";
 import { LogoMark } from "../../components/Logo";
 import { Brush, CodeView, ColorPicker, Inspector, Layers, PREVIEW_URL, Sketch } from "./panels";
@@ -27,7 +28,7 @@ function desktopLayout() {
       ],
       [1, 3.3, 1.3],
     ),
-    { floating: [{ panel: L.view("brush", { id: "brush" }), rect: { x: 0.035, y: 0.62, w: 0.3, h: 0.34 }, layer: "stage" }] },
+    { floating: [{ panel: L.view("brush", { id: "brush" }), rect: { x: 0.62, y: 0.7, w: 0.35, h: 0.26 }, layer: "stage" }] },
   );
 }
 function compactLayout() {
@@ -35,22 +36,11 @@ function compactLayout() {
     L.column(
       [
         L.stage(L.panel({ id: "p-docs" }, L.view("sketch", { id: "sketch-1", params: { name: "Climbing vine" } }), L.view("code", { id: "code" }))),
-        L.panel({ id: "p-tools" }, L.view("layers", { id: "layers" }), L.view("color", { id: "color" }), L.view("brush", { id: "brush" }), L.view("inspector", { id: "inspector" }), L.view("preview", { id: "preview" })),
+        L.panel({ id: "p-tools" }, L.view("layers", { id: "layers" }), L.view("color", { id: "color" }), L.view("inspector", { id: "inspector" })),
       ],
       [1.6, 1],
     ),
   );
-}
-
-function useMedia(query: string) {
-  const [match, setMatch] = useState(() => matchMedia(query).matches);
-  useEffect(() => {
-    const mq = matchMedia(query);
-    const on = () => setMatch(mq.matches);
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, [query]);
-  return match;
 }
 
 const empty = () => () => {};
@@ -97,9 +87,11 @@ function HeroWorkspace() {
     "--trellis-accent": accent,
     "--trellis-accent-contrast": theme === "dark" ? "#0d1606" : "#ffffff",
     "--trellis-font": `Inter, ui-sans-serif, system-ui, sans-serif`,
+    // Every key appears in both themes: tokens removed from the object are not cleared by the
+    // workspace, so light mode sets "" (which removes the property) for dark-only overrides.
     ...(theme === "dark"
       ? { "--trellis-bg": "#0b0c0b", "--trellis-panel": "#171917", "--trellis-tabbar": "#121412", "--trellis-tab-active": "#171917", "--trellis-stage": "#0f110f", "--trellis-menu": "#1d201d" }
-      : { "--trellis-bg": "#e4e5df", "--trellis-stage": "#eeeee9", "--trellis-tabbar": "#f3f3ef" }),
+      : { "--trellis-bg": "#e4e5df", "--trellis-panel": "", "--trellis-tabbar": "#f3f3ef", "--trellis-tab-active": "", "--trellis-stage": "#eeeee9", "--trellis-menu": "" }),
   };
 
   const artMenu = [

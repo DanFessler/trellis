@@ -39,9 +39,10 @@ export function Landing() {
           <Lattice className="hero-lattice" />
           <div className="hero-glow" aria-hidden="true" />
           <div className="container hero-copy">
-            <Link className="pill" href="/docs/introduction">
+            <Link className="pill" href="/docs/migrating-from-react-dockable">
               <span className="pill-tag">Preview</span>
-              Trellis 0.1 — the successor to react-dockable
+              <span className="pill-long">Trellis 0.1 — the successor to react-dockable</span>
+              <span className="pill-short">The successor to react-dockable</span>
               <Arrow />
             </Link>
             <h1>
@@ -67,7 +68,7 @@ export function Landing() {
           <div className="container hero-demo">
             <HeroDemo />
             <ul className="hints" aria-label="Things to try">
-              <li><span className="hint-key">Drag</span> a tab onto any edge to dock it</li>
+              <li><span className="hint-key">Drag</span> a tab onto a panel edge to dock it</li>
               <li><span className="hint-key">Double-click</span> a tab bar to maximize</li>
               <li><kbd>Alt</kbd> while dragging to float</li>
               <li><kbd>Esc</kbd> to zoom back out</li>

@@ -58,8 +58,7 @@ function SaveFraming({ onDone }: { onDone(): void }) {
 
 /**
  * The prototype's bottom bar: navigation on the left, the dock in the middle, map on the right.
- * It lives outside the workspace, but is rendered through a portal from <Workspace.Chrome> so it
- * can use Trellis's hooks.
+ * It lives outside <Workspace>; <WorkspaceProvider> makes Trellis's hooks work here.
  */
 export function Bar({ map, onToggleMap, onReset }: { map: boolean; onToggleMap(): void; onReset(): void }) {
   const ws = useWorkspace();

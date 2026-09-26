@@ -1,4 +1,4 @@
-import type { LayoutDocument, LayoutNode, Rect, WorkspaceHandle } from "@danfessler/trellis";
+import { layoutRects, type LayoutDocument, type LayoutNode, type Rect, type WorkspaceHandle } from "@danfessler/trellis";
 import { APPS, STAGE_ID, type AppDefinition, type AppParams } from "./apps";
 
 /**
@@ -7,26 +7,9 @@ import { APPS, STAGE_ID, type AppDefinition, type AppParams } from "./apps";
  */
 
 // ------------------------------------------------------------------ geometry
-/** World rects (fractions of the workspace) for every node in the docked tree.
- * Trellis computes these internally but does not export them, so the example mirrors the math. */
-export function worldRects(node: LayoutNode | null, rect: Rect = { x: 0, y: 0, w: 1, h: 1 }, out = new Map<string, Rect>()) {
-  if (!node) return out;
-  out.set(node.id, rect);
-  if (node.kind === "stage") worldRects(node.child ?? null, rect, out);
-  else if (node.kind === "split") {
-    const total = node.weights.reduce((a, b) => a + b, 0) || 1;
-    let offset = 0;
-    node.children.forEach((child, i) => {
-      const share = node.weights[i] / total;
-      const r =
-        node.axis === "x"
-          ? { ...rect, x: rect.x + offset * rect.w, w: rect.w * share }
-          : { ...rect, y: rect.y + offset * rect.h, h: rect.h * share };
-      worldRects(child, r, out);
-      offset += share;
-    });
-  }
-  return out;
+/** World rects (fractions of the whole layout) of every node in the docked tree. */
+export function worldRects(root: LayoutNode | null): Map<string, Rect> {
+  return new Map([...layoutRects(root)].map(([id, entry]) => [id, entry.rect]));
 }
 
 function gapOf(ws: WorkspaceHandle) {
@@ -53,8 +36,8 @@ export function windowRect(ws: WorkspaceHandle, app: AppDefinition, at?: { x: nu
   let x: number;
   let y: number;
   if (at) {
-    x = at.x;
-    y = at.y;
+    x = Math.max(0, Math.min(at.x, desk.w - w));
+    y = Math.max(0, Math.min(at.y, desk.h - h));
   } else {
     const step = (cascade++ % 6) * 30;
     x = (desk.w - w) / 2 - 60 + step;

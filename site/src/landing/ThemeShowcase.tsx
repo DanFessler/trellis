@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMedia } from "../components/useMedia";
 import { Panel, Split, Stage, View, ViewType, Workspace, type Theme } from "@danfessler/trellis-react";
 
 const THEMES: Exclude<Theme, "system">[] = ["light", "medium", "dark", "darker"];
@@ -67,6 +68,7 @@ export function ThemeShowcase() {
   const [radius, setRadius] = useState(10);
   const [gap, setGap] = useState(6);
   const [bar, setBar] = useState(34);
+  const narrow = useMedia("(max-width: 640px)");
 
   const tokens: Record<string, string> = {
     "--trellis-radius": `${radius}px`,
@@ -146,7 +148,7 @@ export function ThemeShowcase() {
             </div>
           </div>
           <div className="theme-stage" data-theme-name={theme}>
-            <Workspace theme={theme} tokens={tokens} label="Theming demo workspace" navigation="focus">
+            <Workspace key={narrow ? "narrow" : "wide"} theme={theme} tokens={tokens} label="Theming demo workspace" navigation="focus">
               <ViewType id="explorer" title="Explorer" singleton allow={{ stage: false }}>
                 <Explorer />
               </ViewType>
@@ -158,26 +160,42 @@ export function ThemeShowcase() {
               </ViewType>
               <ViewType id="outline" title="Outline" allow={{ stage: false }}>
                 <ul className="ts-tree">
-                  <li>.trellis</li>
+                  <li style={{ paddingLeft: 10 }}>.trellis</li>
                   <li style={{ paddingLeft: 24 }}>--trellis-accent</li>
                   <li style={{ paddingLeft: 24 }}>--trellis-radius</li>
                 </ul>
               </ViewType>
-              <Split weights={[1, 3.2]}>
-                <Split axis="y" weights={[1.4, 1]}>
-                  <View type="explorer" />
-                  <View type="outline" />
-                </Split>
-                <Split axis="y" weights={[2.2, 1]}>
+              {narrow ? (
+                <Split axis="y" weights={[2, 1]}>
                   <Stage>
                     <Panel>
                       <View type="file" params={{ name: "theme.css" }} />
                       <View type="file" params={{ name: "tokens.css" }} />
                     </Panel>
                   </Stage>
-                  <View type="terminal" />
+                  <Panel>
+                    <View type="explorer" />
+                    <View type="terminal" />
+                    <View type="outline" />
+                  </Panel>
                 </Split>
-              </Split>
+              ) : (
+                <Split weights={[1, 3.2]}>
+                  <Split axis="y" weights={[1.4, 1]}>
+                    <View type="explorer" />
+                    <View type="outline" />
+                  </Split>
+                  <Split axis="y" weights={[2.2, 1]}>
+                    <Stage>
+                      <Panel>
+                        <View type="file" params={{ name: "theme.css" }} />
+                        <View type="file" params={{ name: "tokens.css" }} />
+                      </Panel>
+                    </Stage>
+                    <View type="terminal" />
+                  </Split>
+                </Split>
+              )}
             </Workspace>
           </div>
         </div>

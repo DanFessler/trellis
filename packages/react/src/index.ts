@@ -6,6 +6,7 @@ export {
   Panel,
   View,
   Stage,
+  Floating,
   useWorkspace,
   useOptionalWorkspace,
   useWorkspaceState,
@@ -23,6 +24,7 @@ export type {
   PanelProps,
   ViewProps,
   StageProps,
+  FloatingProps,
   ViewApi,
 } from "./Workspace";
 export { layout, createDocument, formatCombo } from "@danfessler/trellis";
