@@ -676,3 +676,23 @@
     transition: opacity 100ms;
   }
 }
+
+/* Windows high contrast and other forced-color modes: box-shadows vanish, so draw real borders. */
+@media (forced-colors: active) {
+  :where(.trellis [data-trellis-part="panel"]) {
+    border: 1px solid CanvasText;
+  }
+  :where(.trellis [data-trellis-part="tab"][data-selected]) {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+  :where(.trellis [data-trellis-part="drop-preview"][data-visible]) {
+    border: 2px solid Highlight;
+  }
+  :where(.trellis [data-trellis-part="divider"])::after {
+    background: Highlight;
+  }
+  :where(.trellis .trellis-menu) {
+    border: 1px solid CanvasText;
+  }
+}
