@@ -1,16 +1,16 @@
 /**
- * Docking and navigation geometry ported from the prototype
- * (`packages/workspace-model`: docking.ts, tree.ts, navigation.ts), adapted to Trellis nodes.
+ * Docking and navigation geometry: focus layout, snap targets, hierarchy steps, framing, drop
+ * targets and insertion.
  *
- * Adaptation: a stage is a transparent container. It occupies exactly its child's rect, so it
- * never adds a navigation level, and an empty stage behaves like the prototype's desktop leaf.
+ * A stage is a transparent container. It occupies exactly its child's rect, so it never adds a
+ * navigation level, and an empty stage acts as a leaf (the desktop).
  */
 import { edgeAxis, edgeBefore, insertBeside, layoutRects, normalize, sum, UNIT, type Entry } from "./tree";
 import type { Axis, Edge, LayoutNode, PanelNode, Rect, SplitNode } from "./types";
 
 // ------------------------------------------------------------------ entries
 
-/** Panels and empty stages: the prototype's "leaves" (things a view can sit beside). */
+/** Panels and empty stages: the "leaves" a view can sit beside. */
 export function leafIds(node: LayoutNode | null | undefined): string[] {
   if (!node) return [];
   if (node.kind === "panel") return [node.id];
@@ -89,7 +89,7 @@ export function containsNode(node: LayoutNode, id: string): boolean {
 
 // ------------------------------------------------------------------ camera
 
-/** The prototype's snap score: log-size difference plus 2.5 × normalized centre distance. */
+/** Snap score: log-size difference plus 2.5 × normalized centre distance. */
 export function bestFit(camera: Rect, entries: Map<string, SpaceEntry>): string {
   let best = "";
   let score = Infinity;

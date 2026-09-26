@@ -1,5 +1,5 @@
-/** Trellis implementation of the prototype's test adapter: fixtures, production calls and
- * observable projections only. Expectations stay in the ported *.test.ts files. */
+/** The requirement tests' adapter: fixtures, production calls and
+ * observable projections only. Expectations stay in the *.test.ts files. */
 import {
   applyDockTarget,
   bestFit,
@@ -19,7 +19,7 @@ import {
   type DockTargetSpec,
   type MaximizeSession,
   type Visit,
-} from "../../src/model/spaces";
+} from "../../src/model/spatial";
 import { findNode, insertBeside, removeNode, replaceNode, resizeBoundary } from "../../src/model/tree";
 import type { Edge, LayoutNode, PanelNode, Rect } from "../../src/model/types";
 
@@ -61,14 +61,14 @@ export function workspace(spec: Arrangement) {
       );
     },
     close(id: string) {
-      // Trellis lets every panel close (the workspace then shows its empty state); the
-      // prototype kept the last view. The adapter keeps the last one to test LAYOUT-04 as written.
+      // Trellis lets every panel close (the workspace then shows its empty state). LAYOUT-04
+      // expects the last view to remain, so the adapter keeps it to test the requirement as written.
       root = removeNode(root, id) ?? root;
     },
     resize(group: string, seam: number, position: number) {
       const node = entries().get(group)!.node;
       if (node.kind !== "split") throw Error("Expected a resizable group");
-      // The prototype keeps each child of the pair at ≥12% of the pair.
+      // The requirement keeps each child of the pair at ≥12% of the pair.
       const total = node.weights.reduce((a, b) => a + b, 0);
       const pair = (node.weights[seam] + node.weights[seam + 1]) / total;
       root = replaceNode(

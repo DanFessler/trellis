@@ -122,7 +122,7 @@ const escapeHtml = (text: string) =>
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
   );
 const DEFAULT_FLOAT_SIZE = { w: 560, h: 400 };
-/** Below this size a panel shows only its icon (the prototype's "frame only" tiles). */
+/** Below this size a panel shows only its icon ("frame only"). */
 const FRAME_ONLY = { w: 160, h: 64 };
 
 /** Create a workspace inside `host`. Returns an imperative handle. */
@@ -1027,7 +1027,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       const l = leaving.get(panelId);
       const enter = entering.get(panelId);
       if (l) {
-        // Minimize: the whole window flies into its target (prototype timing and curve).
+        // Minimize: the whole window flies into its target.
         const e = DOCK_EASE(Math.min(1, (time - l.start) / l.duration));
         r = lerpRect(l.from, l.to, e);
         opacity = 1 - 0.9 * e;
@@ -1059,7 +1059,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       setStyle(dom.el, "clipPath", clip);
       const mode = barMode(panel);
       const bar = mode === "normal" ? tabbarHeight : 0;
-      // Too small to use: show only the app icon; the whole frame is a drag handle (prototype).
+      // Too small to use: show only the app icon; the whole frame is a drag handle.
       const frameOnly =
         lifted()?.id !== panelId &&
         (r.w < FRAME_ONLY.w || r.h < FRAME_ONLY.h + (panel.views.length > 1 ? tabbarHeight : 0));
@@ -1144,7 +1144,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (!top && !left && !right && !bottom) return "";
     return `inset(${top}px ${right}px ${bottom}px ${left}px)`;
   }
-  /** Content minimum: the type's, or the prototype's 480×320 app minimum under free navigation. */
+  /** Content minimum: the type's, or 480×320 under free navigation. */
   const FREE_MIN = { width: 480, height: 320 };
   function minSizeOf(viewId: string): { width: number; height: number } | undefined {
     return typeOf(viewId).minSize ?? (navigationMode() === "free" ? FREE_MIN : undefined);
@@ -1582,7 +1582,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   }
   /** Where a docked window floats back to (PLACEMENT-01). Not persisted. */
   const rememberedFloats = new Map<string, Rect>();
-  /** The prototype's dock toggle: a float docks beside the stage (along its longer side) and the
+  /** Dock toggle: a float docks beside the stage (along its longer side) and the
    * frame widens to show both; a docked window floats back at its remembered size. */
   function toggleDock(id: string) {
     const panel = resolvePanel(id);
@@ -1864,7 +1864,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (e.defaultPrevented) return;
     if (dragActive()) return;
     const keymap = { ...DEFAULT_KEYMAP, ...options.keymap };
-    // Shortcuts without Ctrl/⌘/Alt never fire while typing (prototype rule).
+    // Shortcuts without Ctrl/⌘/Alt never fire while typing.
     const typing = (e.target as HTMLElement).matches?.(
       "input, textarea, select, [contenteditable=''], [contenteditable=true]",
     );
@@ -1876,7 +1876,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         return;
       }
     }
-    // Escape outside content steps out one level (prototype).
+    // Escape outside content steps out one level.
     if (
       e.key === "Escape" &&
       framed() &&
@@ -1938,7 +1938,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     lastCamera = { ...camera.value };
     if (events.has("camera")) events.emit("camera", { ...camera.value });
   }
-  /** Double-clicking a tab bar maximizes; a floating window frames its desktop (prototype). */
+  /** Double-clicking a tab bar maximizes; a floating window frames its desktop. */
   function toggleFrame(panelId: string): boolean {
     const float = doc.floating.find((f) => f.panel.id === panelId);
     if (float) {
@@ -2214,7 +2214,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       return { w, h };
     },
     moved(panel, from, to) {
-      // Keep the moved view in frame (prototype): docking a float widens the frame to include it;
+      // Keep the moved view in frame: docking a float widens the frame to include it;
       // floating a docked view frames its desktop.
       const stage = findStage(doc.root);
       if (to === "float" && from === "docked" && stage) nav.include([stage.id]);

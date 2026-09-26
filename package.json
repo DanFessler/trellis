@@ -14,8 +14,8 @@
     "typecheck": "tsc -p packages/core && tsc -p packages/react && tsc -p packages/element && node scripts/typecheck-workspaces.mjs",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "prettier --write . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
+    "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
     "check": "npm run typecheck && npm test && npm run build && npm run test:e2e",
     "verify:pack": "npm run build && node scripts/verify-pack.mjs",
     "size": "npm run build && node scripts/size.mjs"

@@ -6,7 +6,7 @@ export interface AppDefinition {
   id: string;
   /** Name shown in the dock. */
   name: string;
-  /** Index into the prototype's demo pages and icons. */
+  /** Index into the demo pages and icons. */
   index: number;
   /** Preferred window size in CSS pixels. */
   size: { w: number; h: number };

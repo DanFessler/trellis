@@ -13,7 +13,7 @@ const FolderGlyph = () => (
 
 /**
  * The stage backdrop: desktop folders on a transparent layer (the wallpaper itself is painted by
- * the workspace so it stays put while the camera moves, like the prototype). Double-click a
+ * the workspace so it stays put while the camera moves). Double-click a
  * folder to open Finder there.
  */
 export function Wallpaper() {

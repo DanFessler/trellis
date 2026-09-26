@@ -4,7 +4,7 @@ import { appIcon } from "./demo/icons";
 import { appById, pageFor, type AppDefinition, type AppParams } from "./apps";
 import { isDocked, launch, minimize, raise, toggleDock } from "./desktop";
 
-/** The prototype's app artwork on its colored squircle. */
+/** An app's artwork on its colored squircle. */
 export function AppIcon({ app, className = "app-icon" }: { app: AppDefinition; className?: string }) {
   return (
     <span
@@ -17,7 +17,7 @@ export function AppIcon({ app, className = "app-icon" }: { app: AppDefinition; c
 }
 
 /**
- * A demo app page in a same-origin, script-less iframe (as in the prototype). Trellis mounts view
+ * A demo app page in a same-origin, script-less iframe Trellis mounts view
  * content once and never moves it, so typed text survives docking, tabbing, framing and hiding.
  * The host wires the document for things Trellis cannot see inside iframes: raising the window
  * on click, opening folders, and forwarding pinch/Ctrl+wheel zoom to the workspace.
@@ -31,7 +31,7 @@ export function AppFrame({ app }: { app: AppDefinition }) {
   viewRef.current = view;
   useEffect(() => () => bridge.current?.abort(), []);
   const frameRef = useRef<HTMLIFrameElement>(null);
-  // The page draws its own title bar under Trellis's overlaid bar (the prototype's contract).
+  // The page draws its own title bar under Trellis's overlaid bar.
   const applyChrome = () => {
     const doc = frameRef.current?.contentDocument?.documentElement;
     const content = viewRef.current.element;

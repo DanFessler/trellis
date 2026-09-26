@@ -1,13 +1,13 @@
 /**
- * Camera navigation, ported from the prototype (engine.ts + workspace-view-model.ts).
+ * Camera navigation.
  *
- * Carried over: framing any node or contiguous sibling range; rubber-banded zoom (up to 1.35×
- * the layout, 30% edge overshoot) that springs to the best fit 180 ms after the gesture;
+ * Frames any node or contiguous sibling range. Supports rubber-banded zoom (up to 1.35× the
+ * layout, 30% edge overshoot) that springs to the best fit 180 ms after the gesture;
  * Shift+wheel hierarchy steps; Shift+drag marquee; Alt+drag zoom; touch pinch; Safari gesture
  * events; maximize that restores the exact prior framing; overview that toggles back; history
  * of visits by their views; saved framings that follow surviving views.
  *
- * Adaptations: gestures run only with `navigation: "free"`; `"focus"` keeps maximize, Escape and
+ * Gestures run only with `navigation: "free"`; `"focus"` keeps maximize, Escape and
  * history. Floating windows are never camera targets (NAV-12).
  */
 import {
@@ -25,7 +25,7 @@ import {
   type MaximizeSession,
   type SpaceEntry,
   type Visit,
-} from "../model/spaces";
+} from "../model/spatial";
 import { findStage, UNIT } from "../model/tree";
 import type { Framing, LayoutDocument, LayoutNode, Rect } from "../model/types";
 import { uid } from "../model/document";
@@ -99,7 +99,7 @@ export function createNavigator(host: NavigationHost) {
     }
     host.root.toggleAttribute("data-framed", !!framed);
   }
-  /** Frame a node or sibling range (prototype `focus`). Floats frame the desktop they belong to. */
+  /** Frame a node or sibling range. Floats frame the desktop they belong to. */
   function focus(id: string | null, record = true) {
     if (!on()) id = null;
     const doc = host.doc();
@@ -328,7 +328,7 @@ export function createNavigator(host: NavigationHost) {
 
   // Shift+drag: marquee framing. Alt+drag: zoom around the press point (mouse pinch proxy).
   const marqueeEl = h("div", { "data-trellis-part": "marquee", "aria-hidden": "true" });
-  // While a gesture drives the camera, outline what releasing will frame (prototype snap preview).
+  // While a gesture drives the camera, outline what releasing will frame (the snap preview).
   const snapEl = h(
     "div",
     { "data-trellis-part": "snap-preview", "aria-hidden": "true" },

@@ -91,7 +91,7 @@ await check("drag Notes to the desktop's left edge to dock it", async () => {
     await page.mouse.move(box.x + (6 - box.x) * t, box.y + (420 - box.y) * t);
     await page.waitForTimeout(12);
   }
-  // Targets settle for 150 ms before the layout opens a slot (prototype timing).
+  // Targets settle for 150 ms before the layout opens a slot.
   await page.waitForTimeout(400);
   expect(
     (await page.locator('[data-trellis-part="drop-slot"][data-visible]').count()) === 1,
@@ -147,7 +147,7 @@ await check("frame the docked Notes and step back", async () => {
   await page.click('button[aria-label="Previous view"]');
   await settle();
   // History records visits by their views: the first visit was the desktop alone, so going back
-  // frames the desktop again (prototype NAV-09/10), not the maximized Notes.
+  // frames the desktop again (NAV-09/10), not the maximized Notes.
   const notesId = await barFor("Notes").getAttribute("data-panel");
   const framed = await page.evaluate(
     () =>

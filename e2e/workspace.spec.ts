@@ -520,7 +520,7 @@ test.describe("custom element", () => {
   });
 });
 
-test.describe("prototype navigation", () => {
+test.describe("navigation requirements", () => {
   test("floating windows are not camera targets; double-clicking one frames its desktop", async ({
     page,
   }) => {

@@ -114,7 +114,7 @@ export function isDocked(ws: WorkspaceHandle, viewId: string) {
   return !!view && view.placement !== "floating" && view.placement !== "hidden";
 }
 
-/** Green button (the prototype's dock toggle): dock a window beside the desktop and frame both,
+/** Green button: dock a window beside the desktop and frame both,
  * or float it back onto the desktop at its previous size. */
 export function toggleDock(ws: WorkspaceHandle, viewId: string) {
   ws.toggleDock(viewId);

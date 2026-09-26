@@ -1,15 +1,13 @@
 /**
- * Window and tab dragging, ported from the prototype's drag controller
- * (its window manager).
+ * Window and tab dragging.
  *
- * What carries over unchanged: the source stays in place at pickup; the lifted window keeps its
- * size over its origin and eases to a compact card as it leaves (280 ms); drop targets settle for
- * 150 ms and preview as a real reflow of the layout; the source collapses on the first target and
- * never reopens; seams and the frame band are targets; release commits the current candidate.
+ * The source stays in place at pickup. The lifted window keeps its size over its origin and eases
+ * to a compact card as it leaves (280 ms). Drop targets settle for 150 ms and preview as a real
+ * reflow of the layout. The source collapses on the first target and never reopens. Seams and the
+ * frame band are targets, and release commits the current candidate.
  *
- * Adaptations (see design/prototype-parity.md): tab-bar drops insert at an index; allow rules
- * remove targets; overlay floats treat the whole workspace as their desktop; the stage is the
- * desktop only when floats live in it.
+ * Tab-bar drops insert at an index. Allow rules remove targets. Overlay floats treat the whole
+ * workspace as their desktop, and the stage is the desktop only when floats live in it.
  */
 import {
   insertPanel,
@@ -30,7 +28,7 @@ import {
   seamTarget,
   tileDropTarget,
   type DockTargetSpec,
-} from "../model/spaces";
+} from "../model/spatial";
 import { findNode, findStage, layoutRects, type Entry } from "../model/tree";
 import type { Edge, FloatingLayer, LayoutDocument, LayoutNode, PanelNode, Rect } from "../model/types";
 import type { Lifetime } from "./lifetime";
@@ -367,7 +365,7 @@ export function createDragController(host: DragHost) {
     pickupFrame = host.lifetime.frame(tick);
   }
 
-  /** Resolve the target under the pointer (prototype precedence), then settle it. */
+  /** Resolve the target under the pointer (frame band, seams, tab bars, edges, centres), then settle it. */
   function retarget(d: DragSession, e: PointerEvent) {
     const viewport = host.viewport();
     const p = d.pointer;
@@ -699,7 +697,7 @@ export function createDragController(host: DragHost) {
       }
     } else if (!next && d.target && d.target.kind !== "float") {
       // Leaving a target for nowhere collapses its slot; moving onto the desktop (a float) just
-      // lets it fade where it is, since a desktop drop reserves no slot (prototype).
+      // lets it fade where it is, since a desktop drop reserves no slot.
       const slot = previous.get(DROP_SLOT);
       const world = slot ? host.fromScreenRect(slot) : null;
       if (world) {
@@ -820,7 +818,7 @@ export function createDragController(host: DragHost) {
     host.announce("Moved");
   }
 
-  /** Where a window dropped on the desktop lands, in fractions of its layer (prototype sizing). */
+  /** Where a window dropped on the desktop lands, in fractions of its layer. */
   function floatRect(d: DragSession, next: LayoutDocument, layer: FloatingLayer): Rect {
     const viewport = host.viewport();
     const container =

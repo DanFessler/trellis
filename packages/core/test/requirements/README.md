@@ -1,4 +1,5 @@
-Requirement tests ported verbatim from the prototype. Expectations live in the `*.test.ts`
-files; `trellis-adapter.ts` is the only Trellis-specific code, playing the role of the prototype's
-`prototype-adapter.ts`. Requirement IDs match the prototype's catalogue. Deliberate adaptations are
-listed in `design/prototype-parity.md` and marked inline where a test differs.
+Requirement tests for the layout, docking and navigation model. Each test name carries a
+requirement ID (LAYOUT-, DOCK-, NAV-). The tests describe behaviour through a small adapter:
+`trellis-adapter.ts` builds fixtures and calls the production model, so the expectations in the
+`*.test.ts` files stay independent of Trellis's internal APIs. Where a test deliberately differs
+from the plain requirement, the adapter says why inline.

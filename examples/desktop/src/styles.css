@@ -1,4 +1,4 @@
-/* Trellis · Desktop — a recreation of the spatial desktop prototype.
+/* Trellis · Desktop: a spatial desktop built on Trellis.
  * Trellis is themed only through its public surface: custom properties on .trellis and
  * [data-trellis-part] selectors. Everything else here is the host's own UI. */
 
@@ -66,7 +66,7 @@ button {
   --trellis-focus-ring: 0 0 0 2px #ffffff55;
 
   /* The wallpaper is painted by the workspace, not the stage backdrop, so it stays put while
-   * the camera zooms and pans (the prototype does the same). */
+   * the camera zooms and pans. */
   background: #19191b var(--wallpaper) center / cover no-repeat;
 }
 
@@ -76,7 +76,7 @@ button {
   overflow: visible;
   transition: box-shadow 200ms;
 }
-/* The prototype's gap layer: outside the desktop the wallpaper is blurred and dimmed; inside it
+/* The gap layer: outside the desktop the wallpaper is blurred and dimmed; inside it
  * stays sharp. The hole follows the stage (including while a drag preview shrinks it), with
  * feathered 24px edges. */
 .trellis::before {
@@ -182,7 +182,7 @@ button {
     0 0 0 1px #ffffff2e,
     var(--trellis-shadow-lifted);
 }
-/* Spotify is opaque in the prototype. Panels don't carry a view type; tabs do (data-type). */
+/* Spotify is opaque. Panels don't carry a view type; tabs do (data-type). */
 .trellis [data-trellis-part="panel"]:has([data-trellis-part="tab"][data-selected][data-type="spotify"]) {
   background: #000;
   -webkit-backdrop-filter: none;
@@ -192,7 +192,7 @@ button {
 .trellis [data-trellis-part="surface"] {
   background: transparent;
 }
-/* The prototype's faint inner edge along the bottom of each window. */
+/* A faint inner edge along the bottom of each window. */
 .trellis [data-trellis-part="surface"]::after {
   content: "";
   position: absolute;
@@ -227,7 +227,7 @@ button {
   [data-trellis-part="tabbar"] {
   background: #000;
 }
-/* Windows draw their own title bars (the prototype's pages); the Trellis bar overlays them. */
+/* Windows draw their own title bars; the Trellis bar overlays them. */
 .trellis [data-trellis-part="tabbar"][data-overlay] {
   background: transparent;
   box-shadow: none;
@@ -818,7 +818,7 @@ button {
   height: 100%;
 }
 
-/* App icon backgrounds (from the prototype's dock). */
+/* App icon backgrounds. */
 .dock-app-0 {
   background: linear-gradient(#52baff, #147ddd);
   color: #12375b;
@@ -866,7 +866,7 @@ button {
   }
 }
 
-/* The prototype's drop slot: a blurred pane revealed as the desktop recedes to make room. */
+/* The drop slot: a blurred pane revealed as the desktop recedes to make room. */
 .trellis [data-trellis-part="drop-slot"] {
   background: #ffffff06;
   -webkit-backdrop-filter: blur(32px);

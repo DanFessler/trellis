@@ -8,7 +8,7 @@ const REST = 46;
 const GROW = 26;
 const SPACING = 55;
 
-/** Magnify icons near the pointer (ported from the prototype's dock). */
+/** Magnify icons near the pointer. */
 function useMagnification(dock: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     const el = dock.current;

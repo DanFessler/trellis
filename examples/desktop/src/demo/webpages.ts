@@ -91,7 +91,7 @@ const pages = [
   },
 ];
 
-/** One demo page per app. Adapted from the prototype (same author). */
+/** One demo page per app. */
 export function webpage(index: number, folderId?: string) {
   const folder = folderId ? folders[folderId] : undefined;
   const page = folder
@@ -107,7 +107,7 @@ export function webpage(index: number, folderId?: string) {
         )}<main><div class="breadcrumb">Desktop <span>›</span> ${folder.name}</div><div class="file-grid">${folder.items.map((item, i) => `<label class="file" ${item.folder ? `data-open-resource="${item.folder}"` : ""}><input type="radio" name="file" aria-label="Select ${item.name}"><div class="file-content">${item.folder ? '<div class="folder"></div>' : /\.(jpg|png)$/.test(item.name) ? art(i, item.name) : '<div class="document"><span>Aa</span><small>FILE</small></div>'}<span>${item.name}</span><small>${item.folder ? `${folders[item.folder].items.length} items` : "Demo file"}</small></div></label>`).join("")}</div></main></div><div class="statusbar">${folder.items.length} items <span>${folder.name} · Demo folder</span></div>`,
       }
     : pages[index % pages.length];
-  // Pages draw their own title bar (the prototype's); the heading also names the window.
+  // Pages draw their own title bar; the heading also names the window.
   const [, heading = "", detail = ""] =
     /<div class="toolbar"><strong>(.*?)<\/strong><span>(.*?)<\/span>/.exec(page.body) ?? [];
   return {

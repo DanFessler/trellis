@@ -13,7 +13,7 @@ export const folders: Record<string, { name: string; items: { name: string; fold
   projects: {
     name: "Projects",
     items: [
-      { name: "Desktop prototype.fig" },
+      { name: "Desktop sketch.fig" },
       { name: "Explorations.fig" },
       { name: "Project notes.txt" },
       { name: "Roadmap.pdf" },

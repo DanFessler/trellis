@@ -1,7 +1,7 @@
 <h1>
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="design/logo/dist/trellis-mark-dark.svg">
-    <img src="design/logo/dist/trellis-mark.svg" alt="" width="36" height="36">
+    <source media="(prefers-color-scheme: dark)" srcset="site/public/brand/trellis-mark-dark.svg">
+    <img src="site/public/brand/trellis-mark.svg" alt="" width="36" height="36">
   </picture>
   Trellis
 </h1>

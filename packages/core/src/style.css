@@ -347,7 +347,7 @@
 :where(.trellis [data-trellis-part="tab"]:focus-visible) {
   box-shadow: inset var(--trellis-focus-ring);
 }
-/* Reordering within the strip: neighbours slide, the dragged tab rides on top (prototype). */
+/* Reordering within the strip: neighbours slide, the dragged tab rides on top. */
 :where(.trellis [data-trellis-part="tab"][data-sorting]) {
   transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -490,7 +490,7 @@
 }
 
 /* ------------------------------------------------------------------ frame-only and overlay bars */
-/* Too small to use: the panel shows only its icon and the whole frame drags (prototype). */
+/* Too small to use: the panel shows only its icon and the whole frame drags. */
 :where(.trellis [data-trellis-part="frame-icon"]) {
   display: none;
 }

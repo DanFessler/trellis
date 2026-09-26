@@ -1,6 +1,6 @@
 import type { Rect } from "../model/types";
 
-/** Spring and tween constants carried over from the prototype. */
+/** Spring and tween constants for the camera and layout motion. */
 export const MOTION = {
   spring: { stiffness: 210, damping: 29, maxStep: 0.032, epsilon: 0.0001 },
   layoutMs: 460,
@@ -119,6 +119,6 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): (t:
     return sample(y1, y2, t);
   };
 }
-/** The prototype's minimize/restore curve and durations (EXPERIENCE-07). */
+/** The minimize/restore curve and durations. */
 export const DOCK_EASE = cubicBezier(0.2, 0.75, 0.2, 1);
 export const DOCK_MS = { hide: 300, restore: 380 };

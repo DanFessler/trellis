@@ -57,7 +57,7 @@ function SaveFraming({ onDone }: { onDone(): void }) {
 }
 
 /**
- * The prototype's bottom bar: navigation on the left, the dock in the middle, map on the right.
+ * The bottom bar: navigation on the left, the dock in the middle, map on the right.
  * It lives outside <Workspace>; <WorkspaceProvider> makes Trellis's hooks work here.
  */
 export function Bar({ map, onToggleMap, onReset }: { map: boolean; onToggleMap(): void; onReset(): void }) {
