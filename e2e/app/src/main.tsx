@@ -158,6 +158,8 @@ if (scenario === "element") {
         <trellis-stage>
           <trellis-panel>
             <trellis-view type="note" view-id="n1" params='{"name":"first"}'></trellis-view>
+            <trellis-view type="note" params='{"name":"unnamed one"}'></trellis-view>
+            <trellis-view type="note" params='{"name":"unnamed two"}'></trellis-view>
           </trellis-panel>
         </trellis-stage>
       </trellis-split>

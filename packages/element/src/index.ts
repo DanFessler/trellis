@@ -71,7 +71,8 @@ function specFrom(el: Element): LayoutSpec | null {
       return {
         kind: "view",
         type: el.getAttribute("type") ?? "",
-        id: el.getAttribute("view-id") ?? el.id ?? undefined,
+        // `el.id` is "" when unset; only a real id counts.
+        id: el.getAttribute("view-id") ?? (el.id || undefined),
         title: el.getAttribute("title") ?? undefined,
         params: params(),
       };
@@ -243,13 +244,14 @@ export class TrellisWorkspaceElement extends ElementBase {
     if (!this.style.display) this.style.display = "block";
     const storage = this.getAttribute("storage-key");
     const version = this.getAttribute("version") ?? undefined;
+    // Attributes first; the `options` property (spread last by liveOptions) overrides them.
     this.handle = createWorkspace(container, {
-      ...this.liveOptions(),
-      types: this.allTypes(),
       label: this.getAttribute("label") ?? undefined,
       defaultLayout: this._defaultLayout ?? spec,
       document: this._document,
       persist: storage ? { key: storage, version } : undefined,
+      ...this.liveOptions(),
+      types: this.allTypes(),
     });
     const slots = this.handle.slots;
     const target: Record<string, HTMLElement> = {

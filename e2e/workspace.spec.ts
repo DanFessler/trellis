@@ -509,7 +509,9 @@ test.describe("react adapter", () => {
 test.describe("custom element", () => {
   test("builds a workspace from templates and layout children", async ({ page }) => {
     await page.goto("/?scenario=element");
-    await expect(page.locator("trellis-workspace .note")).toHaveText("Note first");
+    await expect(page.locator("trellis-workspace .note").first()).toHaveText("Note first");
+    // Views without an id get generated ones (an unset element id once made them all "").
+    await expect(page.locator("trellis-workspace [data-trellis-part=tab]")).toHaveCount(4);
     await expect(page.locator("trellis-workspace .tool")).toBeVisible();
     await expect(page.locator("[data-test=chrome]")).toBeVisible();
     await expect(page.locator(".trellis")).toHaveAttribute("data-theme", "dark");
