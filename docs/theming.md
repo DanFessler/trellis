@@ -72,47 +72,51 @@ ws.update({ tokens: { "--trellis-accent": "#f60" } }); // --trellis-radius goes 
 
 ### Colors
 
-| Token                       | Used for                                             |
-| --------------------------- | ---------------------------------------------------- |
-| `--trellis-bg`              | The workspace background, visible in gaps.           |
-| `--trellis-panel`           | Panel and content background.                        |
-| `--trellis-tabbar`          | Tab bar background.                                  |
-| `--trellis-tab-hover`       | Hovered tab and chrome button background.            |
-| `--trellis-tab-active`      | Selected tab background.                             |
-| `--trellis-text`            | Primary text.                                        |
-| `--trellis-text-muted`      | Unselected tabs, shortcuts, secondary text.          |
-| `--trellis-border`          | Hairlines around panels, tabs and menus.             |
-| `--trellis-accent`          | Focus indicator, dividers, drop markers, badges.     |
-| `--trellis-accent-contrast` | Text on the accent (badges).                         |
-| `--trellis-stage`           | Stage background.                                    |
-| `--trellis-drop`            | Drop preview fill. Defaults to a tint of the accent. |
-| `--trellis-menu`            | Menu background.                                     |
-| `--trellis-menu-hover`      | Hovered or keyboard-focused menu item.               |
-| `--trellis-shadow-float`    | Shadow of floating panels.                           |
-| `--trellis-shadow-lifted`   | Shadow of a panel being dragged.                     |
-| `--trellis-focus-ring`      | Keyboard focus ring (a `box-shadow` value).          |
-| `--trellis-ease`            | Easing for CSS transitions in the chrome.            |
+| Token                       | Used for                                                                                              |
+| --------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `--trellis-bg`              | The workspace background, visible in gaps.                                                            |
+| `--trellis-panel`           | Panel and content background.                                                                         |
+| `--trellis-tabbar`          | Tab bar background.                                                                                   |
+| `--trellis-tab-hover`       | Hovered tab and chrome button background.                                                             |
+| `--trellis-tab-active`      | Selected tab background.                                                                              |
+| `--trellis-text`            | Primary text.                                                                                         |
+| `--trellis-text-muted`      | Unselected tabs, shortcuts, secondary text.                                                           |
+| `--trellis-border`          | Hairlines around panels, tabs and menus.                                                              |
+| `--trellis-accent`          | Focus indicator, dividers, the tab-drop outline, badges.                                              |
+| `--trellis-accent-contrast` | Text on the accent (badges).                                                                          |
+| `--trellis-stage`           | Stage background.                                                                                     |
+| `--trellis-slot`            | The slot a drag opens in the layout (`drop-slot`). Tab drops use it at 70%.                           |
+| `--trellis-menu`            | Menu background.                                                                                      |
+| `--trellis-menu-hover`      | Hovered or keyboard-focused menu item.                                                                |
+| `--trellis-shadow-float`    | Shadow of floating panels.                                                                            |
+| `--trellis-shadow-lifted`   | Shadow of a panel being dragged.                                                                      |
+| `--trellis-focus-ring`      | Keyboard focus ring (a `box-shadow` value).                                                           |
+| `--trellis-ease`            | Easing for CSS transitions in the chrome.                                                             |
 
 ## Parts
 
 Every element Trellis renders has a `data-trellis-part` attribute:
 
-| Part                                              | Element                                                                                                       |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `panel`                                           | A panel (tab bar + surfaces). Has `data-panel="<id>"`.                                                        |
-| `tabbar`                                          | The panel's tab bar.                                                                                          |
-| `tabs`                                            | The tab strip (`role="tablist"`).                                                                             |
-| `tab`                                             | One tab. Has `data-view="<id>"`.                                                                              |
-| `tab-icon`, `tab-title`, `tab-badge`, `tab-close` | Pieces of a tab. An empty `tab-icon` is hidden with `:empty`, so it takes no space for types without an icon. |
-| `accessories` / `accessory`                       | Tab-bar area for the selected view's accessory.                                                               |
-| `panel-menu`                                      | The panel's menu button.                                                                                      |
-| `surface`                                         | A view's frame. Has `data-view` and `data-type`, plus the type's `className`.                                 |
-| `content`                                         | The view's content element — the one your content mounts into.                                                |
-| `divider`                                         | A resize handle between split children.                                                                       |
-| `resize`                                          | A floating panel's resize handle (`data-dir="n" \| "se" \| …`).                                               |
-| `backdrop`, `stage-empty`, `empty`, `chrome`      | Slots. See [Core API](./core-api.md#slots).                                                                   |
-| `drop-preview`, `drop-marker`                     | Drag feedback.                                                                                                |
-| `menu`                                            | A popup menu — the panel menu and its submenus. See [Menus](#menus).                                          |
+| Part                                              | Element                                                                                                                                                 |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `panel`                                           | A panel (tab bar + surfaces). Has `data-panel="<id>"`.                                                                                                  |
+| `tabbar`                                          | The panel's tab bar. Has `data-panel="<id>"`. With `tabbar: "overlay"` it is moved out of the panel to float over the content, and gets `data-overlay`. |
+| `tabs`                                            | The tab strip (`role="tablist"`).                                                                                                                       |
+| `tab`                                             | One tab. Has `data-view="<id>"`.                                                                                                                        |
+| `tab-icon`, `tab-title`, `tab-badge`, `tab-close` | Pieces of a tab. An empty `tab-icon` is hidden with `:empty`, so it takes no space for types without an icon.                                           |
+| `accessories` / `accessory`                       | Tab-bar area for the selected view's accessory.                                                                                                         |
+| `panel-menu`                                      | The panel's menu button.                                                                                                                                |
+| `surface`                                         | A view's frame. Has `data-view` and `data-type`, plus the type's `className`.                                                                           |
+| `content`                                         | The view's content element — the one your content mounts into.                                                                                          |
+| `divider`                                         | A resize handle between split children.                                                                                                                 |
+| `resize`                                          | A floating panel's resize handle (`data-dir="n" \| "se" \| …`).                                                                                         |
+| `backdrop`, `stage-empty`, `empty`, `chrome`      | Slots. See [Core API](./core-api.md#slots).                                                                                                             |
+| `drop-slot`                                       | While dragging, the slot the layout opens where the view will land. `data-visible` while shown; `data-kind="tab"` for tab drops.                        |
+| `drop-label`                                      | The drop slot's label ("Add as tab").                                                                                                                   |
+| `source-slot`                                     | While dragging, where the view came from.                                                                                                               |
+| `frame-icon`                                      | The centred icon of a frame-only panel. Sized by `--trellis-frame-icon-size`.                                                                           |
+| `marquee`, `marquee-target`                       | The <kbd>Shift</kbd>+drag marquee and the target it would frame. Unstyled; see [Navigation](./navigation.md#free-navigation-gestures).                  |
+| `menu`                                            | A popup menu — the panel menu and its submenus. See [Menus](#menus).                                                                                    |
 
 ### Menus
 
@@ -143,18 +147,19 @@ Menus are rendered by Trellis and styled through classes as well as the `menu` p
 
 On the **root** (`.trellis`):
 
-| Attribute                                          | When                                                          |
-| -------------------------------------------------- | ------------------------------------------------------------- |
-| `data-theme`                                       | Always: the active theme name.                                |
-| `data-navigation`                                  | Always: `focus`, `free` or `false`.                           |
-| `data-dragging`                                    | A drag is in progress.                                        |
-| `data-drop`                                        | During a drag: `tab`, `split`, `stage`, `float` or `none`.    |
-| `data-resizing`                                    | Resizing: `x`, `y` (dividers) or `float`.                     |
-| `data-framed`                                      | The camera is zoomed in on something.                         |
-| `data-busy`                                        | A drag or gesture is in progress; content is non-interactive. |
-| `data-has-stage`, `data-stage-empty`, `data-empty` | Layout shape.                                                 |
+| Attribute                                          | When                                                                        |
+| -------------------------------------------------- | --------------------------------------------------------------------------- |
+| `data-theme`                                       | Always: the active theme name.                                              |
+| `data-navigation`                                  | Always: `focus`, `free` or `false`.                                         |
+| `data-dragging`                                    | A drag is in progress.                                                      |
+| `data-drop`                                        | During a drag: `dock`, `tab`, `stage`, `float` or `none`.                   |
+| `data-marquee`, `data-drag-zoom`                   | A <kbd>Shift</kbd>+drag marquee or <kbd>Alt</kbd>+drag zoom is in progress. |
+| `data-resizing`                                    | Resizing: `x`, `y` (dividers) or `float`.                                   |
+| `data-framed`                                      | The camera is zoomed in on something.                                       |
+| `data-busy`                                        | A drag or gesture is in progress; content is non-interactive.               |
+| `data-has-stage`, `data-stage-empty`, `data-empty` | Layout shape.                                                               |
 
-On **panels**: `data-focused`, `data-floating`, `data-lifted` (being dragged), `data-framed`, `data-single` (one tab), `data-compact` (too small for tab titles), and `data-region` = `stage` \| `side` \| `floating`.
+On **panels**: `data-focused`, `data-floating`, `data-lifted` (being dragged), `data-framed`, `data-single` (one tab), `data-compact` (too small for tab titles), `data-frame-only` (smaller than 160 × 64: only the icon shows), `data-tabbar` = `hidden` \| `overlay` when the tab bar isn't above the content, and `data-region` = `stage` \| `side` \| `floating`.
 
 On **tabs**: `data-selected`, `data-focused`, `aria-selected`, `data-type` (the view's type) and `data-badge` — `"dot"` when the badge is `true`, `""` for a text or number badge.
 
@@ -169,7 +174,25 @@ A `true` badge renders as a dot that swaps with the close button on hover — th
 }
 ```
 
-On **surfaces**: `data-scaled` while content is scaled below its `minSize`.
+On **surfaces**: `data-scaled` while content is scaled below its minimum size, and `data-tabbar` = `hidden` \| `overlay`.
+
+### Overlay tab bars
+
+With `tabbar: "overlay"`, a lone view's content extends under its tab bar and draws its own title bar. The overlaid bar is a transparent drag strip — its tabs are invisible, while accessories and the menu button stay visible — and the content receives two custom properties to lay out around it:
+
+| Property                       | Value                                                                   |
+| ------------------------------ | ----------------------------------------------------------------------- |
+| `--trellis-titlebar-height`    | The tab bar's height, so the content can draw a title bar of that size. |
+| `--trellis-titlebar-inset-end` | Space the bar's accessories and menu button take at the end of the bar. |
+
+Both are `0px` for views without an overlaid bar. In a tab group, the bar sits above the content as usual.
+
+```css
+.my-app-titlebar {
+  height: var(--trellis-titlebar-height);
+  padding-inline-end: var(--trellis-titlebar-inset-end);
+}
+```
 
 ## Examples
 

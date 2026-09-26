@@ -13,15 +13,15 @@ A Trellis workspace is built from a handful of pieces. Once these click, the res
 
 A **view type** is a registered kind of content — `"layers"`, `"document"`, `"terminal"`. You register types when you create the workspace (`types` in the core, `<ViewType>` in React). A type says how to render its content and carries **rules**:
 
-| Rule        | Meaning                                                                                                                     |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `placement` | Where `open()` puts a new view of this type unless the caller says otherwise.                                               |
-| `allow`     | `{ stage?, side?, floating? }` — regions users may drop it into. Everything is allowed by default.                          |
-| `singleton` | At most one instance. `open()` focuses the existing one.                                                                    |
-| `closable`  | `false` hides the close button and ignores close shortcuts.                                                                 |
-| `minSize`   | `{ width, height }` — content lays out at no less than this size and is visually scaled down below it.                      |
-| `tabbar`    | `"always"` (default), `"auto"` — hide the tab bar while the view is alone in its panel — or `"never"`.                      |
-| `gestures`  | `"workspace"` lets navigation gestures start over this view's content. See [Navigation](./navigation.md#gesture-ownership). |
+| Rule        | Meaning                                                                                                                                                                                        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `placement` | Where `open()` puts a new view of this type unless the caller says otherwise.                                                                                                                  |
+| `allow`     | `{ stage?, side?, floating? }` — regions users may drop it into. Everything is allowed by default. A disallowed region simply offers no drop targets.                                          |
+| `singleton` | At most one instance. `open()` focuses the existing one.                                                                                                                                       |
+| `closable`  | `false` hides the close button and ignores close shortcuts.                                                                                                                                    |
+| `minSize`   | `{ width, height }` — content lays out at no less than this size and is visually scaled down below it. Defaults to 480 × 320 with `navigation: "free"`, and to none otherwise.                 |
+| `tabbar`    | `"always"` (default), `"auto"` — hide the tab bar while the view is alone in its panel — `"never"`, or `"overlay"` — float the tab bar over a lone view whose content draws its own title bar. |
+| `gestures`  | `"workspace"` lets a plain wheel over this view's content zoom the workspace. See [Navigation](./navigation.md#gesture-ownership).                                                             |
 
 A type renders content in one of three ways: a `mount(element, view)` function (core), an `iframe` (a URL, or options such as `srcdoc` and `sandbox`), or — with an adapter — framework components (`children` or `render` in React).
 
@@ -37,7 +37,7 @@ Content for a view is mounted **once**, into a container that never moves in the
 
 ## Panels
 
-A **panel** is a tab group of one or more views, with a tab bar and a menu. Panels are what users drag, dock, float and maximize. Dragging a tab out of a panel creates a new panel for that view; dragging a panel's empty tab bar area moves the whole group.
+A **panel** is a tab group of one or more views, with a tab bar and a menu. Panels are what users drag, dock, float and maximize. Dragging a tab within its strip reorders it; dragging it out of the strip creates a new panel for that view; dragging a panel's empty tab bar area moves the whole group. A panel too small to use (under 160 × 64 on screen) shows only its icon, and the whole frame drags.
 
 ## Splits
 
@@ -53,7 +53,8 @@ The **stage** is an optional primary region — the place documents live in an a
 - It never collapses. When its last panel closes, it stays and shows its **empty** slot.
 - It has a **backdrop** slot rendered behind its panels, for a canvas, wallpaper or grid.
 - With `floating: "stage"`, floating panels live inside the stage and are clipped to it.
-- A thin band just inside its edge docks a panel beside the whole stage.
+- While it's empty, dropping near its edges docks beside the stage; dropping in its interior fills it, or — with `floating: "stage"` — floats the view there, because an empty stage is the **desktop**.
+- It never forms a navigation level of its own: framing the stage frames its content.
 
 Views whose type sets `allow: { stage: false }` can never be dropped into the stage — tool palettes, for example.
 
@@ -76,20 +77,20 @@ A view's `placement` state (`view.placement`) reports `"stage"`, `"docked"` (sid
 **Floating** panels hover above the docked layout and can be moved and resized freely. The workspace's `floating` option picks their layer:
 
 - `"overlay"` (default) — floats sit above everything and are positioned relative to the whole workspace. They stay put during navigation.
-- `"stage"` — floats live inside the stage, are clipped to it and move with it. They can be maximized like docked panels.
+- `"stage"` — floats live inside the stage, are clipped to it and move with it, like windows on a desktop. `toggleDock()` docks one beside the stage and floats it back.
 - `false` — floating is disabled.
 
-See [Floating panels](./floating.md).
+Floating panels are never camera targets. See [Floating panels](./floating.md).
 
 ## Navigation
 
 **Navigation** animates the workspace's camera to frame part of the layout. The `navigation` option:
 
-- `"focus"` (default) — double-click a tab bar, use the panel menu's _Maximize_, or press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>↩</kbd> to zoom one panel to fill the workspace. <kbd>Esc</kbd> goes back.
-- `"free"` — everything in focus mode, plus pinch or <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+scroll to zoom, and scroll to pan while zoomed. When the gesture ends, the camera snaps to the best-fitting panel, split or stage float.
+- `"focus"` (default) — double-click a tab bar, use the panel menu's _Maximize_, or press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>↩</kbd> to zoom one panel to fill the workspace; toggling again restores the previous framing. <kbd>Esc</kbd> steps out one level.
+- `"free"` — everything in focus mode, plus gestures: a wheel over the chrome, pinch or <kbd>Ctrl</kbd>+wheel zooms; <kbd>Shift</kbd>+wheel steps the hierarchy; <kbd>Shift</kbd>+drag draws a marquee. When a gesture ends, the camera snaps to the best-fitting panel, split or range of siblings.
 - `false` — no navigation.
 
-Navigation has history (back/forward) and saved **framings**. See [Navigation & maximize](./navigation.md).
+The camera frames nodes and contiguous sibling ranges. Navigation has history (back/forward), an overview that toggles back, and saved **framings**, which remember views rather than nodes. See [Navigation & maximize](./navigation.md).
 
 ## Hiding
 
@@ -101,6 +102,10 @@ The complete workspace state is a serializable **`LayoutDocument`**: the docked 
 
 ## Presentation state and motion
 
-While panels animate, content is repositioned every frame but **views are not told**. `view.size` and the `resize` event update once motion settles. During drags, resizes and navigation gestures, content is made non-interactive (`view.interactive` is `false`) so that iframes and canvases don't swallow the pointer.
+While panels animate, content is repositioned every frame but **views are not told**. `view.size`, `view.scale` and the `resize` and `scale` events update once motion settles. During drags, resizes and navigation gestures, content is made non-interactive (`view.interactive` is `false`) so that iframes and canvases don't swallow the pointer.
 
-When a panel is smaller than its type's `minSize`, the content is laid out at `minSize` and scaled down; `view.scale` reports the factor, and content is non-interactive while scaled.
+When a panel is smaller than its type's `minSize` (480 × 320 by default under `navigation: "free"`), the content is laid out at the minimum and scaled down; `view.scale` reports the factor, and content is non-interactive while scaled.
+
+## Interaction model
+
+Dragging, docking and navigation are ported from the prototype: a drag picks up after 6 px without reflowing anything, previews by opening a real slot in the layout, and docks at tab bars, panel edges and centres, the gaps between panels, and the workspace's outer edge. See [Interaction model](./interaction.md) for every target and the prototype requirements Trellis verifies.

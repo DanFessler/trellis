@@ -19,16 +19,16 @@ Workspace shortcuts are active while focus is inside the workspace, and act on t
 | `frame.toggle`        | <kbd>Mod</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> | Maximize / restore the focused panel.         |
 | `navigation.back`     | <kbd>Mod</kbd>+<kbd>Alt</kbd>+<kbd>←</kbd>       | Previous framing.                             |
 | `navigation.forward`  | <kbd>Mod</kbd>+<kbd>Alt</kbd>+<kbd>→</kbd>       | Next framing.                                 |
-| `navigation.overview` | <kbd>Mod</kbd>+<kbd>Alt</kbd>+<kbd>↑</kbd>       | Zoom out to everything.                       |
+| `navigation.overview` | <kbd>Mod</kbd>+<kbd>Alt</kbd>+<kbd>↑</kbd>       | Toggle the overview and the previous framing. |
 | `panel.next`          | <kbd>F6</kbd>                                    | Focus the next panel (docked, then floating). |
 | `panel.previous`      | <kbd>Shift</kbd>+<kbd>F6</kbd>                   | Focus the previous panel.                     |
 | `tab.next`            | <kbd>Mod</kbd>+<kbd>Alt</kbd>+<kbd>]</kbd>       | Next tab in the focused panel.                |
 | `tab.previous`        | <kbd>Mod</kbd>+<kbd>Alt</kbd>+<kbd>[</kbd>       | Previous tab in the focused panel.            |
 | `view.close`          | <kbd>Mod</kbd>+<kbd>Alt</kbd>+<kbd>W</kbd>       | Close the focused view (if closable).         |
-| `panel.float`         | —                                                | Float the focused panel.                      |
+| `panel.float`         | —                                                | Float the focused panel (`float()`).          |
 | `panel.hide`          | —                                                | Hide the focused panel.                       |
 
-`Mod` is <kbd>⌘</kbd> on macOS and <kbd>Ctrl</kbd> on other platforms. <kbd>Esc</kbd> also steps back out of a maximized panel, unless focus is inside view content (so your content can use <kbd>Esc</kbd> itself). During a drag, <kbd>Esc</kbd> cancels it.
+`Mod` is <kbd>⌘</kbd> on macOS and <kbd>Ctrl</kbd> on other platforms. While the camera frames something, <kbd>Esc</kbd> steps out one level, unless focus is inside view content (so your content can use <kbd>Esc</kbd> itself). During a drag, <kbd>Esc</kbd> cancels it.
 
 ### Remapping
 
@@ -48,6 +48,8 @@ createWorkspace(el, {
 ```tsx
 <Workspace keymap={{ "frame.toggle": "Mod+." }} />
 ```
+
+A combo can be a bare key. The prototype's <kbd>0</kbd> for the overview is opt-in: `keymap: { "navigation.overview": "0" }`. Shortcuts fire wherever focus is inside the workspace — content included — so bind bare keys only when your content doesn't take text input.
 
 Combos are modifiers and a key joined by `+`. Modifiers: `Mod`, `Ctrl` (or `Control`), `Meta` (or `Cmd`), `Alt` (or `Option`), `Shift`. The key is a `KeyboardEvent.key` name (`Enter`, `ArrowLeft`, `F6`, `Escape`) or a single character. Letters, digits and punctuation match by physical key, so `Mod+Alt+]` works regardless of what <kbd>Alt</kbd> types on the user's layout.
 
@@ -88,7 +90,7 @@ When focus moves into content (<kbd>Enter</kbd> on a tab, `open()`, `focus()`), 
 
 ### Moving tabs without a pointer
 
-The panel menu includes **Move _tab_ to ▸**, a submenu listing every other panel the selected view may go into, plus **New split right** and **New split below** when the panel has more than one tab. Together with **Float**/**Dock**, **Maximize** and **Hide**, everything drag and drop can do is reachable from the keyboard: focus a tab, press <kbd>Shift</kbd>+<kbd>F10</kbd>, and pick a destination.
+The panel menu includes **Move _tab_ to ▸**, a submenu listing every other panel the selected view may go into, plus **New split right** and **New split below** when the panel has more than one tab. Together with **Float** / **Dock** (**Dock beside stage** with `floating: "stage"`), **Maximize** and **Hide**, everything drag and drop can do is reachable from the keyboard: focus a tab, press <kbd>Shift</kbd>+<kbd>F10</kbd>, and pick a destination.
 
 ## Dividers
 
@@ -103,7 +105,7 @@ Panel menus are ARIA `menu`s: <kbd>↑</kbd>/<kbd>↓</kbd>, <kbd>Home</kbd>/<kb
 - The workspace root is a `region` labelled by the `label` option (default "Workspace"). Give each workspace on a page a distinct label.
 - Tabs use `tab`/`tabpanel` roles with `aria-selected` and `aria-controls`; surfaces are labelled by their tab.
 - Close buttons have labels like "Close Layers".
-- A polite live region announces moves, e.g. "Moved Layers" after a drop.
+- A polite live region announces "Moved" after a drop.
 - Unselected surfaces and hidden panels are made `inert`, so their content is skipped by focus and assistive technology — while staying mounted.
 
 ## Focus tracking
@@ -120,4 +122,4 @@ The `motion` option controls animation:
 | `"reduced"`            | Never animate layout or camera moves.                 |
 | `"full"`               | Always animate.                                       |
 
-With reduced motion, panels and the camera jump to their destination, and the appear animation and menu transitions are skipped.
+With reduced motion, panels and the camera jump to their destination, a lifted window takes its compact size at once, and the appear animation, hide/restore flights and menu transitions are skipped. The 150 ms settle before a drop target previews still applies.

@@ -65,7 +65,7 @@ Without a bundler, import `@danfessler/trellis-element/standalone` — a single 
 | `data-allow-stage`, `data-allow-side`, `data-allow-floating` | `allow` (`"false"` disallows).                                              |
 | `data-min-width`, `data-min-height`                          | `minSize`.                                                                  |
 | `data-gestures="workspace"`                                  | `gestures`.                                                                 |
-| `data-tabbar`                                                | `tabbar` (`auto` or `never`).                                               |
+| `data-tabbar`                                                | `tabbar` (`auto`, `never` or `overlay`).                                    |
 | `data-class`                                                 | `className`.                                                                |
 | `data-iframe`                                                | An iframe URL. `{param}` placeholders are replaced with URL-encoded params. |
 

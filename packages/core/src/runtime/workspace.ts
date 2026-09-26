@@ -1516,9 +1516,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const current = lastRects.get(panel.id);
     if (current) from.set(panel.id, current);
     const without = removePanel(doc, panel.id);
-    settling.add(panel.id);
     if (float) {
       if (!allowed(panel.views, "side")) return;
+      settling.add(panel.id);
       rememberedFloats.set(panel.id, float.rect);
       const s = stageScreen();
       const next =
@@ -1530,6 +1530,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     } else {
       const layer = floatingLayer();
       if (!layer || !allowed(panel.views, "floating")) return;
+      settling.add(panel.id);
       const rect = rememberedFloats.get(panel.id) ?? cascadeRect(layer);
       commit(floatPanel(without, panel, rect, layer), { from });
       if (stage) nav.include([stage.id]);
@@ -1742,7 +1743,10 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (e.defaultPrevented) return;
     if (dragActive()) return;
     const keymap = { ...DEFAULT_KEYMAP, ...options.keymap };
+    // Shortcuts without Ctrl/⌘/Alt never fire while typing (prototype rule).
+    const typing = (e.target as HTMLElement).matches?.("input, textarea, select, [contenteditable=''], [contenteditable=true]");
     for (const [command, combo] of Object.entries(keymap) as [Command, string | null][]) {
+      if (typing && combo && !e.ctrlKey && !e.metaKey && !e.altKey) continue;
       if (combo && matches(e, combo)) {
         e.preventDefault();
         run(command);
@@ -1809,7 +1813,10 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   }
   /** Double-clicking a tab bar maximizes; a floating window frames its desktop (prototype). */
   function toggleFrame(panelId: string): boolean {
-    if (doc.floating.some((f) => f.panel.id === panelId)) {
+    const float = doc.floating.find((f) => f.panel.id === panelId);
+    if (float) {
+      // A window floating on the desktop frames its desktop; overlay floats have none.
+      if (float.layer !== "stage") return false;
       nav.frame("stage");
       return true;
     }

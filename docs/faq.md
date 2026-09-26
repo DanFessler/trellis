@@ -45,7 +45,7 @@ If the type's `iframe` URL (or `srcdoc`) is computed from params, a params chang
 
 ### Can I maximize a floating window?
 
-If it floats in the stage (`floating: "stage"`), yes: double-click its tab bar, use **Maximize**, or call `ws.navigation.toggle(id)`, and the camera zooms onto it. Overlay floats sit above the camera and can't be maximized; `toggle()` returns `false` for them.
+Not directly — floating windows belong to their desktop and are never camera targets, so `ws.navigation.toggle(id)` returns `false` for them, and double-clicking a floating window's tab bar frames the stage it lives on. Dock it first: `ws.toggleDock(id)` (or **Dock beside stage** in its menu) docks it beside the stage and frames both, and then it can be maximized like any docked panel. `toggleDock()` again floats it back at its previous size.
 
 ### Iframes swallow mouse events — does dragging over them break?
 
@@ -53,7 +53,7 @@ No. While a drag, resize or navigation gesture is in progress, content is made n
 
 ### Can users zoom with a trackpad?
 
-In `navigation="free"`, pinching (which browsers report as <kbd>Ctrl</kbd>+wheel) zooms the workspace, and two-finger scrolling pans while zoomed in. Over your content, those gestures stay with the content unless the type sets `gestures: "workspace"` or the user holds <kbd>Alt</kbd>. Wheel and pinch events inside an iframe never reach the workspace at all — see [Zoom gestures over iframes](./recipes.md#zoom-gestures-over-iframes).
+In `navigation="free"`, scrolling over the workspace's chrome, gaps or stage zooms it, and pinching (which browsers report as <kbd>Ctrl</kbd>+wheel) zooms faster; when the gesture ends, the camera springs to the best fit. There's no wheel panning. Over your content, a plain scroll stays with the content unless the type sets `gestures: "workspace"`; <kbd>Ctrl</kbd> (a pinch) or <kbd>Alt</kbd> zooms the workspace from anywhere. Touch pinches work too. Wheel and pinch events inside an iframe never reach the workspace at all — see [Zoom gestures over iframes](./recipes.md#zoom-gestures-over-iframes).
 
 ### How big is it?
 

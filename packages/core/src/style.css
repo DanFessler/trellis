@@ -22,7 +22,6 @@
   --trellis-accent: #3a6ff7;
   --trellis-accent-contrast: #ffffff;
   --trellis-stage: #eceef1;
-  --trellis-drop: color-mix(in srgb, var(--trellis-accent) 16%, transparent);
   --trellis-slot: #cdd0d6;
   --trellis-menu: #ffffff;
   --trellis-menu-hover: rgba(15, 17, 25, 0.06);

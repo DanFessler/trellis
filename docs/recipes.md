@@ -32,13 +32,8 @@ function TitleButtons() {
     <div className="traffic">
       <button aria-label="Close" onClick={() => void view.close()} />
       <button aria-label="Minimize" onClick={() => ws.hide(view.panelId, { toward: dock() ?? undefined })} />
-      <button
-        aria-label="Zoom"
-        onClick={() => {
-          // Frame the window; fall back to resizing it if it can't be framed (navigation off).
-          if (!ws.navigation.toggle(view.panelId)) ws.float(view.panelId, { x: 0, y: 0, w: 1, h: 1 });
-        }}
-      />
+      {/* Dock beside the desktop and frame both; click again to float back. */}
+      <button aria-label="Zoom" onClick={() => ws.toggleDock(view.panelId)} />
     </div>
   );
 }
@@ -106,13 +101,14 @@ export function Desktop() {
 
 Why it works:
 
-- `floating="stage"` puts windows inside the stage, clipped to it, and dropping on the empty stage floats rather than docks.
+- `floating="stage"` puts windows inside the stage, clipped to it. The empty stage is the desktop: dropping in its interior floats a window, and dropping near its edges docks the window beside it.
 - `placement="float"` makes every `open()` a new window, cascaded so they don't stack exactly. `from: e.currentTarget` grows each new window out of its dock icon.
 - Clicking into a window — or opening or focusing it — raises it to the front.
-- The green _Zoom_ button calls `navigation.toggle(panelId)`: the camera zooms onto the window until it fills the desktop, and a second click (or <kbd>Esc</kbd>) zooms back out. The window's own rect never changes. Double-clicking the title bar does the same.
+- The green _Zoom_ button calls `toggleDock(panelId)`: the window docks beside the desktop, along its longer side, and the camera widens to show both. A second click floats it back at the size it had. The panel menu's **Dock beside stage** / **Float** items do the same, and a docked window can then be maximized like any panel.
 - `hide(view.panelId, { toward })` animates a window into the dock; `restore(panelId, { from })` grows it back out. `hideToward` sends the panel menu's built-in **Hide** to the dock too.
-- `navigation="free"` lets users pinch to zoom around the desktop; when the gesture ends, the camera snaps to the window (or the whole desktop) that best fits the view. Opening or focusing a window outside the current frame zooms back out.
+- `navigation="free"` lets users wheel or pinch to zoom around the desktop; when the gesture ends, the camera snaps to whatever fits best — the desktop, or a window docked beside it. Floating windows belong to the desktop and are never framed on their own: double-clicking a title bar frames the desktop. Content lays out at no less than 480 × 320 unless a type sets `minSize`, like Notes here.
 - Windows can still be docked side by side against the desktop's edges. To forbid that, add `allow={{ side: false }}`.
+- For windows that draw their own title bar, set `tabbar="overlay"`: the tab bar becomes a transparent drag strip over the content, which gets `--trellis-titlebar-height` and `--trellis-titlebar-inset-end` to lay out around it. The desktop example does this.
 
 Want custom window menus? `panelMenu={false}` removes the built-ins, and each type's `menu` supplies its own.
 
@@ -252,7 +248,7 @@ Notes:
 
 - Keep app state (the image, the selected tool, the current color) in a store _above_ `<Workspace>`. View content keeps React context, so every palette reads the same store no matter where it's docked.
 - `tabbar="auto"` hides the tool strip's tab bar while it's alone in its panel, like classic tool palettes.
-- The canvas uses its own wheel/pinch for zooming the image. With the default `gestures="content"`, navigation leaves those gestures alone.
+- The canvas uses its own wheel/pinch for zooming the image. `navigation="focus"` has no workspace gestures, so they all go to the canvas. Under `navigation="free"`, the default `gestures="content"` still leaves plain wheels over content alone, but <kbd>Ctrl</kbd>+wheel (pinch) and <kbd>Alt</kbd>+wheel zoom the workspace.
 - `minSize` on dense palettes keeps them legible — below it they scale down instead of reflowing.
 - Explicit ids on palettes mean `reset()` animates them back rather than recreating them.
 
@@ -396,6 +392,6 @@ const ws = createWorkspace(document.getElementById("dashboard")!, {
 ```
 
 - `floating: false` keeps the grid tidy; users can still rearrange by dragging.
-- Double-clicking a chart's tab bar maximizes it for a closer look; <kbd>Esc</kbd> returns.
+- Double-clicking a chart's tab bar maximizes it for a closer look; double-clicking again restores the previous framing, and <kbd>Esc</kbd> steps out one level.
 - `visibility` pauses charts hidden behind another tab or scrolled out of a maximized view.
 - `resize` fires once after motion settles — charts re-render once per layout change, not per frame.

@@ -34,7 +34,7 @@ ws.hide(panelId, { toward: dockButton });
 ws.restore(panelId, { from: dockButton });
 ```
 
-Both accept an `Element` or a `Rect` in pixels relative to the workspace's top-left corner. Without `toward`, the panel shrinks and fades downward in place.
+Both accept an `Element` or a `Rect` in pixels relative to the workspace's top-left corner. The whole window — chrome and content — flies into the target over 300 ms and back out of it over 380 ms, on `cubic-bezier(.2, .75, .2, 1)`, fading to 10% opacity at the small end. Without `toward`, the panel shrinks and fades toward the bottom of where it was; without `from`, a restored panel fades in where it lands. With reduced motion, both happen instantly.
 
 `open()` takes the same kind of target: `ws.open("notes", { from: launcher })` grows a new panel out of a launcher. See [Opening views](./opening-views.md#launching-from-a-button).
 

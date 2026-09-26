@@ -27,7 +27,7 @@ The core has no runtime dependencies. It is published as ES modules with TypeScr
 
 ## Include the stylesheet
 
-Trellis's chrome — tab bars, dividers, menus, drop previews — is styled by one stylesheet. Import it once, anywhere in your app:
+Trellis's chrome — tab bars, dividers, menus, drop slots — is styled by one stylesheet. Import it once, anywhere in your app:
 
 ```ts
 import "@danfessler/trellis/style.css";

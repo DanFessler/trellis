@@ -194,7 +194,14 @@ interface ViewRecord {
   params?: Params;
   title?: string;
 }
+interface Framing {
+  id: string;
+  name: string;
+  frame: string[]; // the panel ids it showed (or the empty stage's id)
+}
 ```
+
+`navigation.frame` and each framing's `frame` store the **views** a framing showed, as panel ids, rather than a node; on load, the camera frames the smallest node or sibling range that holds those that survive. See [Navigation](./navigation.md#saved-framings).
 
 A small example:
 

@@ -302,6 +302,19 @@ export function createNavigator(host: NavigationHost) {
   host.lifetime.listen(host.root, "keyup", (e: KeyboardEvent) => {
     if (e.key === "Shift") resetHierarchyWheel();
   });
+  // Escape cancels a marquee or drag-zoom before anything else sees it.
+  host.lifetime.listen(
+    window,
+    "keydown",
+    (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || (!marquee && !dragZoom)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      finishMarquee(false);
+      finishDragZoom();
+    },
+    { capture: true },
+  );
   host.lifetime.listen(window, "blur", () => {
     resetHierarchyWheel();
     finishDragZoom();

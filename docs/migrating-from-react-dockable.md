@@ -84,5 +84,6 @@ react-dockable layouts can't be loaded directly. Bump your storage key or `versi
 
 - Content never remounts: moving, tabbing, floating, hiding and maximizing keep iframes, canvases and React state intact.
 - Floating panels (`floating="overlay"` or `"stage"`), hide/restore, and animated maximize or free zoom (`navigation`).
-- An imperative handle (`ref` or `useWorkspace()`) with `open`, `close`, `float`, `dock`, `hide`, `restore` and `navigation`.
+- Drag and drop that previews in the real layout — neighbours slide aside to open a slot — with targets at tab bars, panel edges, the gaps between panels and the workspace's outer edge. See [Interaction model](./interaction.md).
+- An imperative handle (`ref` or `useWorkspace()`) with `open`, `close`, `float`, `dock`, `toggleDock`, `hide`, `restore` and `navigation`.
 - Vanilla JavaScript and a `<trellis-workspace>` custom element, sharing the same core.

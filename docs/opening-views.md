@@ -97,18 +97,19 @@ ws.open("doc", { params: { path }, reuse: "params" });
 ws.open("doc", { params: { path }, reuse: (v) => v.params.path === path });
 ```
 
-A type with `singleton: true` defaults to `reuse: "type"`, so there is at most one. Revealing a view restores its panel if it was hidden, selects its tab, raises it if floating, and — if the workspace is maximized on something else — zooms back out so it is visible.
+A type with `singleton: true` defaults to `reuse: "type"`, so there is at most one. Revealing a view restores its panel if it was hidden, selects its tab, raises it if floating, and — if the camera frames something that doesn't contain it — widens the framing so it is visible (a window floating in the stage brings the stage into frame).
 
 ## Moving existing views
 
-| Method                                | Does                                                                               |
-| ------------------------------------- | ---------------------------------------------------------------------------------- |
-| `ws.focus(id)`                        | Reveal and focus a view, or the selected view of a panel.                          |
-| `ws.select(viewId)`                   | Select a view's tab without moving focus.                                          |
-| `ws.float(panelOrViewId, rect?)`      | Float a panel, or tear a single view out of its panel and float it.                |
-| `ws.dock(panelOrViewId, target)`      | Dock a panel or view: `"stage"`, `{ beside, edge, share? }` or `{ into, index? }`. |
-| `ws.hide(panelOrViewId, { toward? })` | Hide a panel, or a single tab. See [Hiding](./hiding.md).                          |
-| `ws.close(viewId, { force? })`        | Close a view. Resolves `false` if a close guard vetoed it.                         |
+| Method                                | Does                                                                                                                                            |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ws.focus(id)`                        | Reveal and focus a view, or the selected view of a panel.                                                                                       |
+| `ws.select(viewId)`                   | Select a view's tab without moving focus.                                                                                                       |
+| `ws.float(panelOrViewId, rect?)`      | Float a panel, or tear a single view out of its panel and float it.                                                                             |
+| `ws.dock(panelOrViewId, target)`      | Dock a panel or view: `"stage"`, `{ beside, edge, share? }` or `{ into, index? }`.                                                              |
+| `ws.toggleDock(panelOrViewId)`        | Dock a floating panel beside the stage, or float a docked one back at its remembered size. See [Floating](./floating.md#dock-beside-the-stage). |
+| `ws.hide(panelOrViewId, { toward? })` | Hide a panel, or a single tab. See [Hiding](./hiding.md).                                                                                       |
+| `ws.close(viewId, { force? })`        | Close a view. Resolves `false` if a close guard vetoed it.                                                                                      |
 
 ```ts
 ws.float("color");
