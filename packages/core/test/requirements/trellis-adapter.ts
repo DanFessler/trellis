@@ -25,7 +25,8 @@ import type { Edge, LayoutNode, PanelNode, Rect } from "../../src/model/types";
 
 export type Bounds = Rect;
 export type Side = Edge;
-export type Arrangement = string | { name: string; direction: "row" | "column"; views: Arrangement[]; shares?: number[] };
+export type Arrangement =
+  string | { name: string; direction: "row" | "column"; views: Arrangement[]; shares?: number[] };
 
 const panel = (id: string): PanelNode => ({ kind: "panel", id, views: [id], selected: id });
 function fixture(spec: Arrangement): LayoutNode {
@@ -51,7 +52,13 @@ export function workspace(spec: Arrangement) {
     bounds,
     views: () => leafIds(root).sort(),
     split(id: string, incoming: string, direction: "row" | "column") {
-      root = insertBeside(root, id, panel(incoming), direction === "row" ? "right" : "bottom", `edit-${++serial}`);
+      root = insertBeside(
+        root,
+        id,
+        panel(incoming),
+        direction === "row" ? "right" : "bottom",
+        `edit-${++serial}`,
+      );
     },
     close(id: string) {
       // Trellis lets every panel close (the workspace then shows its empty state); the
@@ -64,7 +71,11 @@ export function workspace(spec: Arrangement) {
       // The prototype keeps each child of the pair at ≥12% of the pair.
       const total = node.weights.reduce((a, b) => a + b, 0);
       const pair = (node.weights[seam] + node.weights[seam + 1]) / total;
-      root = replaceNode(root, group, resizeBoundary(node, seam, position, () => pair * 0.12))!;
+      root = replaceNode(
+        root,
+        group,
+        resizeBoundary(node, seam, position, () => pair * 0.12),
+      )!;
     },
     move(id: string, target: string, side: Side) {
       if (id === target || !findNode(root, id) || !findNode(root, target)) return;

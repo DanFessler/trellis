@@ -250,7 +250,8 @@ export function createNavigator(host: NavigationHost) {
 
   // Wheel: Shift steps the hierarchy; otherwise zoom (content keeps plain wheels).
   let hierarchyWheel = { last: -Infinity, total: 0, steppedAt: -Infinity, direction: 0 };
-  const resetHierarchyWheel = () => (hierarchyWheel = { last: -Infinity, total: 0, steppedAt: -Infinity, direction: 0 });
+  const resetHierarchyWheel = () =>
+    (hierarchyWheel = { last: -Infinity, total: 0, steppedAt: -Infinity, direction: 0 });
   function handleHierarchyWheel(e: WheelEvent): boolean {
     if (!e.shiftKey) {
       resetHierarchyWheel();
@@ -293,7 +294,11 @@ export function createNavigator(host: NavigationHost) {
       e.preventDefault();
       if (host.busy() || dragZoom || marquee) return;
       const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? host.viewport().h : 1);
-      zoom(Math.exp(Math.max(-0.3, Math.min(0.3, delta * (e.ctrlKey ? 0.009 : 0.003)))), e.clientX, e.clientY);
+      zoom(
+        Math.exp(Math.max(-0.3, Math.min(0.3, delta * (e.ctrlKey ? 0.009 : 0.003)))),
+        e.clientX,
+        e.clientY,
+      );
       host.lifetime.clearTimeout(wheelTimer);
       wheelTimer = host.lifetime.timeout(finishGesture, 180);
     },
@@ -324,7 +329,11 @@ export function createNavigator(host: NavigationHost) {
   // Shift+drag: marquee framing. Alt+drag: zoom around the press point (mouse pinch proxy).
   const marqueeEl = h("div", { "data-trellis-part": "marquee", "aria-hidden": "true" });
   // While a gesture drives the camera, outline what releasing will frame (prototype snap preview).
-  const snapEl = h("div", { "data-trellis-part": "snap-preview", "aria-hidden": "true" }, h("span", {}, "Release to focus"));
+  const snapEl = h(
+    "div",
+    { "data-trellis-part": "snap-preview", "aria-hidden": "true" },
+    h("span", {}, "Release to focus"),
+  );
   host.root.append(snapEl);
   host.lifetime.add(() => snapEl.remove());
   const candidateEl = h("div", { "data-trellis-part": "marquee-target", "aria-hidden": "true" }, h("span"));
@@ -333,7 +342,13 @@ export function createNavigator(host: NavigationHost) {
     marqueeEl.remove();
     candidateEl.remove();
   });
-  let marquee: { pointerId: number; start: { x: number; y: number }; view: Rect; viewport: Rect; candidate: string | null } | null = null;
+  let marquee: {
+    pointerId: number;
+    start: { x: number; y: number };
+    view: Rect;
+    viewport: Rect;
+    candidate: string | null;
+  } | null = null;
   let dragZoom: { pointerId: number; x: number; y: number; lastY: number } | null = null;
   const place = (el: HTMLElement, r: Rect) => {
     el.style.transform = `translate(${r.x}px, ${r.y}px)`;
@@ -353,7 +368,8 @@ export function createNavigator(host: NavigationHost) {
     if (m.candidate) {
       const entry = entries.get(m.candidate)!;
       place(candidateEl, host.panelScreen(entry.rect));
-      candidateEl.querySelector("span")!.textContent = `Release to focus ${host.titleOf(entry.node)} · Esc to cancel`;
+      candidateEl.querySelector("span")!.textContent =
+        `Release to focus ${host.titleOf(entry.node)} · Esc to cancel`;
     }
   }
   function finishMarquee(commit: boolean) {
@@ -578,7 +594,11 @@ export function createNavigator(host: NavigationHost) {
       save(name: string): Framing | null {
         // Blank names are rejected (NAV-14).
         if (!name.trim()) return null;
-        const framing: Framing = { id: uid("framing"), name: name.trim(), frame: framed ? [...framedLeaves] : leafIds(host.doc().root) };
+        const framing: Framing = {
+          id: uid("framing"),
+          name: name.trim(),
+          frame: framed ? [...framedLeaves] : leafIds(host.doc().root),
+        };
         framings = [...framings, framing];
         host.changed();
         return framing;

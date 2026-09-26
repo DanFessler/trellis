@@ -357,16 +357,27 @@
 :where(.trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single]) {
   background: var(--trellis-tab-active);
 }
-:where(.trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single] [data-trellis-part="tab"][data-selected]) {
+:where(
+  .trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single] [data-trellis-part="tab"][data-selected]
+) {
   background: transparent;
   box-shadow: none;
 }
-:where(.trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single] [data-trellis-part="tab"][data-selected])::before,
-:where(.trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single] [data-trellis-part="tab"][data-selected])::after {
+:where(
+  .trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single] [data-trellis-part="tab"][data-selected]
+)::before,
+:where(
+  .trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single] [data-trellis-part="tab"][data-selected]
+)::after {
   display: none;
 }
-:where(.trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single][data-focused] [data-trellis-part="tab"][data-selected]) {
-  background: linear-gradient(var(--trellis-accent), var(--trellis-accent)) center top / calc(100% - 16px) 2px no-repeat;
+:where(
+  .trellis[data-tab-fill]
+    [data-trellis-part="tabbar"][data-single][data-focused]
+    [data-trellis-part="tab"][data-selected]
+) {
+  background: linear-gradient(var(--trellis-accent), var(--trellis-accent)) center top / calc(100% - 16px) 2px
+    no-repeat;
 }
 /* Full-bleed (no inset): tabs meet the panel's edges, so no flares and square inner corners. */
 :where(.trellis[data-tab-bleed] [data-trellis-part="tab"]) {
@@ -777,7 +788,10 @@
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.13);
   border-radius: calc(var(--trellis-radius) + 3px);
 }
-:where(.trellis [data-trellis-part="snap-preview"][data-visible], .trellis [data-trellis-part="marquee-target"][data-visible]) {
+:where(
+  .trellis [data-trellis-part="snap-preview"][data-visible],
+  .trellis [data-trellis-part="marquee-target"][data-visible]
+) {
   display: block;
 }
 :where(.trellis [data-trellis-part="snap-preview"] span, .trellis [data-trellis-part="marquee-target"] span) {

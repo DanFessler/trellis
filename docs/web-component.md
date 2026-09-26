@@ -83,6 +83,8 @@ Without a bundler, import `@danfessler/trellis-element/standalone` — a single 
 | Attribute                | Option                                         |
 | ------------------------ | ---------------------------------------------- |
 | `theme`                  | `theme`                                        |
+| `tab-fill`               | `tabs.fill` (boolean attribute)                |
+| `tab-inset`              | `tabs.inset` in pixels                         |
 | `floating`               | `floating` (`"false"`, `"stage"`, `"overlay"`) |
 | `navigation`             | `navigation` (`"false"`, `"focus"`, `"free"`)  |
 | `motion`                 | `motion`                                       |
@@ -90,7 +92,7 @@ Without a bundler, import `@danfessler/trellis-element/standalone` — a single 
 | `storage-key`, `version` | `persist`                                      |
 | `label`                  | `label`                                        |
 
-`theme`, `floating`, `navigation`, `motion` and `panel-menu` can change at any time.
+`theme`, `floating`, `navigation`, `motion`, `panel-menu`, `tab-fill` and `tab-inset` can change at any time.
 
 ## Properties
 

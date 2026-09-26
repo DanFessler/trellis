@@ -1,19 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import {
-  desktopWithFloatingApp,
-  history,
-  marquee,
-  workspace,
-} from "./trellis-adapter";
+import { desktopWithFloatingApp, history, marquee, workspace } from "./trellis-adapter";
 const nested = () =>
   workspace({
     name: "workspace",
     direction: "row",
-    views: [
-      { name: "writing", direction: "column", views: ["notes", "mail"] },
-      "finder",
-    ],
+    views: [{ name: "writing", direction: "column", views: ["notes", "mail"] }, "finder"],
   });
 
 test("NAV-01: hierarchy navigation steps one level toward the view under the pointer", () => {
@@ -41,10 +33,7 @@ test("NAV-03: views and groups remain snap targets despite small gesture noise",
   for (const id of ["workspace", "writing", "notes", "mail", "finder"]) {
     const r = w.bounds(id);
     assert.equal(w.snap(r), id);
-    assert.equal(
-      w.snap({ ...r, x: r.x + r.w * 0.01, w: r.w * 1.02, h: r.h * 1.02 }),
-      id,
-    );
+    assert.equal(w.snap({ ...r, x: r.x + r.w * 0.01, w: r.w * 1.02, h: r.h * 1.02 }), id);
   }
   assert.equal(w.snap({ x: -0.1, y: -0.1, w: 1.2, h: 1.2 }), "workspace");
 });
@@ -86,10 +75,7 @@ test("NAV-07: maximize restores the exact prior framing even after skipping hier
   for (const origin of ["workspace", "writing"]) {
     const maximized = w.maximize(origin, "notes");
     assert.equal(maximized.destination, "notes");
-    assert.equal(
-      w.maximize("notes", "notes", maximized.session).destination,
-      origin,
-    );
+    assert.equal(w.maximize("notes", "notes", maximized.session).destination, origin);
   }
 });
 test("NAV-08: if the prior framing disappears, maximize restores its nearest surviving ancestor", () => {

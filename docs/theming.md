@@ -58,40 +58,41 @@ ws.update({ tokens: { "--trellis-accent": "#f60" } }); // --trellis-radius goes 
 
 ### Metrics
 
-| Token                     | Default         | Controls                                  |
-| ------------------------- | --------------- | ----------------------------------------- |
-| `--trellis-gap`           | `6px`           | Space between panels and around the edge. |
-| `--trellis-radius`        | `10px`          | Panel corner radius.                      |
-| `--trellis-tab-radius`    | `7px`           | Tab corner radius.                        |
-| `--trellis-tabbar-height` | `34px`          | Tab bar height.                           |
-| `--trellis-tab-max-width` | `220px`         | Maximum width of a tab.                   |
-| `--trellis-font`          | system UI stack | Font of all chrome.                       |
-| `--trellis-font-size`     | `12.5px`        | Font size of all chrome.                  |
+| Token                     | Default         | Controls                                                           |
+| ------------------------- | --------------- | ------------------------------------------------------------------ |
+| `--trellis-gap`           | `6px`           | Space between panels and around the edge.                          |
+| `--trellis-radius`        | `10px`          | Panel corner radius.                                               |
+| `--trellis-tab-radius`    | `7px`           | Tab corner radius.                                                 |
+| `--trellis-tabbar-height` | `34px`          | Tab bar height.                                                    |
+| `--trellis-tab-max-width` | `220px`         | Maximum width of a tab.                                            |
+| `--trellis-tab-inset`     | `4px`           | Space around the tabs in a tab bar. Set it with the `tabs` option. |
+| `--trellis-font`          | system UI stack | Font of all chrome.                                                |
+| `--trellis-font-size`     | `12.5px`        | Font size of all chrome.                                           |
 
 > **Note** Trellis reads `--trellis-gap` and `--trellis-tabbar-height` in JavaScript to lay panels out. They're re-read when the theme or tokens change and when the workspace resizes. If you change them from your own stylesheet at runtime, prefer the `tokens` option so the layout updates immediately.
 
 ### Colors
 
-| Token                       | Used for                                                                                              |
-| --------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `--trellis-bg`              | The workspace background, visible in gaps.                                                            |
-| `--trellis-panel`           | Panel and content background.                                                                         |
-| `--trellis-tabbar`          | Tab bar background.                                                                                   |
-| `--trellis-tab-hover`       | Hovered tab and chrome button background.                                                             |
-| `--trellis-tab-active`      | Selected tab background.                                                                              |
-| `--trellis-text`            | Primary text.                                                                                         |
-| `--trellis-text-muted`      | Unselected tabs, shortcuts, secondary text.                                                           |
-| `--trellis-border`          | Hairlines around panels, tabs and menus.                                                              |
-| `--trellis-accent`          | Focus indicator, dividers, the tab-drop outline, badges.                                              |
-| `--trellis-accent-contrast` | Text on the accent (badges).                                                                          |
-| `--trellis-stage`           | Stage background.                                                                                     |
-| `--trellis-slot`            | The slot a drag opens in the layout (`drop-slot`). Tab drops use it at 70%.                           |
-| `--trellis-menu`            | Menu background.                                                                                      |
-| `--trellis-menu-hover`      | Hovered or keyboard-focused menu item.                                                                |
-| `--trellis-shadow-float`    | Shadow of floating panels.                                                                            |
-| `--trellis-shadow-lifted`   | Shadow of a panel being dragged.                                                                      |
-| `--trellis-focus-ring`      | Keyboard focus ring (a `box-shadow` value).                                                           |
-| `--trellis-ease`            | Easing for CSS transitions in the chrome.                                                             |
+| Token                       | Used for                                                                    |
+| --------------------------- | --------------------------------------------------------------------------- |
+| `--trellis-bg`              | The workspace background, visible in gaps.                                  |
+| `--trellis-panel`           | Panel and content background.                                               |
+| `--trellis-tabbar`          | Tab bar background.                                                         |
+| `--trellis-tab-hover`       | Hovered tab and chrome button background.                                   |
+| `--trellis-tab-active`      | Selected tab background.                                                    |
+| `--trellis-text`            | Primary text.                                                               |
+| `--trellis-text-muted`      | Unselected tabs, shortcuts, secondary text.                                 |
+| `--trellis-border`          | Hairlines around panels, tabs and menus.                                    |
+| `--trellis-accent`          | Focus indicator, dividers, the tab-drop outline, badges.                    |
+| `--trellis-accent-contrast` | Text on the accent (badges).                                                |
+| `--trellis-stage`           | Stage background.                                                           |
+| `--trellis-slot`            | The slot a drag opens in the layout (`drop-slot`). Tab drops use it at 70%. |
+| `--trellis-menu`            | Menu background.                                                            |
+| `--trellis-menu-hover`      | Hovered or keyboard-focused menu item.                                      |
+| `--trellis-shadow-float`    | Shadow of floating panels.                                                  |
+| `--trellis-shadow-lifted`   | Shadow of a panel being dragged.                                            |
+| `--trellis-focus-ring`      | Keyboard focus ring (a `box-shadow` value).                                 |
+| `--trellis-ease`            | Easing for CSS transitions in the chrome.                                   |
 
 ## Parts
 
@@ -193,6 +194,28 @@ Both are `0px` for views without an overlaid bar. In a tab group, the bar sits a
   padding-inline-end: var(--trellis-titlebar-inset-end);
 }
 ```
+
+## Tab styles
+
+The `tabs` option controls how tabs sit in their bar. Both settings are off by default, which gives separate tabs with space around them.
+
+| Setting | Default | Effect                                                                                                                 |
+| ------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `fill`  | `false` | Tabs grow to share the bar's width. A lone tab becomes a header: it takes the whole bar, with no tab shape or outline. |
+| `inset` | `4`     | Space around the tabs in pixels. `0` makes them full-bleed, with square corners and edges that meet the bar.           |
+
+```tsx
+<Workspace tabs={{ fill: true, inset: 0 }} />
+```
+
+```ts
+createWorkspace(el, { types, tabs: { fill: true, inset: 0 } });
+ws.update({ tabs: { fill: false } }); // back to the default look
+```
+
+With `fill: true, inset: 0`, a lone view looks like a plain header. Only the panel menu button marks it as a tab. The button is always there unless you pass `panelMenu: false` and the view type has no `menu` items, because the built-in actions (Maximize, Float or Dock, Move to, Hide and Close) always apply.
+
+The root reflects the settings as `data-tab-fill` and `data-tab-bleed`, and as the `--trellis-tab-inset` token, so your own CSS can follow them.
 
 ## Examples
 

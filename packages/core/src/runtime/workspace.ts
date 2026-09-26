@@ -117,7 +117,10 @@ const TYPE_PLACEHOLDER = (type: string): ViewTypeDefinition => ({
 });
 
 const escapeHtml = (text: string) =>
-  text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+  text.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+  );
 const DEFAULT_FLOAT_SIZE = { w: 560, h: 400 };
 /** Below this size a panel shows only its icon (the prototype's "frame only" tiles). */
 const FRAME_ONLY = { w: 160, h: 64 };
@@ -483,12 +486,29 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       tabindex: "-1",
     });
     menuButton.innerHTML = icons.more;
-    const tabbar = h("div", { "data-trellis-part": "tabbar", "data-panel": panelId }, tablist, accessories, menuButton);
+    const tabbar = h(
+      "div",
+      { "data-trellis-part": "tabbar", "data-panel": panelId },
+      tablist,
+      accessories,
+      menuButton,
+    );
     el.append(tabbar);
     layer.append(el);
     const frameIcon = h("span", { "data-trellis-part": "frame-icon", "aria-hidden": "true" });
     el.append(frameIcon);
-    dom = { id: panelId, el, tabbar, tablist, accessories, menuButton, tabs: new Map(), handles: null, frameIcon, endInset: 0 };
+    dom = {
+      id: panelId,
+      el,
+      tabbar,
+      tablist,
+      accessories,
+      menuButton,
+      tabs: new Map(),
+      handles: null,
+      frameIcon,
+      endInset: 0,
+    };
     panelDoms.set(panelId, dom);
     const d = dom;
     const onPointerDown = (e: PointerEvent) => {
@@ -565,7 +585,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (!panel) return "normal";
     const modes = panel.views.map((v) => typeOf(v).tabbar ?? "always");
     if (modes.every((m) => m === "never")) return "hidden";
-    if (panel.views.length === 1 && modes[0] === "auto") return lifted()?.id === panel.id ? "normal" : "hidden";
+    if (panel.views.length === 1 && modes[0] === "auto")
+      return lifted()?.id === panel.id ? "normal" : "hidden";
     if (panel.views.length === 1 && modes[0] === "overlay") return "overlay";
     return "normal";
   }
@@ -673,7 +694,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       const iconSource = records.get(panel.selected)?.icon.innerHTML ?? "";
       const icon = iconSource || `<b>${escapeHtml(titleOf(panel.selected).slice(0, 1).toUpperCase())}</b>`;
       if (dom.frameIcon.innerHTML !== icon) dom.frameIcon.innerHTML = icon;
-      if (barMode(panel) === "overlay") dom.endInset = dom.accessories.offsetWidth + dom.menuButton.offsetWidth + 24;
+      if (barMode(panel) === "overlay")
+        dom.endInset = dom.accessories.offsetWidth + dom.menuButton.offsetWidth + 24;
       setAttr(dom.menuButton, "hidden", options.panelMenu === false && !menuFor(panel).length ? "" : null);
     }
     invalidate();
@@ -921,7 +943,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     for (const record of records.values()) {
       const s = record.controller.state;
       const size = (record as any).__size as { width: number; height: number } | undefined;
-      if (size && (size.width !== s.size.width || size.height !== s.size.height)) record.controller.update({ size });
+      if (size && (size.width !== s.size.width || size.height !== s.size.height))
+        record.controller.update({ size });
       const scale = (record as any).__scale as number | undefined;
       if (scale !== undefined && scale !== s.scale) record.controller.update({ scale });
     }
@@ -932,7 +955,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         if (inset !== dom.endInset) {
           dom.endInset = inset;
           const panel = findPanel(id);
-          if (panel) for (const v of panel.views) records.get(v)?.content.style.setProperty("--trellis-titlebar-inset-end", `${inset}px`);
+          if (panel)
+            for (const v of panel.views)
+              records.get(v)?.content.style.setProperty("--trellis-titlebar-inset-end", `${inset}px`);
         }
       }
     if (!settledState) {
@@ -1031,9 +1056,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       const bar = mode === "normal" ? tabbarHeight : 0;
       // Too small to use: show only the app icon; the whole frame is a drag handle (prototype).
       const frameOnly =
-        lifted()?.id !== panelId && (r.w < FRAME_ONLY.w || r.h < FRAME_ONLY.h + (panel.views.length > 1 ? tabbarHeight : 0));
+        lifted()?.id !== panelId &&
+        (r.w < FRAME_ONLY.w || r.h < FRAME_ONLY.h + (panel.views.length > 1 ? tabbarHeight : 0));
       setAttr(dom.el, "data-frame-only", frameOnly ? "" : null);
-      if (frameOnly) setStyle(dom.el, "--trellis-frame-icon-size", `${Math.max(0, Math.min(40, r.w - 12, r.h - 12))}px`);
+      if (frameOnly)
+        setStyle(dom.el, "--trellis-frame-icon-size", `${Math.max(0, Math.min(40, r.w - 12, r.h - 12))}px`);
       setAttr(dom.el, "data-compact", r.w < 140 || r.h < bar + 24 ? "" : null);
       setAttr(dom.el, "data-tabbar", mode === "normal" ? null : mode);
       // An overlaid bar leaves the panel and sits above the content it covers.
@@ -1043,7 +1070,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         setStyle(dom.tabbar, "zIndex", String(z + 2));
         setStyle(dom.tabbar, "display", onscreen ? "" : "none");
         setStyle(dom.tabbar, "opacity", opacity === 1 ? "" : String(opacity));
-        setStyle(dom.tabbar, "clipPath", clip ? clipInset({ x: r.x, y: r.y, w: r.w, h: tabbarHeight }, sScreen!) : "");
+        setStyle(
+          dom.tabbar,
+          "clipPath",
+          clip ? clipInset({ x: r.x, y: r.y, w: r.w, h: tabbarHeight }, sScreen!) : "",
+        );
         place(dom.tabbar, { x: r.x, y: r.y, w: r.w, h: tabbarHeight }, round);
       } else if (dom.tabbar.parentElement !== dom.el) {
         dom.el.prepend(dom.tabbar);
@@ -1058,11 +1089,28 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         if (!record) continue;
         shown.add(viewId);
         const selected = panel.selected === viewId;
-        placeSurface(record, body, selected, z + 1, round, opacity, clip ? clipInset(body, sScreen!) : "", frameOnly);
+        placeSurface(
+          record,
+          body,
+          selected,
+          z + 1,
+          round,
+          opacity,
+          clip ? clipInset(body, sScreen!) : "",
+          frameOnly,
+        );
         setAttr(record.shell, "data-tabbar", mode === "normal" ? null : mode);
         const scale = (record as any).__scale || 1;
-        setStyle(record.content, "--trellis-titlebar-height", mode === "overlay" ? `${tabbarHeight / scale}px` : "0px");
-        setStyle(record.content, "--trellis-titlebar-inset-end", mode === "overlay" ? `${dom.endInset / scale}px` : "0px");
+        setStyle(
+          record.content,
+          "--trellis-titlebar-height",
+          mode === "overlay" ? `${tabbarHeight / scale}px` : "0px",
+        );
+        setStyle(
+          record.content,
+          "--trellis-titlebar-inset-end",
+          mode === "overlay" ? `${dom.endInset / scale}px` : "0px",
+        );
       }
     }
     // Hide surfaces with no visible panel (hidden panels, offscreen).
@@ -1143,7 +1191,12 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       panelId: panel?.id ?? controller.state.panelId,
       interactive: !busy && safe >= 0.999,
       // Size and scale settle once motion stops: views never re-render per frame.
-      ...(moving() ? {} : { size: { width: Math.round(width), height: Math.round(height) }, scale: Math.round(safe * 1000) / 1000 }),
+      ...(moving()
+        ? {}
+        : {
+            size: { width: Math.round(width), height: Math.round(height) },
+            scale: Math.round(safe * 1000) / 1000,
+          }),
     });
   }
   function renderDividers(round: boolean) {
@@ -1510,7 +1563,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const fl = floatingLayer() || "overlay";
     const next = restorePanel(doc, panelId, fl);
     lastRects.delete(panelId);
-    if (o.from && !reduced()) entering.set(panelId, { from: towardRect(o.from, { x: 0, y: 0, w: 0, h: 0 }), start: performance.now() });
+    if (o.from && !reduced())
+      entering.set(panelId, {
+        from: towardRect(o.from, { x: 0, y: 0, w: 0, h: 0 }),
+        start: performance.now(),
+      });
     commit(next);
     if (!o.from) {
       const dom = panelDoms.get(panelId);
@@ -1661,7 +1718,10 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
             ),
         });
       } else if (floatingLayer() && allowed(panel.views, "floating")) {
-        builtIns.push({ label: "Float", run: () => (floatingLayer() === "stage" ? toggleDock(panelId) : float(panelId)) });
+        builtIns.push({
+          label: "Float",
+          run: () => (floatingLayer() === "stage" ? toggleDock(panelId) : float(panelId)),
+        });
       }
       // Keyboard-accessible alternative to dragging a tab.
       const viewId = panel.selected;
@@ -1759,7 +1819,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (dragActive()) return;
     const keymap = { ...DEFAULT_KEYMAP, ...options.keymap };
     // Shortcuts without Ctrl/⌘/Alt never fire while typing (prototype rule).
-    const typing = (e.target as HTMLElement).matches?.("input, textarea, select, [contenteditable=''], [contenteditable=true]");
+    const typing = (e.target as HTMLElement).matches?.(
+      "input, textarea, select, [contenteditable=''], [contenteditable=true]",
+    );
     for (const [command, combo] of Object.entries(keymap) as [Command, string | null][]) {
       if (typing && combo && !e.ctrlKey && !e.metaKey && !e.altKey) continue;
       if (combo && matches(e, combo)) {
@@ -1769,7 +1831,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       }
     }
     // Escape outside content steps out one level (prototype).
-    if (e.key === "Escape" && framed() && !(e.target as HTMLElement).closest?.("[data-trellis-part=content]")) {
+    if (
+      e.key === "Escape" &&
+      framed() &&
+      !(e.target as HTMLElement).closest?.("[data-trellis-part=content]")
+    ) {
       e.preventDefault();
       nav.stepOut();
     }
@@ -2079,7 +2145,12 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       const float = doc.floating.find((f) => f.panel.id === panelId);
       if (!float || float.layer !== "stage") return null;
       const s = stageWorld();
-      return { x: s.x + float.rect.x * s.w, y: s.y + float.rect.y * s.h, w: float.rect.w * s.w, h: float.rect.h * s.h };
+      return {
+        x: s.x + float.rect.x * s.w,
+        y: s.y + float.rect.y * s.h,
+        w: float.rect.w * s.w,
+        h: float.rect.h * s.h,
+      };
     },
     floatingLayer,
     panelDom: (id) => panelDoms.get(id),
@@ -2133,7 +2204,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       if (!surface) return false;
       return typeOf(surface.dataset.view!).gestures !== "workspace";
     },
-    titleOf: (node) => (node.kind === "panel" ? titleOf(node.selected) : node.kind === "stage" ? "the stage" : "this group"),
+    titleOf: (node) =>
+      node.kind === "panel" ? titleOf(node.selected) : node.kind === "stage" ? "the stage" : "this group",
     schedule,
     render: () => render(),
     changed() {
@@ -2247,7 +2319,13 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     update(patch) {
       const typesChanged = patch.types && patch.types !== options.types;
       options = { ...options, ...patch };
-      if ("theme" in patch || "tokens" in patch || "navigation" in patch || "label" in patch || "tabs" in patch)
+      if (
+        "theme" in patch ||
+        "tokens" in patch ||
+        "navigation" in patch ||
+        "label" in patch ||
+        "tabs" in patch
+      )
         applyTheme();
       if ("navigation" in patch && !navigationMode()) nav.focus(null, false);
       if (typesChanged) {

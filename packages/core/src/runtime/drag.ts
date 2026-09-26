@@ -11,7 +11,15 @@
  * remove targets; overlay floats treat the whole workspace as their desktop; the stage is the
  * desktop only when floats live in it.
  */
-import { insertPanel, floatPanel, removePanel, detachView, reorderTabs, selectView, uid } from "../model/document";
+import {
+  insertPanel,
+  floatPanel,
+  removePanel,
+  detachView,
+  reorderTabs,
+  selectView,
+  uid,
+} from "../model/document";
 import {
   applyDockTarget,
   containsNode,
@@ -72,7 +80,9 @@ export interface DragHost {
   fromScreenRect(screen: Rect | undefined | null): Rect | null;
   floatWorld(panelId: string): Rect | null;
   floatingLayer(): FloatingLayer | false;
-  panelDom(id: string): { tabbar: HTMLElement; tablist: HTMLElement; tabs: Map<string, { el: HTMLElement }> } | undefined;
+  panelDom(
+    id: string,
+  ): { tabbar: HTMLElement; tablist: HTMLElement; tabs: Map<string, { el: HTMLElement }> } | undefined;
   frameOnly(panelId: string): boolean;
   allowed(viewIds: string[], region: Region): boolean;
   /** The framed node (possibly a virtual sibling range), for the frame band. */
@@ -145,7 +155,8 @@ function sameTarget(a: DropTarget | null, b: DropTarget | null): boolean {
     );
   return true;
 }
-const inside = (p: { x: number; y: number }, r: Rect) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+const inside = (p: { x: number; y: number }, r: Rect) =>
+  p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
 
 export function createDragController(host: DragHost) {
   let session: DragSession | null = null;
@@ -294,7 +305,12 @@ export function createDragController(host: DragHost) {
       if (Math.hypot(e.clientX - d.start.x, e.clientY - d.start.y) < THRESHOLD) return;
       if (d.pendingTab && d.tabSort) {
         const row = d.tabSort.row;
-        if (e.clientX >= row.left && e.clientX <= row.right && e.clientY >= row.top && e.clientY <= row.bottom) {
+        if (
+          e.clientX >= row.left &&
+          e.clientX <= row.right &&
+          e.clientY >= row.top &&
+          e.clientY <= row.bottom
+        ) {
           sortTabAtPointer(d, e);
           return;
         }
@@ -452,14 +468,22 @@ export function createDragController(host: DragHost) {
         const r = host.floatWorld(f.panel.id);
         if (!r || !inside(point, r)) continue;
         const screen = host.lastRects.get(f.panel.id);
-        next = (screen && tabTarget(f.panel, p, screen)) ?? (dropEdge(point, r) ? next : { kind: "tab", panel: f.panel.id });
+        next =
+          (screen && tabTarget(f.panel, p, screen)) ??
+          (dropEdge(point, r) ? next : { kind: "tab", panel: f.panel.id });
         break;
       }
 
     // The outer frame band inserts around the framed group and takes precedence over everything.
     const group = host.framedNode() ?? doc.root;
     if (group) {
-      const frame = frameDropTarget(group, p, viewport.w, viewport.h, Math.max(host.inset() * 2, MIN_SEAM_HIT_WIDTH));
+      const frame = frameDropTarget(
+        group,
+        p,
+        viewport.w,
+        viewport.h,
+        Math.max(host.inset() * 2, MIN_SEAM_HIT_WIDTH),
+      );
       if (frame && leafIds(group).some((id) => id !== d.lifted.id)) next = { kind: "dock", spec: frame };
     }
 
@@ -477,7 +501,8 @@ export function createDragController(host: DragHost) {
   /** Tab-bar drops insert at an index (Trellis addition). */
   function tabTarget(panel: PanelNode, p: { x: number; y: number }, screen: Rect): DropTarget | null {
     const bar = host.tabbarHeight(panel);
-    if (!bar || !(p.x >= screen.x && p.x <= screen.x + screen.w && p.y >= screen.y && p.y <= screen.y + bar)) return null;
+    if (!bar || !(p.x >= screen.x && p.x <= screen.x + screen.w && p.y >= screen.y && p.y <= screen.y + bar))
+      return null;
     const dom = host.panelDom(panel.id);
     const rootBox = host.root.getBoundingClientRect();
     let index = panel.views.length;
@@ -573,7 +598,8 @@ export function createDragController(host: DragHost) {
     const rects = new Map(d.base);
     for (const [id, entry] of d.dropBase) rects.set(id, entry.rect);
     if (d.collapsed) rects.set(SOURCE_SLOT, collapsedSource(d));
-    else if (d.inDoc && !d.fromFloat && d.base.get(d.lifted.id)) rects.set(SOURCE_SLOT, d.base.get(d.lifted.id)!);
+    else if (d.inDoc && !d.fromFloat && d.base.get(d.lifted.id))
+      rects.set(SOURCE_SLOT, d.base.get(d.lifted.id)!);
     return rects;
   }
   function collapsedSource(d: DragSession): Rect {
@@ -597,7 +623,11 @@ export function createDragController(host: DragHost) {
     const own = worldOf(id);
     if (own) return own;
     const node = findNode(d.pdoc.root, id);
-    const rects = node ? leafIds(node).map(worldOf).filter((r): r is Rect => !!r) : [];
+    const rects = node
+      ? leafIds(node)
+          .map(worldOf)
+          .filter((r): r is Rect => !!r)
+      : [];
     if (!rects.length) return d.dropBase.get(id)?.rect ?? null;
     const x = Math.min(...rects.map((r) => r.x));
     const y = Math.min(...rects.map((r) => r.y));
@@ -640,7 +670,12 @@ export function createDragController(host: DragHost) {
       d.layoutTargets.set(DROP_SLOT, world);
       setSlotFrom({ ...world, x: world.x + world.w / 2, y: world.y + world.h / 2, w: 0, h: 0 });
     } else if (next?.kind === "dock") {
-      const placeholder: PanelNode = { kind: "panel", id: DROP_SLOT, views: [DROP_SLOT], selected: DROP_SLOT };
+      const placeholder: PanelNode = {
+        kind: "panel",
+        id: DROP_SLOT,
+        views: [DROP_SLOT],
+        selected: DROP_SLOT,
+      };
       const spec = next.spec;
       if (spec.seam || !d.dropBase.get(spec.id)) {
         const previewRoot = applyDockTarget(d.pdoc.root, spec, placeholder, "__trellis-seam-preview");
@@ -692,13 +727,18 @@ export function createDragController(host: DragHost) {
         : null;
     const source = d.collapsed
       ? null
-      : (d.tabOrigin ?? (d.fromFloat && !d.fromFrame ? (desktop ?? (d.fromFloat === "overlay" ? fullViewport() : original)) : original));
+      : (d.tabOrigin ??
+        (d.fromFloat && !d.fromFrame
+          ? (desktop ?? (d.fromFloat === "overlay" ? fullViewport() : original))
+          : original));
     const now = performance.now();
     const amount = host.reduced() ? 1 : 1 - Math.exp(-(now - d.sizeTick) / 60);
     d.sizeTick = now;
     d.desktopAmount += ((desktop && inside(d.pointer, desktop) ? 1 : 0) - d.desktopAmount) * amount;
     const compactTo =
-      (source && inside(d.pointer, source)) || (!d.fromFrame && desktop && inside(d.pointer, desktop)) ? 0 : 1;
+      (source && inside(d.pointer, source)) || (!d.fromFrame && desktop && inside(d.pointer, desktop))
+        ? 0
+        : 1;
     if (compactTo !== d.compactTo) {
       d.compactFrom = d.compactAmount;
       d.compactTo = compactTo;
@@ -757,7 +797,8 @@ export function createDragController(host: DragHost) {
     const without = d.inDoc ? removePanel(base, lifted.id) : base;
     let next: LayoutDocument;
     const layer = host.floatingLayer() || "overlay";
-    if (target.kind === "tab") next = insertPanel(without, lifted, { into: target.panel, index: target.index });
+    if (target.kind === "tab")
+      next = insertPanel(without, lifted, { into: target.panel, index: target.index });
     else if (target.kind === "stage") next = insertPanel(without, lifted, { into: target.stage });
     else if (target.kind === "dock") {
       const root = applyDockTarget(without.root, target.spec, lifted, uid("split"));
@@ -803,13 +844,20 @@ export function createDragController(host: DragHost) {
     const grabY = Math.min(d.grabY, 18 + (d.grabY - 18) * (1 - d.compactAmount));
     const x = d.pointer.x - w * d.grabX;
     const y = d.pointer.y - grabY;
-    return { x: (x - container.x) / container.w, y: (y - container.y) / container.h, w: w / container.w, h: h / container.h };
+    return {
+      x: (x - container.x) / container.w,
+      y: (y - container.y) / container.h,
+      w: w / container.w,
+      h: h / container.h,
+    };
   }
 
   /** A press that never became a drag: a click, or a finished tab sort. */
   function endPending(d: DragSession, commit: boolean) {
     const sort = d.tabSort;
-    const positions = new Map(sort?.items.map((item) => [item.id, item.el.getBoundingClientRect().left]) ?? []);
+    const positions = new Map(
+      sort?.items.map((item) => [item.id, item.el.getBoundingClientRect().left]) ?? [],
+    );
     clearTabSort(d);
     if (!commit || !sort?.started || !d.pendingTab) return;
     suppressClickUntil = performance.now() + 350;

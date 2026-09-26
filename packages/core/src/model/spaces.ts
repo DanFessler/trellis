@@ -34,7 +34,10 @@ export function focusLayout(root: LayoutNode | null): Map<string, SpaceEntry> {
         const children = node.children.slice(start, end);
         const first = entries.get(children[0].id)!.rect;
         const last = entries.get(children[children.length - 1].id)!.rect;
-        const id = rangeId(node.id, children.map((c) => c.id));
+        const id = rangeId(
+          node.id,
+          children.map((c) => c.id),
+        );
         const weights = node.weights.slice(start, end);
         const total = sum(weights);
         entries.set(id, {
@@ -48,7 +51,8 @@ export function focusLayout(root: LayoutNode | null): Map<string, SpaceEntry> {
   }
   return entries;
 }
-export const rangeId = (splitId: string, children: string[]) => `range:${JSON.stringify([splitId, ...children])}`;
+export const rangeId = (splitId: string, children: string[]) =>
+  `range:${JSON.stringify([splitId, ...children])}`;
 
 /** A node's parent for navigation, skipping containers that add no visible level (a stage). */
 export function navParent(entries: Map<string, SpaceEntry>, id: string): string | null {
@@ -69,7 +73,12 @@ export function navNode(entries: Map<string, SpaceEntry>, id: string): string {
   return node?.id ?? id;
 }
 function sameRect(a: Rect, b: Rect) {
-  return Math.abs(a.x - b.x) < 1e-9 && Math.abs(a.y - b.y) < 1e-9 && Math.abs(a.w - b.w) < 1e-9 && Math.abs(a.h - b.h) < 1e-9;
+  return (
+    Math.abs(a.x - b.x) < 1e-9 &&
+    Math.abs(a.y - b.y) < 1e-9 &&
+    Math.abs(a.w - b.w) < 1e-9 &&
+    Math.abs(a.h - b.h) < 1e-9
+  );
 }
 export function containsNode(node: LayoutNode, id: string): boolean {
   if (node.id === id) return true;
@@ -129,7 +138,10 @@ export function frameLeaves(root: LayoutNode | null, ids: string[]): string | nu
   let best = entries.get(root.id)!;
   for (const entry of entries.values()) {
     if (entry.node.kind === "stage" && entry.node.child) continue;
-    if (entry.rect.w * entry.rect.h < best.rect.w * best.rect.h && wanted.every((id) => containsNode(entry.node, id)))
+    if (
+      entry.rect.w * entry.rect.h < best.rect.w * best.rect.h &&
+      wanted.every((id) => containsNode(entry.node, id))
+    )
       best = entry;
   }
   return best.node.id;
@@ -161,7 +173,11 @@ export type Visit = { id: string; leaves: string[] };
 export type MaximizeSession = { id: string; returnPath: string[] } | null;
 
 /** A new visit after going back replaces forward history; repeats are not duplicated. */
-export function recordVisit(visits: Visit[], index: number, visit: Visit): { visits: Visit[]; index: number } {
+export function recordVisit(
+  visits: Visit[],
+  index: number,
+  visit: Visit,
+): { visits: Visit[]; index: number } {
   const previous = visits[index];
   if (previous && previous.id === visit.id && previous.leaves.join("|") === visit.leaves.join("|"))
     return { visits, index };
@@ -294,7 +310,8 @@ export function frameDropTarget(
   const axis = edgeAxis(edge);
   const after = edge === "right" || edge === "bottom";
   const inner = group.kind === "stage" && group.child ? group.child : group;
-  if (inner.kind === "split" && inner.axis === axis) return seamTarget(inner, after ? inner.children.length : 0);
+  if (inner.kind === "split" && inner.axis === axis)
+    return seamTarget(inner, after ? inner.children.length : 0);
   return {
     id: group.id,
     edge,
@@ -304,7 +321,12 @@ export function frameDropTarget(
 
 /** Insert at a seam, resolving the group by its surviving leaves (removing the source may
  * have promoted it). The newcomer takes an equal 1/(n+1) share of an aligned group. */
-export function insertAtSeam(root: LayoutNode, seam: SplitSeam, incoming: LayoutNode, splitId: string): LayoutNode {
+export function insertAtSeam(
+  root: LayoutNode,
+  seam: SplitSeam,
+  incoming: LayoutNode,
+  splitId: string,
+): LayoutNode {
   const surviving = new Set(leafIds(root).filter((id) => seam.leaves.includes(id)));
   if (!surviving.size) return root;
   const insert = (node: LayoutNode): LayoutNode => {
@@ -319,9 +341,14 @@ export function insertAtSeam(root: LayoutNode, seam: SplitSeam, incoming: Layout
         return [...surviving].every((id) => ids.has(id));
       });
       if (container >= 0)
-        return { ...node, children: node.children.map((child, i) => (i === container ? insert(child) : child)) };
+        return {
+          ...node,
+          children: node.children.map((child, i) => (i === container ? insert(child) : child)),
+        };
       if (node.axis === seam.axis) {
-        const index = node.children.findIndex((child) => leafIds(child).some((id) => !seam.before.includes(id)));
+        const index = node.children.findIndex((child) =>
+          leafIds(child).some((id) => !seam.before.includes(id)),
+        );
         const children = [...node.children];
         const total = sum(node.weights);
         const share = 1 / (children.length + 1);

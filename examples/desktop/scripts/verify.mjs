@@ -36,7 +36,9 @@ const expect = (ok, message) => {
 const settle = () => page.waitForTimeout(700);
 // Window title bars are overlaid, so they live outside the panel element; they carry data-panel.
 const barFor = (title) =>
-  page.locator(`[data-trellis-part="tabbar"]:has([data-trellis-part="tab-title"]:text-is("${title}"))`).first();
+  page
+    .locator(`[data-trellis-part="tabbar"]:has([data-trellis-part="tab-title"]:text-is("${title}"))`)
+    .first();
 const panelFor = async (title) => {
   const bar = barFor(title);
   const id = (await bar.count()) ? await bar.getAttribute("data-panel") : "__none__";
@@ -147,7 +149,11 @@ await check("frame the docked Notes and step back", async () => {
   // History records visits by their views: the first visit was the desktop alone, so going back
   // frames the desktop again (prototype NAV-09/10), not the maximized Notes.
   const notesId = await barFor("Notes").getAttribute("data-panel");
-  const framed = await page.evaluate(() => document.querySelector(".trellis [data-trellis-part=panel][data-framed]")?.getAttribute("data-panel") ?? null);
+  const framed = await page.evaluate(
+    () =>
+      document.querySelector(".trellis [data-trellis-part=panel][data-framed]")?.getAttribute("data-panel") ??
+      null,
+  );
   expect(framed !== notesId, "Notes still maximized after going back");
   expect((await notesText()).includes(TYPED), "typed text lost after framing");
 });

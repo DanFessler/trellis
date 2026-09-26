@@ -403,7 +403,9 @@ test.describe("custom element", () => {
 });
 
 test.describe("prototype navigation", () => {
-  test("floating windows are not camera targets; double-clicking one frames its desktop", async ({ page }) => {
+  test("floating windows are not camera targets; double-clicking one frames its desktop", async ({
+    page,
+  }) => {
     await page.goto("/?scenario=vanilla&floating=stage&navigation=free");
     await expect(tab(page, "a")).toBeVisible();
     const id = await page.evaluate(() => (window as any).ws.open("files", { placement: "float" }).panelId);
@@ -417,8 +419,10 @@ test.describe("prototype navigation", () => {
   test("toggleDock docks a float beside the stage and restores its size (PLACEMENT-01)", async ({ page }) => {
     await page.goto("/?scenario=vanilla&floating=stage&navigation=free");
     await expect(tab(page, "a")).toBeVisible();
-    const id = await page.evaluate(() =>
-      (window as any).ws.open("files", { placement: { float: { x: 0.1, y: 0.1, w: 0.37, h: 0.41 } } }).panelId,
+    const id = await page.evaluate(
+      () =>
+        (window as any).ws.open("files", { placement: { float: { x: 0.1, y: 0.1, w: 0.37, h: 0.41 } } })
+          .panelId,
     );
     await page.evaluate((p) => (window as any).ws.toggleDock(p), id);
     let d = await doc(page);
@@ -434,7 +438,10 @@ test.describe("prototype navigation", () => {
     await page.evaluate(() => {
       const ws = (window as any).ws;
       const root = ws.getDocument().root;
-      ws.setDocument({ ...ws.getDocument(), root: { ...root, weights: [0.1, 0.8, 0.1] } }, { animate: false });
+      ws.setDocument(
+        { ...ws.getDocument(), root: { ...root, weights: [0.1, 0.8, 0.1] } },
+        { animate: false },
+      );
     });
     await expect(panel(page, "left")).toHaveAttribute("data-frame-only", "");
     await expect(panel(page, "left").locator("[data-trellis-part=frame-icon]")).toBeVisible();

@@ -37,8 +37,14 @@ export function AppFrame({ app }: { app: AppDefinition }) {
     const content = viewRef.current.element;
     if (!doc || !content) return;
     const style = getComputedStyle(content);
-    doc.style.setProperty("--window-titlebar-height", style.getPropertyValue("--trellis-titlebar-height") || "48px");
-    doc.style.setProperty("--window-controls-inset", style.getPropertyValue("--trellis-titlebar-inset-end") || "88px");
+    doc.style.setProperty(
+      "--window-titlebar-height",
+      style.getPropertyValue("--trellis-titlebar-height") || "48px",
+    );
+    doc.style.setProperty(
+      "--window-controls-inset",
+      style.getPropertyValue("--trellis-titlebar-inset-end") || "88px",
+    );
     doc.setAttribute("data-window-active", String(viewRef.current.focused));
   };
   useEffect(applyChrome);

@@ -1,18 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import {
-  dropPreview,
-  edgeAt,
-  workspace,
-  type Bounds,
-  type Side,
-} from "./trellis-adapter";
+import { dropPreview, edgeAt, workspace, type Bounds, type Side } from "./trellis-adapter";
 
 const near = (actual: number, expected: number) =>
   assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} ≈ ${expected}`);
 function sameBounds(actual: Bounds, expected: Bounds) {
-  for (const key of ["x", "y", "w", "h"] as const)
-    near(actual[key], expected[key]);
+  for (const key of ["x", "y", "w", "h"] as const) near(actual[key], expected[key]);
 }
 function partitions(rects: Bounds[]) {
   near(
@@ -21,17 +14,10 @@ function partitions(rects: Bounds[]) {
   );
   for (const [i, r] of rects.entries()) {
     assert.ok(r.w > 0 && r.h > 0);
-    assert.ok(
-      r.x >= -1e-9 &&
-        r.y >= -1e-9 &&
-        r.x + r.w <= 1 + 1e-9 &&
-        r.y + r.h <= 1 + 1e-9,
-    );
+    assert.ok(r.x >= -1e-9 && r.y >= -1e-9 && r.x + r.w <= 1 + 1e-9 && r.y + r.h <= 1 + 1e-9);
     for (const other of rects.slice(i + 1)) {
-      const overlapW =
-        Math.min(r.x + r.w, other.x + other.w) - Math.max(r.x, other.x);
-      const overlapH =
-        Math.min(r.y + r.h, other.y + other.h) - Math.max(r.y, other.y);
+      const overlapW = Math.min(r.x + r.w, other.x + other.w) - Math.max(r.x, other.x);
+      const overlapH = Math.min(r.y + r.h, other.y + other.h) - Math.max(r.y, other.y);
       assert.ok(overlapW <= 1e-9 || overlapH <= 1e-9, "Views must not overlap");
     }
   }
@@ -136,13 +122,7 @@ for (const side of ["left", "right", "top", "bottom"] as Side[]) {
     const { incoming, existing } = dropPreview(r, side);
     partitions([incoming, existing]);
     near(incoming.w * incoming.h, 0.5);
-    assert.equal(
-      edgeAt(
-        { x: incoming.x + incoming.w * 0.5, y: incoming.y + incoming.h * 0.5 },
-        r,
-      ),
-      side,
-    );
+    assert.equal(edgeAt({ x: incoming.x + incoming.w * 0.5, y: incoming.y + incoming.h * 0.5 }, r), side);
   });
 }
 test("DOCK-03: either side of a shared edge and the seam produce the same visible arrangement", () => {
@@ -164,10 +144,7 @@ test("DOCK-03: either side of a shared edge and the seam produce the same visibl
     assert.deepEqual(left.bounds(id), seam.bounds(id));
   }
   near(left.bounds("a").x + left.bounds("a").w, left.bounds("incoming").x);
-  near(
-    left.bounds("incoming").x + left.bounds("incoming").w,
-    left.bounds("b").x,
-  );
+  near(left.bounds("incoming").x + left.bounds("incoming").w, left.bounds("b").x);
 });
 test("DOCK-04: a seam between nested groups creates a view spanning the whole group", () => {
   const w = workspace({

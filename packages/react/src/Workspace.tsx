@@ -535,6 +535,8 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
     keymapKey,
     props.panelMenu,
     props.label,
+    props.tabs?.fill,
+    props.tabs?.inset,
   ]);
   // Type registrations: data changes by key; functions refreshed every render through getters.
   useIsomorphicLayoutEffect(() => {

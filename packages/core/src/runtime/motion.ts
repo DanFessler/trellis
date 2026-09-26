@@ -101,7 +101,8 @@ export class LayoutTween {
 
 /** A CSS cubic-bezier timing function, for animations driven per frame. */
 export function cubicBezier(x1: number, y1: number, x2: number, y2: number): (t: number) => number {
-  const sample = (a: number, b: number, t: number) => ((1 - 3 * b + 3 * a) * t + (3 * b - 6 * a)) * t * t + 3 * a * t;
+  const sample = (a: number, b: number, t: number) =>
+    ((1 - 3 * b + 3 * a) * t + (3 * b - 6 * a)) * t * t + 3 * a * t;
   return (x: number) => {
     if (x <= 0) return 0;
     if (x >= 1) return 1;

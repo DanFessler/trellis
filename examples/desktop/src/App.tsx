@@ -29,7 +29,9 @@ function windowMenu(view: ViewHandle<AppParams>): MenuEntry[] {
   return [
     { label: "Minimize to Dock", run: () => minimize(ws, view.id) },
     { label: docked ? "Float on Desktop" : "Dock Beside Desktop", run: () => toggleDock(ws, view.id) },
-    ...(docked ? [{ label: maximized ? "Restore" : "Maximize", run: () => void ws.navigation.toggle(view.panelId) }] : []),
+    ...(docked
+      ? [{ label: maximized ? "Restore" : "Maximize", run: () => void ws.navigation.toggle(view.panelId) }]
+      : []),
     "separator",
     { label: `Close ${name}`, run: () => void view.close() },
   ];

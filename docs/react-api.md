@@ -54,6 +54,7 @@ Creates a workspace in a `div` that fills its parent (`width: 100%; height: 100%
 | `motion`             | `"system" \| "full" \| "reduced"`                           | `"system"`      | Animation policy.                                                                                                                          |
 | `keymap`             | `Keymap`                                                    |                 | Partial command → combo map; `null` disables a command.                                                                                    |
 | `panelMenu`          | `boolean`                                                   | `true`          | Include the built-in panel menu items.                                                                                                     |
+| `tabs`               | `{ fill?: boolean; inset?: number }`                        |                 | Tab style: `fill` stretches tabs across the bar, `inset` is the space around them in pixels. See [Theming](./theming.md#tab-styles).       |
 | `hideToward`         | `(panelId: string) => Element \| Rect \| null \| undefined` |                 | Where the built-in **Hide** animates to, e.g. your dock. See [Hiding](./hiding.md#the-built-in-hide).                                      |
 | `label`              | `string`                                                    | `"Workspace"`   | Accessible name of the workspace region.                                                                                                   |
 | `storageKey`         | `string`                                                    |                 | Persist to `localStorage` under this key.                                                                                                  |
@@ -69,7 +70,7 @@ Creates a workspace in a `div` that fills its parent (`width: 100%; height: 100%
 | `className`, `style` |                                                             |                 | Applied to the host `div`.                                                                                                                 |
 | `ref`                | `Ref<WorkspaceHandle>`                                      |                 | The [imperative handle](./core-api.md#workspacehandle). `null` until mounted.                                                              |
 
-`theme`, `tokens`, `floating`, `navigation`, `motion`, `keymap`, `panelMenu` and `label` can change at any time. `storageKey`, `version` and the initial layout are read when the workspace mounts. Event props and `hideToward` always call the latest function.
+`theme`, `tokens`, `tabs`, `floating`, `navigation`, `motion`, `keymap`, `panelMenu` and `label` can change at any time. `storageKey`, `version` and the initial layout are read when the workspace mounts. Event props and `hideToward` always call the latest function.
 
 ### `<Workspace.Empty>`
 

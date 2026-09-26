@@ -108,7 +108,8 @@ export function webpage(index: number, folderId?: string) {
       }
     : pages[index % pages.length];
   // Pages draw their own title bar (the prototype's); the heading also names the window.
-  const [, heading = "", detail = ""] = /<div class="toolbar"><strong>(.*?)<\/strong><span>(.*?)<\/span>/.exec(page.body) ?? [];
+  const [, heading = "", detail = ""] =
+    /<div class="toolbar"><strong>(.*?)<\/strong><span>(.*?)<\/span>/.exec(page.body) ?? [];
   return {
     title: page.title,
     heading,

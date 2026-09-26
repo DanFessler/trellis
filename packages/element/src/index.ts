@@ -119,7 +119,15 @@ function specFrom(el: Element): LayoutSpec | null {
 const ElementBase = (typeof HTMLElement === "undefined" ? class {} : HTMLElement) as typeof HTMLElement;
 
 export class TrellisWorkspaceElement extends ElementBase {
-  static observedAttributes = ["theme", "floating", "navigation", "motion", "panel-menu", "tab-fill", "tab-inset"];
+  static observedAttributes = [
+    "theme",
+    "floating",
+    "navigation",
+    "motion",
+    "panel-menu",
+    "tab-fill",
+    "tab-inset",
+  ];
   private handle: WorkspaceHandle | null = null;
   private pending = false;
   private _types: ViewTypes = {};

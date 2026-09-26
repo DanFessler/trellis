@@ -62,12 +62,19 @@ function CssView({ lines }: { lines: [string, string][] }) {
   );
 }
 
+const TAB_STYLES = {
+  Separate: { fill: false, inset: 4 },
+  Filled: { fill: true, inset: 4 },
+  "Full-bleed": { fill: true, inset: 0 },
+} as const;
+
 export function ThemeShowcase() {
   const [theme, setTheme] = useState<Exclude<Theme, "system">>("medium");
   const [accent, setAccent] = useState("");
   const [radius, setRadius] = useState(10);
   const [gap, setGap] = useState(6);
   const [bar, setBar] = useState(34);
+  const [tabStyle, setTabStyle] = useState<keyof typeof TAB_STYLES>("Separate");
   const narrow = useMedia("(max-width: 640px)");
 
   const tokens: Record<string, string> = {
@@ -170,6 +177,22 @@ export function ThemeShowcase() {
                 onChange={(e) => setBar(Number(e.target.value))}
               />
             </label>
+            <div className="control">
+              <span className="control-label">Tabs</span>
+              <div className="seg seg-block" role="radiogroup" aria-label="Tab style">
+                {(Object.keys(TAB_STYLES) as (keyof typeof TAB_STYLES)[]).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    role="radio"
+                    aria-checked={tabStyle === t}
+                    onClick={() => setTabStyle(t)}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="control control-code">
               <span className="control-label">Your CSS</span>
               <CssView lines={changed} />
@@ -180,6 +203,7 @@ export function ThemeShowcase() {
               key={narrow ? "narrow" : "wide"}
               theme={theme}
               tokens={tokens}
+              tabs={TAB_STYLES[tabStyle]}
               label="Theming demo workspace"
               navigation="focus"
             >

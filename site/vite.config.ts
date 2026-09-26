@@ -12,8 +12,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 function devExamples(): Plugin {
   const root = path.join(here, "dist/examples");
   const types: Record<string, string> = {
-    ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json",
-    ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2",
+    ".html": "text/html",
+    ".js": "text/javascript",
+    ".css": "text/css",
+    ".json": "application/json",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".woff2": "font/woff2",
   };
   return {
     name: "trellis-dev-examples",
