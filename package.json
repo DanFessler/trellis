@@ -20,6 +20,7 @@
     "verify:pack": "npm run build && node scripts/verify-pack.mjs"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.63.0",
     "@types/node": "^24.19.0",
     "@types/react": "^19.3.0",

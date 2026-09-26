@@ -66,7 +66,7 @@ interface TabDom {
   el: HTMLElement;
   title: HTMLElement;
   badge: HTMLElement;
-  close: HTMLButtonElement;
+  close: HTMLElement;
 }
 interface PanelDom {
   id: string;
@@ -554,11 +554,9 @@ export function createWorkspace(
       if (!tab) {
         const title = h("span", { "data-trellis-part": "tab-title" });
         const badge = h("span", { "data-trellis-part": "tab-badge" });
-        const closeButton = h("button", {
-          "data-trellis-part": "tab-close",
-          type: "button",
-          tabindex: "-1",
-        });
+        // Mouse affordance only: keyboard and screen-reader users close with Delete or the panel menu,
+        // which keeps the tab free of nested interactive content.
+        const closeButton = h("span", { "data-trellis-part": "tab-close", "aria-hidden": "true" });
         closeButton.innerHTML = icons.close;
         const el = h("div", {
           "data-trellis-part": "tab",
@@ -614,7 +612,8 @@ export function createWorkspace(
         setAttr(tab.el, "data-focused", focusedView === viewId ? "" : null);
         const closable = typeOf(viewId).closable !== false;
         setAttr(tab.close, "hidden", closable ? null : "");
-        setAttr(tab.close, "aria-label", `Close ${title}`);
+        setAttr(tab.close, "title", `Close ${title}`);
+        setAttr(tab.el, "aria-keyshortcuts", closable ? "Delete Shift+F10" : "Shift+F10");
         const record = records.get(viewId);
         if (record) {
           setAttr(record.accessory, "hidden", selected ? null : "");
