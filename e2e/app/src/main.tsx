@@ -9,6 +9,7 @@ import {
   ViewType,
   Workspace,
   WorkspaceProvider,
+  Floating,
   useCloseGuard,
   useView,
   useWorkspace,
@@ -109,6 +110,12 @@ if (scenario === "react") {
         <ViewType id="tools" title="Tools" allow={{ stage: false }}>
           <Opener />
         </ViewType>
+        <Workspace.Backdrop>
+          <span data-test="backdrop">backdrop</span>
+        </Workspace.Backdrop>
+        <Floating rect={{ x: 0.74, y: 0.72, w: 0.24, h: 0.25 }}>
+          <View type="tools" id="floating-tools" />
+        </Floating>
         <Split weights={[1, 3]}>
           <View type="tools" id="tools" />
           <Stage empty={<p data-test="stage-empty">empty stage</p>}>

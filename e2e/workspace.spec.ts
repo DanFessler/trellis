@@ -324,15 +324,22 @@ test.describe("react adapter", () => {
   test("useView reflects focus and useWorkspace opens views", async ({ page }) => {
     await surface(page, "c1").click();
     await expect(surface(page, "c1").locator("[data-test=focused]")).toHaveText("true");
-    await page.locator("[data-test=open]").click();
+    await surface(page, "tools").locator("[data-test=open]").click();
     await expect(page.getByRole("tab", { name: "new" })).toBeVisible();
   });
 
   test("hooks work outside the workspace under a provider", async ({ page }) => {
-    await expect(page.locator("[data-test=status]")).toHaveText(/^3:/);
+    await expect(page.locator("[data-test=status]")).toHaveText(/^4:/);
     await tab(page, "c2").click();
     await surface(page, "c2").click();
-    await expect(page.locator("[data-test=status]")).toHaveText("3:c2");
+    await expect(page.locator("[data-test=status]")).toHaveText("4:c2");
+  });
+
+  test("declares floating panels and stage slots in JSX", async ({ page }) => {
+    const doc = await page.evaluate(() => (window as any).ws.getDocument());
+    expect(doc.floating).toHaveLength(1);
+    expect(doc.floating[0].panel.views).toEqual(["floating-tools"]);
+    await expect(page.locator("[data-trellis-part=backdrop] [data-test=backdrop]")).toBeAttached();
   });
 
   test("useCloseGuard vetoes closing", async ({ page }) => {
