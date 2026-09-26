@@ -23,6 +23,7 @@
   --trellis-accent-contrast: #ffffff;
   --trellis-stage: #eceef1;
   --trellis-drop: color-mix(in srgb, var(--trellis-accent) 16%, transparent);
+  --trellis-slot: #cdd0d6;
   --trellis-menu: #ffffff;
   --trellis-menu-hover: rgba(15, 17, 25, 0.06);
   --trellis-shadow-float: 0 1px 2px rgba(10, 12, 20, 0.08), 0 12px 32px -8px rgba(10, 12, 20, 0.22);
@@ -34,6 +35,7 @@
 }
 
 :where(.trellis[data-theme="medium"]) {
+  --trellis-slot: #2c2c30;
   --trellis-bg: #1f1f22;
   --trellis-panel: #45454a;
   --trellis-tabbar: #38383c;
@@ -50,6 +52,7 @@
   --trellis-shadow-lifted: 0 2px 6px rgba(0, 0, 0, 0.35), 0 28px 56px -12px rgba(0, 0, 0, 0.7);
 }
 :where(.trellis[data-theme="dark"]) {
+  --trellis-slot: #1f2024;
   --trellis-bg: #0c0d0f;
   --trellis-panel: #1a1b1f;
   --trellis-tabbar: #141518;
@@ -66,6 +69,7 @@
   --trellis-shadow-lifted: 0 2px 6px rgba(0, 0, 0, 0.45), 0 28px 60px -12px rgba(0, 0, 0, 0.85);
 }
 :where(.trellis[data-theme="darker"]) {
+  --trellis-slot: #15161a;
   --trellis-bg: #050506;
   --trellis-panel: #111215;
   --trellis-tabbar: #0b0c0e;
@@ -83,6 +87,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :where(.trellis[data-theme="system"]) {
+    --trellis-slot: #1f2024;
     --trellis-bg: #0c0d0f;
     --trellis-panel: #1a1b1f;
     --trellis-tabbar: #141518;
@@ -629,50 +634,42 @@
   cursor: nesw-resize;
 }
 
-/* ------------------------------------------------------------------ drop feedback */
-:where(.trellis [data-trellis-part="drop-preview"]) {
+/* ------------------------------------------------------------------ drag slots */
+/* While dragging, the layout itself reflows to open a slot where the view will land. */
+:where(.trellis [data-trellis-part="drop-slot"], .trellis [data-trellis-part="source-slot"]) {
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 3000;
+  display: none;
   pointer-events: none;
   border-radius: var(--trellis-radius);
-  background: var(--trellis-drop);
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--trellis-accent) 70%, transparent);
+}
+:where(.trellis [data-trellis-part="source-slot"][data-visible]) {
+  display: block;
+  z-index: 5;
+  background: transparent;
+}
+:where(.trellis [data-trellis-part="drop-slot"]) {
+  display: grid;
+  place-items: center;
+  z-index: 3000;
+  background: var(--trellis-slot);
   opacity: 0;
-  transition:
-    opacity 140ms,
-    transform 160ms var(--trellis-ease),
-    width 160ms var(--trellis-ease),
-    height 160ms var(--trellis-ease);
+  transition: opacity 140ms ease-out;
 }
-:where(.trellis [data-trellis-part="drop-preview"][data-instant]) {
-  transition: none;
-}
-:where(.trellis[data-dragging][data-drop="none"]) {
-  cursor: not-allowed;
-}
-:where(.trellis [data-trellis-part="drop-preview"][data-visible]) {
+:where(.trellis [data-trellis-part="drop-slot"][data-visible]) {
   opacity: 1;
 }
-:where(.trellis [data-trellis-part="drop-preview"]:not([data-visible])) {
-  transition: opacity 140ms;
+:where(.trellis [data-trellis-part="drop-slot"][data-kind="tab"]) {
+  background: color-mix(in srgb, var(--trellis-slot) 70%, transparent);
+  box-shadow: inset 0 0 0 2px var(--trellis-accent);
 }
-:where(.trellis [data-trellis-part="drop-preview"][data-kind="tab"]) {
-  background: color-mix(in srgb, var(--trellis-accent) 8%, transparent);
+:where(.trellis [data-trellis-part="drop-label"]) {
+  color: var(--trellis-text-muted);
+  font-weight: 550;
 }
-:where(.trellis [data-trellis-part="drop-marker"]) {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 3001;
+:where(.trellis[data-dragging] [data-trellis-part="content"]) {
   pointer-events: none;
-  border-radius: 1px;
-  background: var(--trellis-accent);
-  opacity: 0;
-}
-:where(.trellis [data-trellis-part="drop-marker"][data-visible]) {
-  opacity: 1;
 }
 
 /* ------------------------------------------------------------------ menu */
@@ -759,8 +756,8 @@
   :where(.trellis [data-appearing], .trellis .trellis-menu) {
     animation: none;
   }
-  :where(.trellis [data-trellis-part="drop-preview"]) {
-    transition: opacity 100ms;
+  :where(.trellis [data-trellis-part="drop-slot"]) {
+    transition: none;
   }
 }
 
@@ -773,7 +770,7 @@
     outline: 2px solid Highlight;
     outline-offset: -2px;
   }
-  :where(.trellis [data-trellis-part="drop-preview"][data-visible]) {
+  :where(.trellis [data-trellis-part="drop-slot"][data-visible]) {
     border: 2px solid Highlight;
   }
   :where(.trellis [data-trellis-part="divider"])::after {

@@ -239,8 +239,15 @@ export interface WorkspaceHandle {
     readonly framed: string | null;
     /** The visible region of the layout right now, in world units (the whole layout is 0–1). */
     readonly camera: Rect;
+    /** Toggle between everything and the previous framing. */
+    toggleOverview(): void;
+    /** Escape: frame the parent of the current framing. */
+    stepOut(): void;
+    /** Frame the child under the centre of the viewport. */
+    stepIn(): void;
     framings: {
-      save(name: string): Framing;
+      /** Save the current framing. Blank names are rejected (returns null). */
+      save(name: string): Framing | null;
       go(id: string): void;
       remove(id: string): void;
       list(): Framing[];

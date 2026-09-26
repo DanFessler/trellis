@@ -100,7 +100,7 @@ test.describe("vanilla workspace", () => {
 
   test("docks at the workspace perimeter", async ({ page }) => {
     await drag(page, center(await box(tab(page, "outline"))), { x: 1195, y: 400 }, false);
-    await expect(page.locator(".trellis")).toHaveAttribute("data-drop", "split");
+    await expect(page.locator(".trellis")).toHaveAttribute("data-drop", "dock");
     await page.mouse.move(600, 797, { steps: 4 });
     await page.mouse.up();
     const root = (await doc(page)).root;
@@ -152,13 +152,13 @@ test.describe("vanilla workspace", () => {
     await expect(surface(page, "outline").locator("input")).toHaveValue("kept");
   });
 
-  test("alt-drop floats a docked panel", async ({ page }) => {
-    await drag(page, center(await box(tab(page, "outline"))), { x: 600, y: 400 }, false);
+  test("modifier presses start navigation, not drags", async ({ page }) => {
+    const before = JSON.stringify(await doc(page));
+    const t = center(await box(tab(page, "outline")));
     await page.keyboard.down("Alt");
-    await page.mouse.move(610, 410);
-    await page.mouse.up();
+    await drag(page, t, { x: 300, y: 400 });
     await page.keyboard.up("Alt");
-    expect((await doc(page)).floating).toHaveLength(1);
+    expect(JSON.stringify(await doc(page))).toBe(before);
   });
 
   test("moves a tab with the keyboard through the panel menu", async ({ page }) => {
@@ -402,27 +402,83 @@ test.describe("custom element", () => {
   });
 });
 
-test.describe("stage-floating windows", () => {
-  test("can be framed, and free zoom snaps to them", async ({ page }) => {
+test.describe("prototype navigation", () => {
+  test("floating windows are not camera targets; double-clicking one frames its desktop", async ({ page }) => {
     await page.goto("/?scenario=vanilla&floating=stage&navigation=free");
     await expect(tab(page, "a")).toBeVisible();
     const id = await page.evaluate(() => (window as any).ws.open("files", { placement: "float" }).panelId);
-    expect(await page.evaluate((p) => (window as any).ws.navigation.toggle(p), id)).toBe(true);
-    await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).toBe(id);
-    await expect.poll(async () => (await box(panel(page, id))).width).toBeGreaterThan(1100);
-    await page.evaluate(() => (window as any).ws.navigation.back());
-    await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).toBeNull();
+    expect(await page.evaluate((p) => (window as any).ws.navigation.toggle(p), id)).toBe(false);
+    const bar = await box(panel(page, id).locator("[data-trellis-part=tabbar]"));
+    await page.mouse.dblclick(bar.x + bar.width - 40, bar.y + bar.height / 2);
+    // The stage is transparent to navigation: framing it frames its content.
+    await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).toBe("docs");
   });
-  test("overlay floats cannot be framed", async ({ page }) => {
-    await page.goto("/?scenario=vanilla");
+
+  test("maximize restores the exact prior framing (NAV-07); Escape steps out one level", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&navigation=free");
     await expect(tab(page, "a")).toBeVisible();
-    const ok = await page.evaluate(() => {
-      const ws = (window as any).ws;
-      const p = ws.open("files", { placement: "float" }).panelId;
-      return ws.navigation.toggle(p);
-    });
-    expect(ok).toBe(false);
+    const ws = (fn: string) => page.evaluate(fn);
+    await ws("ws.navigation.frame(['left', 'stage'])");
+    const range = await ws("ws.navigation.framed");
+    expect(String(range)).toContain("range:");
+    await ws("ws.navigation.toggle('left')");
+    expect(await ws("ws.navigation.framed")).toBe("left");
+    await ws("ws.navigation.toggle('left')");
+    expect(await ws("ws.navigation.framed")).toBe(range);
+    await tab(page, "files").focus();
+    await page.keyboard.press("Escape");
+    await expect.poll(() => ws("ws.navigation.framed")).toBeNull();
   });
+
+  test("overview toggles back to the previous framing (NAV-13)", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&navigation=free");
+    await expect(tab(page, "a")).toBeVisible();
+    await page.evaluate(() => (window as any).ws.navigation.frame("right"));
+    await page.evaluate(() => (window as any).ws.navigation.toggleOverview());
+    expect(await page.evaluate(() => (window as any).ws.navigation.framed)).toBeNull();
+    await page.evaluate(() => (window as any).ws.navigation.toggleOverview());
+    expect(await page.evaluate(() => (window as any).ws.navigation.framed)).toBe("right");
+  });
+
+  test("a plain wheel over chrome zooms and snaps; over content it scrolls the content", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&navigation=free");
+    await expect(tab(page, "a")).toBeVisible();
+    const content = await box(surface(page, "outline"));
+    await page.mouse.move(content.x + content.width / 2, content.y + content.height / 2);
+    await page.mouse.wheel(0, -200);
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => (window as any).ws.navigation.framed)).toBeNull();
+    const bar = await box(panel(page, "right").locator("[data-trellis-part=tabbar]"));
+    await page.mouse.move(bar.x + bar.width - 30, bar.y + bar.height / 2);
+    for (let i = 0; i < 8; i++) await page.mouse.wheel(0, -120);
+    await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).not.toBeNull();
+  });
+
+  test("Shift+wheel steps the hierarchy toward the pointer (NAV-01)", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&navigation=free");
+    await expect(tab(page, "a")).toBeVisible();
+    const left = await box(panel(page, "left"));
+    await page.mouse.move(left.x + left.width / 2, left.y + left.height / 2);
+    await page.keyboard.down("Shift");
+    await page.mouse.wheel(0, -40);
+    await page.keyboard.up("Shift");
+    await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).toBe("left");
+  });
+
+  test("Shift+drag draws a marquee that frames the best fit (NAV-05)", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&navigation=free");
+    await expect(tab(page, "a")).toBeVisible();
+    const right = await box(panel(page, "right"));
+    await page.keyboard.down("Shift");
+    await page.mouse.move(right.x + 4, right.y + 4);
+    await page.mouse.down();
+    await page.mouse.move(right.x + right.width - 4, right.y + right.height - 4, { steps: 6 });
+    await expect(page.locator("[data-trellis-part=marquee-target]")).toHaveAttribute("data-visible", "");
+    await page.mouse.up();
+    await page.keyboard.up("Shift");
+    await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).toBe("right");
+  });
+
   test("tokens removed from options are cleared", async ({ page }) => {
     await page.goto("/?scenario=vanilla");
     await page.evaluate(() => (window as any).ws.update({ tokens: { "--trellis-panel": "rgb(1, 2, 3)" } }));

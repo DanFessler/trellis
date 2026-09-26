@@ -15,7 +15,6 @@ import {
   selectView,
   viewIds,
 } from "../src/model/document";
-import { edgeSlot, hitTest, nearestEdge, type HitScene } from "../src/model/docking";
 import {
   findNode,
   findStage,
@@ -227,110 +226,5 @@ describe("document operations", () => {
       return v;
     });
     expect(stages).toBe(1);
-  });
-});
-
-describe("hit testing", () => {
-  const scene = (overrides: Partial<HitScene> = {}): HitScene => ({
-    viewport: { x: 0, y: 0, w: 1000, h: 600 },
-    rootId: "root",
-    stage: null,
-    panels: [
-      {
-        id: "a",
-        rect: { x: 0, y: 0, w: 500, h: 600 },
-        tabbar: { x: 0, y: 0, w: 500, h: 34 },
-        tabs: [
-          { x: 4, y: 0, w: 100, h: 34 },
-          { x: 106, y: 0, w: 100, h: 34 },
-        ],
-        region: "side",
-        floating: false,
-        z: 0,
-      },
-      {
-        id: "b",
-        rect: { x: 500, y: 0, w: 500, h: 600 },
-        tabbar: { x: 500, y: 0, w: 500, h: 34 },
-        tabs: [],
-        region: "side",
-        floating: false,
-        z: 0,
-      },
-    ],
-    allowed: () => true,
-    ...overrides,
-  });
-  it("finds edges within the band", () => {
-    expect(nearestEdge({ x: 5, y: 50 }, { x: 0, y: 0, w: 100, h: 100 })).toBe("left");
-    expect(nearestEdge({ x: 50, y: 50 }, { x: 0, y: 0, w: 100, h: 100 })).toBeNull();
-    expect(edgeSlot({ x: 0, y: 0, w: 100, h: 100 }, "right")).toEqual({ x: 50, y: 0, w: 50, h: 100 });
-  });
-  it("targets tab positions in the tab bar", () => {
-    expect(hitTest(scene(), { x: 30, y: 15 })).toMatchObject({ kind: "tab", panel: "a", index: 0 });
-    expect(hitTest(scene(), { x: 200, y: 15 })).toMatchObject({ kind: "tab", panel: "a", index: 2 });
-  });
-  it("splits at panel edges, merges in the centre, docks at the perimeter", () => {
-    expect(hitTest(scene(), { x: 480, y: 300 })).toMatchObject({ kind: "split", beside: "a", edge: "right" });
-    expect(hitTest(scene(), { x: 250, y: 320 })).toMatchObject({ kind: "tab", panel: "a", index: 2 });
-    expect(hitTest(scene(), { x: 5, y: 300 })).toMatchObject({ kind: "split", beside: "root", edge: "left" });
-  });
-  it("respects allow rules", () => {
-    const s = scene({ allowed: (r) => r !== "side" });
-    expect(hitTest(s, { x: 250, y: 320 })).toBeNull();
-  });
-  it("prefers floating panels on top", () => {
-    const s = scene();
-    s.panels.push({
-      id: "f",
-      rect: { x: 200, y: 200, w: 200, h: 200 },
-      tabbar: { x: 200, y: 200, w: 200, h: 34 },
-      tabs: [],
-      region: "floating",
-      floating: true,
-      z: 5,
-    });
-    expect(hitTest(s, { x: 300, y: 300 })).toMatchObject({ kind: "tab", panel: "f" });
-  });
-  it("docks into an empty stage centre and beside it at its edges", () => {
-    const s = scene({
-      panels: [],
-      rootId: "root",
-      stage: { id: "stage", rect: { x: 200, y: 0, w: 600, h: 600 }, empty: true },
-    });
-    expect(hitTest(s, { x: 500, y: 300 })).toMatchObject({ kind: "stage" });
-    expect(hitTest(s, { x: 220, y: 300 })).toMatchObject({ kind: "split", beside: "stage", edge: "left" });
-  });
-  it("falls back to floating outside targets when allowed", () => {
-    expect(hitTest(scene(), { x: 2000, y: 2000 })).toEqual({ kind: "float" });
-    expect(hitTest(scene({ allowed: (r) => r !== "floating" }), { x: 2000, y: 2000 })).toBeNull();
-  });
-});
-
-describe("hit testing near the stage boundary", () => {
-  it("lets tab bars win over the beside-the-stage band", () => {
-    const scene: HitScene = {
-      viewport: { x: 0, y: 0, w: 1000, h: 600 },
-      rootId: "root",
-      stage: { id: "stage", rect: { x: 200, y: 6, w: 600, h: 590 }, empty: false },
-      panels: [
-        {
-          id: "p",
-          rect: { x: 200, y: 6, w: 600, h: 590 },
-          tabbar: { x: 200, y: 6, w: 600, h: 34 },
-          tabs: [],
-          region: "stage",
-          floating: false,
-          z: 0,
-        },
-      ],
-      allowed: () => true,
-    };
-    expect(hitTest(scene, { x: 500, y: 12 })).toMatchObject({ kind: "tab", panel: "p" });
-    expect(hitTest(scene, { x: 205, y: 300 })).toMatchObject({
-      kind: "split",
-      beside: "stage",
-      edge: "left",
-    });
   });
 });

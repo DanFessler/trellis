@@ -11,7 +11,6 @@ import {
   panelOfView,
   raiseFloat,
   removePanel,
-  reorderTabs,
   restorePanel,
   sanitize,
   selectView,
@@ -19,7 +18,8 @@ import {
   viewIds,
   type DockTarget,
 } from "../model/document";
-import { hitTest, type DropTarget, type HitScene, type PanelBox, type Region } from "../model/docking";
+import { createDragController, DROP_SLOT, SOURCE_SLOT, type DragController, type Region } from "./drag";
+import { createNavigator, type Navigator } from "./navigation";
 import {
   findNode,
   findStage,
@@ -32,7 +32,6 @@ import {
 } from "../model/tree";
 import type {
   FloatingLayer,
-  Framing,
   LayoutDocument,
   LayoutNode,
   PanelNode,
@@ -98,28 +97,6 @@ interface Leaving {
   start: number;
   duration: number;
 }
-interface DragSession {
-  pointerId: number;
-  start: { x: number; y: number };
-  kind: "tab" | "panel";
-  viewId: string | null;
-  panelId: string;
-  active: boolean;
-  mode: "pending" | "reorder" | "lifted";
-  origin: LayoutDocument;
-  lifted: PanelNode | null;
-  rect: Rect;
-  fromRect: Rect;
-  pickupStart: number;
-  pickupSize: { w: number; h: number };
-  grab: { x: number; y: number };
-  wasFloating: { layer: FloatingLayer } | null;
-  target: DropTarget | null;
-  last: { x: number; y: number };
-  alt: boolean;
-  /** Pointer offset within the tab being reordered. */
-  grabTab: number;
-}
 
 const TYPE_PLACEHOLDER = (type: string): ViewTypeDefinition => ({
   title: type,
@@ -157,11 +134,13 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   const empty = h("div", { "data-trellis-part": "empty" });
   const layer = h("div", { class: "trellis-layer" });
   const dividers = h("div", { class: "trellis-dividers" });
-  const preview = h("div", { "data-trellis-part": "drop-preview", "aria-hidden": "true" });
-  const marker = h("div", { "data-trellis-part": "drop-marker", "aria-hidden": "true" });
+  // Drag slots: where the lifted view came from, and where it will land (the layout reflows around it).
+  const sourceSlot = h("div", { "data-trellis-part": "source-slot", "aria-hidden": "true" });
+  const dropLabel = h("span", { "data-trellis-part": "drop-label" });
+  const dropSlot = h("div", { "data-trellis-part": "drop-slot", "aria-hidden": "true" }, dropLabel);
   const chrome = h("div", { "data-trellis-part": "chrome" });
   const live = h("div", { class: "trellis-sr", "aria-live": "polite" });
-  root.append(backdrop, stageEmpty, empty, layer, dividers, preview, marker, chrome, live);
+  root.append(backdrop, stageEmpty, empty, layer, dividers, sourceSlot, dropSlot, chrome, live);
   host.append(root);
   lifetime.add(() => root.remove());
   const slots = { backdrop, stageEmpty, empty, chrome };
@@ -191,11 +170,12 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   let tabbarHeight = 34;
   const tween = new LayoutTween();
   const camera = new RectSpring(UNIT);
-  let framed: string | null = null;
-  let history: (string | null)[] = [null];
-  let historyIndex = 0;
-  let framings: Framing[] = [];
-  let drag: DragSession | null = null;
+  // Assigned during setup (navigation.ts).
+  let nav!: Navigator;
+  // Assigned during setup; the drag controller needs the engine's functions.
+  let dragger: DragController;
+  const lifted = (): PanelNode | null => (dragger?.session?.active ? dragger.session.lifted : null);
+  const dragActive = () => !!dragger?.active;
   let gesture = false;
   let frame = 0;
   let lastTime = 0;
@@ -312,7 +292,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   }
   /** Where a panel should be, ignoring tweens. */
   function targetRect(panelId: string): Rect | null {
-    if (drag?.lifted?.id === panelId) return drag.rect;
+    if (lifted()?.id === panelId) return dragger.liftedRect();
+    const preview = dragger?.layoutTargets()?.get(panelId);
+    if (preview && !doc.floating.some((f) => f.panel.id === panelId)) return inset(toScreen(preview), pad());
     const float = doc.floating.find((f) => f.panel.id === panelId);
     if (float) return floatScreen(float.rect, float.layer);
     const e = entries.get(panelId);
@@ -506,8 +488,10 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       }
       const tab = target.closest<HTMLElement>("[data-trellis-part=tab]");
       if (tab && target.closest("[data-trellis-part=tab-close]")) return;
-      if (tab) beginDrag(e, "tab", d.id, tab.dataset.view!);
-      else if (target.closest("[data-trellis-part=tabbar]")) beginDrag(e, "panel", d.id, null);
+      if (!panel) return;
+      if (tab) dragger.begin(e, panel, tab.dataset.view!);
+      else if (target.closest("[data-trellis-part=tabbar]") || d.el.hasAttribute("data-frame-only"))
+        dragger.begin(e, panel, null);
     });
     lifetime.listen(tabbar, "dblclick", (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -553,14 +537,14 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   }
   /** Tab bar height for a panel; 0 when its views ask for no tab bar. */
   function barHeight(panel: PanelNode | null): number {
-    if (!panel || drag?.lifted?.id === panel.id) return tabbarHeight;
+    if (!panel || lifted()?.id === panel.id) return tabbarHeight;
     const modes = panel.views.map((v) => typeOf(v).tabbar ?? "always");
     if (modes.every((m) => m === "never")) return 0;
     if (panel.views.length === 1 && modes[0] === "auto") return 0;
     return tabbarHeight;
   }
   function findPanel(panelId: string): PanelNode | null {
-    if (drag?.lifted?.id === panelId) return drag.lifted;
+    if (lifted()?.id === panelId) return lifted();
     return locatePanel(doc, panelId)?.panel ?? leaving.get(panelId)?.panel ?? null;
   }
   function syncTabs(panel: PanelNode) {
@@ -663,14 +647,14 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   function sync() {
     entries = layoutRects(doc.root);
     const live = new Set<string>(viewIds(doc));
-    if (drag?.lifted) for (const v of drag.lifted.views) live.add(v);
+    for (const v of lifted()?.views ?? []) live.add(v);
     for (const l of leaving.values()) for (const v of l.panel.views) live.add(v);
     for (const viewId of [...records.keys()]) if (!live.has(viewId)) destroySurface(viewId);
     const panelIds = new Set<string>();
     const visiblePanels = [
       ...panelsOf(doc.root),
       ...doc.floating.map((f) => f.panel),
-      ...(drag?.lifted ? [drag.lifted] : []),
+      ...(lifted() ? [lifted()!] : []),
       ...[...leaving.values()].map((l) => l.panel),
     ];
     for (const panel of visiblePanels) {
@@ -682,11 +666,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     for (const record of records.values()) mountContent(record);
     // Floating resize handles
     for (const [id, dom] of panelDoms) {
-      const floating = doc.floating.some((f) => f.panel.id === id) || drag?.lifted?.id === id;
+      const floating = doc.floating.some((f) => f.panel.id === id) || lifted()?.id === id;
       setAttr(dom.el, "data-floating", floating ? "" : null);
       setAttr(dom.el, "data-region", floating ? "floating" : regionOf(id));
-      if (floating && !dom.handles && drag?.lifted?.id !== id) addResizeHandles(dom);
-      if ((!floating || drag?.lifted?.id === id) && dom.handles) {
+      if (floating && !dom.handles && lifted()?.id !== id) addResizeHandles(dom);
+      if ((!floating || lifted()?.id === id) && dom.handles) {
         dom.handles.remove();
         dom.handles = null;
       }
@@ -702,7 +686,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     setAttr(root, "data-empty", !doc.root && !doc.floating.length ? "" : null);
     setAttr(root, "data-stage-empty", stage && !stage.child ? "" : null);
     updateTabs();
-    retarget();
+    nav?.sync();
     invalidate();
     schedule();
   }
@@ -771,7 +755,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         if (info) events.emit("open", info);
       }
     for (const id of before)
-      if (!after.has(id) && !drag?.lifted?.views.includes(id)) {
+      if (!after.has(id) && !lifted()?.views.includes(id)) {
         const record = previous.views[id];
         if (record)
           events.emit("close", {
@@ -784,7 +768,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
             selected: false,
           });
       }
-    if (focusedView && !after.has(focusedView) && !drag?.lifted?.views.includes(focusedView)) {
+    if (focusedView && !after.has(focusedView) && !lifted()?.views.includes(focusedView)) {
       const fallback =
         panelOfView(doc, lastFocusFallback()) ?? panelsOf(doc.root)[0] ?? doc.floating[0]?.panel ?? null;
       setFocus(fallback?.selected ?? null, false);
@@ -807,10 +791,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   function getDocument(): LayoutDocument {
     return {
       ...doc,
-      navigation: {
-        ...(framed ? { frame: [framed] } : {}),
-        ...(framings.length ? { framings } : {}),
-      },
+      navigation: nav.serialize(),
     };
   }
 
@@ -878,7 +859,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     cameraChanged();
     if (tween.active) moving = tween.step(time) || moving;
     if (!tween.active) settling.clear();
-    if (drag?.active && drag.mode === "lifted" && time - drag.pickupStart < MOTION.pickupMs) moving = true;
+    if (dragActive()) moving = true;
     for (const [id, l] of leaving)
       if (time - l.start >= l.duration) {
         leaving.delete(id);
@@ -911,14 +892,14 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     }
   }
   function updateInteractivity() {
-    const busy = !!drag?.active || gesture;
+    const busy = !!dragActive() || gesture;
     setAttr(root, "data-busy", busy ? "" : null);
     for (const record of records.values()) {
       const scale = record.controller.state.scale;
       record.controller.update({ interactive: !busy && scale >= 0.999 });
     }
   }
-  const moving = () => camera.moving || tween.active || !!drag?.active || gesture || leaving.size > 0;
+  const moving = () => camera.moving || tween.active || !!dragActive() || gesture || leaving.size > 0;
 
   function render(time = performance.now()) {
     if (lifetime.disposed) return;
@@ -938,7 +919,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       place(backdrop, { x: 0, y: 0, w: viewport.w, h: viewport.h }, true);
       setStyle(stageEmpty, "display", "none");
     }
-    setStyle(empty, "display", !doc.root && !doc.floating.length && !drag?.lifted ? "" : "none");
+    setStyle(empty, "display", !doc.root && !doc.floating.length && !lifted() ? "" : "none");
 
     // z ordering
     const stageFloats = doc.floating.filter((f) => f.layer === "stage").sort((a, b) => a.z - b.z);
@@ -947,7 +928,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     for (const p of panelsOf(doc.root)) zOf.set(p.id, settling.has(p.id) ? 2900 : 10);
     stageFloats.forEach((f, i) => zOf.set(f.panel.id, settling.has(f.panel.id) ? 2900 : 30 + i * 2));
     overlayFloats.forEach((f, i) => zOf.set(f.panel.id, settling.has(f.panel.id) ? 2900 : 1000 + i * 2));
-    if (drag?.lifted) zOf.set(drag.lifted.id, 3100);
+    if (lifted()) zOf.set(lifted()!.id, 3100);
     for (const id of leaving.keys()) zOf.set(id, 2950);
 
     const shown = new Set<string>();
@@ -965,7 +946,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       } else {
         const target = targetRect(panelId);
         if (!target) continue;
-        r = drag?.lifted?.id === panelId ? liftedRect(time) : tween.apply(panelId, target);
+        r = lifted()?.id === panelId ? dragger.liftedRect() : tween.apply(panelId, target);
       }
       lastRects.set(panelId, r);
       const onscreen =
@@ -974,11 +955,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       setStyle(dom.el, "opacity", opacity === 1 ? "" : String(opacity));
       const z = zOf.get(panelId) ?? 10;
       setStyle(dom.el, "zIndex", String(z));
-      setAttr(dom.el, "data-lifted", drag?.lifted?.id === panelId ? "" : null);
+      setAttr(dom.el, "data-lifted", lifted()?.id === panelId ? "" : null);
       place(dom.el, r, round);
       const float = doc.floating.find((f) => f.panel.id === panelId);
       const clip =
-        float?.layer === "stage" && sScreen && drag?.lifted?.id !== panelId ? clipInset(r, sScreen) : "";
+        float?.layer === "stage" && sScreen && lifted()?.id !== panelId ? clipInset(r, sScreen) : "";
       setStyle(dom.el, "clipPath", clip);
       const bar = barHeight(panel);
       setAttr(dom.el, "data-compact", r.w < 140 || r.h < bar + 24 ? "" : null);
@@ -1010,7 +991,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       });
     }
     renderDividers(round);
-    renderDrop();
+    renderSlots(round);
   }
   function clipInset(r: Rect, bounds: Rect): string {
     const top = Math.max(0, bounds.y - r.y);
@@ -1020,8 +1001,13 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (!top && !left && !right && !bottom) return "";
     return `inset(${top}px ${right}px ${bottom}px ${left}px)`;
   }
+  /** Content minimum: the type's, or the prototype's 480×320 app minimum under free navigation. */
+  const FREE_MIN = { width: 480, height: 320 };
+  function minSizeOf(viewId: string): { width: number; height: number } | undefined {
+    return typeOf(viewId).minSize ?? (navigationMode() === "free" ? FREE_MIN : undefined);
+  }
   function placementOf(viewId: string): ViewPlacement {
-    const panel = panelOfView(doc, viewId) ?? (drag?.lifted?.views.includes(viewId) ? drag.lifted : null);
+    const panel = panelOfView(doc, viewId) ?? (lifted()?.views.includes(viewId) ? lifted() : null);
     if (!panel) return "docked";
     if (doc.hidden.some((x) => x.panel.id === panel.id)) return "hidden";
     const r = regionOf(panel.id);
@@ -1037,7 +1023,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     clip: string,
   ) {
     const { shell, content, controller } = record;
-    const min = typeOf(controller.id).minSize;
+    const min = minSizeOf(controller.id);
     const scale = min ? Math.min(1, body.w / Math.max(1, min.width), body.h / Math.max(1, min.height)) : 1;
     const safe = Math.max(scale, 0.05);
     place(shell, body, round);
@@ -1054,9 +1040,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     setAttr(shell, "inert", selected ? null : "");
     (record as any).__size = { width: Math.round(width), height: Math.round(height) };
     const panel =
-      panelOfView(doc, controller.id) ?? (drag?.lifted?.views.includes(controller.id) ? drag.lifted : null);
+      panelOfView(doc, controller.id) ?? (lifted()?.views.includes(controller.id) ? lifted() : null);
     const onscreen = body.x < viewport.w && body.y < viewport.h && body.x + body.w > 0 && body.y + body.h > 0;
-    const busy = !!drag?.active || gesture;
+    const busy = !!dragActive() || gesture;
     controller.update({
       visible: selected && onscreen && body.w > 1 && body.h > 1,
       selected,
@@ -1069,7 +1055,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     });
   }
   function renderDividers(round: boolean) {
-    const show = !tween.active && !drag?.active && !gesture;
+    const show = !tween.active && !dragActive() && !gesture;
     for (const el of dividerEls.values()) {
       const split = findNode(doc.root, el.dataset.split!) as SplitNode | null;
       const e = split && entries.get(split.id);
@@ -1093,27 +1079,28 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       setAttr(el, "aria-valuenow", String(Math.round(boundary * 100)));
     }
   }
-  function renderDrop() {
-    const t = drag?.active && drag.mode === "lifted" ? drag.target : null;
-    if (!t || t.kind === "float") {
-      setAttr(preview, "data-visible", null);
-      setAttr(marker, "data-visible", null);
-      return;
+  /** The drag's source and destination slots, animated with the layout. */
+  function renderSlots(round: boolean) {
+    const targets = dragger?.layoutTargets();
+    for (const [el, id] of [
+      [sourceSlot, SOURCE_SLOT],
+      [dropSlot, DROP_SLOT],
+    ] as const) {
+      const world = targets?.get(id);
+      if (!world) {
+        setAttr(el, "data-visible", null);
+        lastRects.delete(id);
+        continue;
+      }
+      const r = tween.apply(id, inset(toScreen(world), pad()));
+      lastRects.set(id, r);
+      const visible = r.w > 8 && r.h > 8;
+      setAttr(el, "data-visible", visible ? "" : null);
+      if (visible) place(el, r, round);
     }
-    if (!preview.hasAttribute("data-visible")) {
-      // Appear in place rather than sliding in from the last target.
-      setAttr(preview, "data-instant", "");
-      place(preview, t.preview, false);
-      void preview.offsetWidth;
-      setAttr(preview, "data-instant", null);
-    }
-    setAttr(preview, "data-visible", "");
-    setAttr(preview, "data-kind", t.kind);
-    place(preview, t.preview, false);
-    if (t.kind === "tab" && t.marker) {
-      setAttr(marker, "data-visible", "");
-      place(marker, t.marker, false);
-    } else setAttr(marker, "data-visible", null);
+    const label = dragger?.dropLabel() ?? "";
+    if (dropLabel.textContent !== label) dropLabel.textContent = label;
+    setAttr(dropSlot, "data-kind", label ? "tab" : null);
   }
 
   // ---------------------------------------------------------------- focus
@@ -1138,7 +1125,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   }
   function raiseIfFloating(viewId: string) {
     const panel = panelOfView(doc, viewId);
-    if (!panel || drag?.active) return;
+    if (!panel || dragActive()) return;
     const raised = raiseFloat(doc, panel.id);
     if (raised !== doc) commit(raised, { animate: false, silent: true });
   }
@@ -1175,7 +1162,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   function infoOf(viewId: string): ViewInfo | null {
     const record = doc.views[viewId];
     if (!record) return null;
-    const panel = panelOfView(doc, viewId) ?? (drag?.lifted?.views.includes(viewId) ? drag.lifted : null);
+    const panel = panelOfView(doc, viewId) ?? (lifted()?.views.includes(viewId) ? lifted() : null);
     return {
       id: viewId,
       type: record.type,
@@ -1357,26 +1344,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     ensureFramedVisible(viewId);
   }
   function ensureFramedVisible(viewId: string) {
-    if (!framed) return;
     const panel = panelOfView(doc, viewId);
-    if (!panel) return;
-    const float = doc.floating.find((f) => f.panel.id === panel.id);
-    if (float) {
-      // A window floating in the stage is visible when the frame contains the stage (or is the window).
-      const stage = findStage(doc.root);
-      const frameNode = findNode(doc.root, framed);
-      if (
-        float.layer === "overlay" ||
-        framed === panel.id ||
-        (stage && frameNode && findNode(frameNode, stage.id))
-      )
-        return;
-      frameTo(null);
-      return;
-    }
-    const frameNode = findNode(doc.root, framed);
-    if (frameNode && findNode(frameNode, panel.id)) return;
-    frameTo(null);
+    if (panel) nav.ensureVisible(panel.id);
   }
 
   // ---------------------------------------------------------------- close / hide / float
@@ -1548,9 +1517,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       const builtIns: MenuEntry[] = [];
       const keymap = { ...DEFAULT_KEYMAP, ...options.keymap };
       const hint = (c: Command) => (keymap[c] ? formatCombo(keymap[c]!) : undefined);
-      if (navigationMode() && frameRect(panelId))
+      if (navigationMode() && region !== "floating")
         builtIns.push({
-          label: framed === panelId ? "Restore size" : "Maximize",
+          label: framed() === panelId ? "Restore size" : "Maximize",
           shortcut: hint("frame.toggle"),
           run: () => toggleFrame(panelId),
         });
@@ -1661,11 +1630,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   }
   lifetime.listen(root, "keydown", (e: KeyboardEvent) => {
     if (e.defaultPrevented) return;
-    if (drag?.active && e.key === "Escape") {
-      e.preventDefault();
-      cancelDrag();
-      return;
-    }
+    if (dragActive()) return;
     const keymap = { ...DEFAULT_KEYMAP, ...options.keymap };
     for (const [command, combo] of Object.entries(keymap) as [Command, string | null][]) {
       if (combo && matches(e, combo)) {
@@ -1674,9 +1639,10 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         return;
       }
     }
-    if (e.key === "Escape" && framed && !(e.target as HTMLElement).closest?.("[data-trellis-part=content]")) {
+    // Escape outside content steps out one level (prototype).
+    if (e.key === "Escape" && framed() && !(e.target as HTMLElement).closest?.("[data-trellis-part=content]")) {
       e.preventDefault();
-      back();
+      nav.stepOut();
     }
   });
   function run(command: Command) {
@@ -1687,11 +1653,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         if (panelId) toggleFrame(panelId);
         return;
       case "navigation.back":
-        return back();
+        return nav.back();
       case "navigation.forward":
-        return forward();
+        return nav.forward();
       case "navigation.overview":
-        return frameTo(null);
+        return nav.toggleOverview();
       case "panel.next":
       case "panel.previous": {
         const order = [...panelsOf(doc.root), ...doc.floating.map((f) => f.panel)];
@@ -1724,574 +1690,34 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     }
   }
 
-  // ---------------------------------------------------------------- navigation
-  function nodeForFrame(target: string | string[] | "all" | "stage"): string | null {
-    if (target === "all") return null;
-    if (target === "stage") {
-      const stage = findStage(doc.root)?.id ?? null;
-      return stage === doc.root?.id ? null : stage;
-    }
-    const ids = (Array.isArray(target) ? target : [target])
-      .map((id) => (frameRect(id) ? id : (panelOfView(doc, id)?.id ?? null)))
-      .filter((id): id is string => !!id && !!frameRect(id));
-    if (!ids.length) return null;
-    // A single floating window frames itself.
-    if (ids.length === 1 && !findNode(doc.root, ids[0])) return ids[0];
-    const docked = ids.filter((id) => findNode(doc.root, id));
-    if (!docked.length) return null;
-    let best: Entry | null = null;
-    for (const entry of entries.values()) {
-      if (!docked.every((id) => findNode(entry.node, id))) continue;
-      if (!best || entry.rect.w * entry.rect.h < best.rect.w * best.rect.h) best = entry;
-    }
-    const id = best?.node.id ?? null;
-    return id === doc.root?.id ? null : id;
-  }
-  function frameTo(nodeId: string | null, record = true) {
-    if (!navigationMode()) nodeId = null;
-    if (nodeId === framed) return;
-    framed = nodeId;
-    if (record) {
-      history = [...history.slice(0, historyIndex + 1), nodeId];
-      historyIndex = history.length - 1;
-    }
-    retarget();
-    setAttr(root, "data-framed", framed ? "" : null);
-    for (const [id, dom] of panelDoms) setAttr(dom.el, "data-framed", framed === id ? "" : null);
-    events.emit("navigate", framed);
-    invalidate();
-    emitChange();
-  }
-  function retarget() {
-    if (framed && !frameRect(framed)) {
-      framed = null;
-      setAttr(root, "data-framed", null);
-    }
-    const target = framed ? (frameRect(framed) ?? UNIT) : UNIT;
-    if (!sameRect(camera.target, target)) {
-      camera.target = { ...target };
-      if (reduced()) camera.finish();
-      schedule();
-    }
-  }
-  /** World rect a node or stage-floating panel can be framed at; null if it can't be framed. */
-  function frameRect(id: string): Rect | null {
-    const entry = entries.get(id);
-    if (entry) return entry.rect;
-    const float = doc.floating.find((f) => f.panel.id === id);
-    if (!float || float.layer !== "stage") return null;
-    const s = stageWorld();
-    return {
-      x: s.x + float.rect.x * s.w,
-      y: s.y + float.rect.y * s.h,
-      w: float.rect.w * s.w,
-      h: float.rect.h * s.h,
-    };
-  }
-  function toggleFrame(id: string): boolean {
-    if (!navigationMode()) return false;
-    const nodeId = frameRect(id) ? id : (panelOfView(doc, id)?.id ?? null);
-    if (!nodeId || !frameRect(nodeId)) return false;
-    if (framed === nodeId) back();
-    else frameTo(nodeId === doc.root?.id ? null : nodeId);
-    return true;
-  }
-  function back() {
-    if (historyIndex > 0) {
-      historyIndex--;
-      const id = history[historyIndex];
-      frameTo(id && frameRect(id) ? id : null, false);
-    } else if (framed) frameTo(null);
-  }
-  function forward() {
-    if (historyIndex < history.length - 1) {
-      historyIndex++;
-      const id = history[historyIndex];
-      frameTo(id && frameRect(id) ? id : null, false);
-    }
-  }
-
-  // Free navigation: pinch / ctrl+wheel to zoom, wheel to pan, then snap.
-  let snapTimer: ReturnType<typeof setTimeout> | undefined;
-  lifetime.listen(
-    root,
-    "wheel",
-    (e: WheelEvent) => {
-      if (navigationMode() !== "free" || drag?.active || !doc.root) return;
-      const target = e.target as HTMLElement;
-      const content = target.closest?.("[data-trellis-part=surface]") as HTMLElement | null;
-      const zoom = e.ctrlKey || e.metaKey;
-      if (content && !e.altKey) {
-        const viewId = content.dataset.view!;
-        if (typeOf(viewId).gestures !== "workspace") return;
-      }
-      if (target.closest?.("[data-trellis-part=tabs], .trellis-menu")) {
-        if (!zoom) return;
-      }
-      const c = camera.value;
-      if (!zoom && c.w >= 0.999 && c.h >= 0.999) return;
-      e.preventDefault();
-      if (!gesture) {
-        gesture = true;
-        camera.target = { ...camera.value };
-        camera.velocity = { x: 0, y: 0, w: 0, h: 0 };
-        updateInteractivity();
-      }
-      const b = root.getBoundingClientRect();
-      const p = { x: e.clientX - b.left, y: e.clientY - b.top };
-      const next = { ...camera.value };
-      if (zoom) {
-        const factor = Math.exp(Math.max(-0.25, Math.min(0.25, e.deltaY * 0.01)));
-        const anchor = fromScreen(p);
-        const w = Math.min(1, Math.max(0.04, next.w * factor));
-        const hh = Math.min(1, Math.max(0.04, next.h * factor));
-        next.x = anchor.x - ((anchor.x - next.x) / next.w) * w;
-        next.y = anchor.y - ((anchor.y - next.y) / next.h) * hh;
-        next.w = w;
-        next.h = hh;
-      } else {
-        next.x += (e.deltaX / viewport.w) * next.w;
-        next.y += (e.deltaY / viewport.h) * next.h;
-      }
-      next.x = Math.min(1 - next.w, Math.max(0, next.x));
-      next.y = Math.min(1 - next.h, Math.max(0, next.y));
-      camera.jump(next);
-      cameraChanged();
-      schedule();
-      lifetime.clearTimeout(snapTimer);
-      snapTimer = lifetime.timeout(snapToBestFit, 160);
-    },
-    { passive: false },
-  );
+  // ---------------------------------------------------------------- navigation (see navigation.ts)
   let lastCamera: Rect = { ...UNIT };
   function cameraChanged() {
     if (sameRect(lastCamera, camera.value)) return;
     lastCamera = { ...camera.value };
     if (events.has("camera")) events.emit("camera", { ...camera.value });
   }
-  function snapToBestFit() {
-    gesture = false;
-    updateInteractivity();
-    const c = camera.value;
-    let best: string | null = null;
-    let score = Infinity;
-    const candidates: [string, Rect][] = [...entries]
-      .filter(([, e]) => !(e.node.kind === "stage" && e.node.child))
-      .map(([id, e]) => [id, e.rect]);
-    for (const f of doc.floating)
-      if (f.layer === "stage") candidates.push([f.panel.id, frameRect(f.panel.id)!]);
-    for (const [id, r] of candidates) {
-      const size = Math.abs(Math.log(r.w / c.w)) + Math.abs(Math.log(r.h / c.h));
-      const distance = Math.hypot(
-        (r.x + r.w / 2 - c.x - c.w / 2) / c.w,
-        (r.y + r.h / 2 - c.y - c.h / 2) / c.h,
-      );
-      const s = size + distance * 2.5;
-      if (s < score) {
-        score = s;
-        best = id;
-      }
+  /** Double-clicking a tab bar maximizes; a floating window frames its desktop (prototype). */
+  function toggleFrame(panelId: string): boolean {
+    if (doc.floating.some((f) => f.panel.id === panelId)) {
+      nav.frame("stage");
+      return true;
     }
-    const nodeId = best === doc.root?.id ? null : best;
-    if (nodeId === framed) {
-      camera.target = { ...(framed ? (frameRect(framed) ?? UNIT) : UNIT) };
-      schedule();
-    } else frameTo(nodeId);
+    return nav.toggle(panelId);
   }
+  const framed = () => nav?.framed ?? null;
 
-  // ---------------------------------------------------------------- drag & drop
-  function beginDrag(e: PointerEvent, kind: "tab" | "panel", panelId: string, viewId: string | null) {
-    if (drag || e.button !== 0) return;
-    const panel = findPanel(panelId);
-    if (!panel) return;
-    if (kind === "tab" && panel.views.length === 1) kind = "panel";
-    drag = {
-      pointerId: e.pointerId,
-      start: { x: e.clientX, y: e.clientY },
-      kind,
-      viewId: kind === "tab" ? viewId : null,
-      panelId,
-      active: false,
-      mode: "pending",
-      origin: doc,
-      lifted: null,
-      rect: { x: 0, y: 0, w: 0, h: 0 },
-      fromRect: { x: 0, y: 0, w: 0, h: 0 },
-      pickupStart: 0,
-      pickupSize: { w: 0, h: 0 },
-      grab: { x: 0.5, y: 0 },
-      wasFloating: null,
-      target: null,
-      last: { x: e.clientX, y: e.clientY },
-      alt: false,
-      grabTab: 0,
-    };
-    const move = (ev: PointerEvent) => {
-      if (!drag || ev.pointerId !== drag.pointerId) return;
-      dragMove(ev);
-    };
-    const up = (ev: PointerEvent) => {
-      if (!drag || ev.pointerId !== drag.pointerId) return;
-      finishDrag(ev.altKey);
-    };
-    const cancel = (ev: PointerEvent) => {
-      if (!drag || ev.pointerId !== drag.pointerId) return;
-      cancelDrag();
-    };
-    const controller = new AbortController();
-    const signal = AbortSignal.any
-      ? AbortSignal.any([controller.signal, lifetime.signal])
-      : controller.signal;
-    window.addEventListener("pointermove", move, { signal });
-    window.addEventListener("pointerup", up, { signal });
-    window.addEventListener("pointercancel", cancel, { signal });
-    window.addEventListener(
-      "keydown",
-      (ev) => {
-        if (ev.key === "Escape" && drag?.active) {
-          ev.preventDefault();
-          ev.stopPropagation();
-          cancelDrag();
-        }
-        if (drag?.active) {
-          drag.alt = ev.altKey;
-          updateDropTarget();
-        }
-      },
-      { signal, capture: true },
-    );
-    window.addEventListener(
-      "keyup",
-      (ev) => {
-        if (drag?.active) {
-          drag.alt = ev.altKey;
-          updateDropTarget();
-        }
-      },
-      { signal, capture: true },
-    );
-    dragCleanup = () => controller.abort();
-  }
-  let dragCleanup: (() => void) | null = null;
+  // ---------------------------------------------------------------- drag & drop (see drag.ts)
   function localPoint(ev: { clientX: number; clientY: number }) {
     const b = root.getBoundingClientRect();
     return { x: ev.clientX - b.left, y: ev.clientY - b.top };
   }
-  function dragMove(ev: PointerEvent) {
-    const d = drag!;
-    d.alt = ev.altKey;
-    const p = localPoint(ev);
-    d.last = p;
-    if (!d.active) {
-      if (Math.hypot(ev.clientX - d.start.x, ev.clientY - d.start.y) < 5) return;
-      d.active = true;
-      // Capture on the root (which never moves) so iframes can't swallow the rest of the drag.
-      try {
-        root.setPointerCapture(ev.pointerId);
-      } catch {
-        /* synthetic pointers can't be captured */
-      }
-      menu.close(false);
-      setAttr(root, "data-dragging", "");
-      updateInteractivity();
-      const panel = findPanel(d.panelId)!;
-      const dom = panelDoms.get(d.panelId);
-      const start = localPoint({ clientX: d.start.x, clientY: d.start.y });
-      if (d.kind === "tab" && panel.views.length > 1 && dom) {
-        d.mode = "reorder";
-        const tabEl = dom.tabs.get(d.viewId!)?.el;
-        const r = lastRects.get(d.panelId);
-        d.grabTab = tabEl && r ? start.x - (r.x + tabEl.offsetLeft - dom.tablist.scrollLeft) : 0;
-        setAttr(tabEl ?? root, "data-dragging", "");
-      } else lift(start);
-      invalidate();
-    }
-    if (d.mode === "reorder") {
-      const dom = panelDoms.get(d.panelId);
-      const r = lastRects.get(d.panelId);
-      if (!dom || !r) return;
-      const withinBar =
-        p.y > r.y - 24 && p.y < r.y + tabbarHeight + 24 && p.x > r.x - 24 && p.x < r.x + r.w + 24;
-      if (!withinBar) {
-        resetTabDrag(dom);
-        lift(p);
-      } else {
-        const panel = locatePanel(doc, d.panelId)?.panel;
-        if (!panel) return;
-        const others = panel.views.filter((v) => v !== d.viewId);
-        const rects = others.map((v) => {
-          const t = dom.tabs.get(v)!.el;
-          return { x: r.x + t.offsetLeft, y: r.y, w: t.offsetWidth, h: tabbarHeight };
-        });
-        let index = rects.length;
-        for (let i = 0; i < rects.length; i++)
-          if (p.x < rects[i].x + rects[i].w / 2) {
-            index = i;
-            break;
-          }
-        const order = [...others];
-        order.splice(index, 0, d.viewId!);
-        if (order.join() !== panel.views.join()) {
-          // FLIP: slide the other tabs from their old positions.
-          const before = new Map(others.map((v) => [v, dom.tabs.get(v)!.el.offsetLeft]));
-          doc = reorderTabs(doc, d.panelId, order);
-          syncTabs(findPanel(d.panelId)!);
-          updateTabs();
-          if (!reduced())
-            for (const v of others) {
-              const el = dom.tabs.get(v)!.el;
-              const dx = before.get(v)! - el.offsetLeft;
-              if (!dx) continue;
-              el.style.transition = "none";
-              el.style.transform = `translateX(${dx}px)`;
-              void el.offsetWidth;
-              el.style.transition = "transform 180ms var(--trellis-ease)";
-              el.style.transform = "";
-            }
-        }
-        const dragged = dom.tabs.get(d.viewId!)!.el;
-        const slot = r.x + dragged.offsetLeft - dom.tablist.scrollLeft;
-        dragged.style.transform = `translateX(${p.x - d.grabTab - slot}px)`;
-        return;
-      }
-    }
-    if (d.mode === "lifted") {
-      positionLifted(p);
-      updateDropTarget();
-      schedule();
-    }
-  }
-  function resetTabDrag(dom: PanelDom | undefined) {
-    if (!dom || !drag?.viewId) return;
-    const el = dom.tabs.get(drag.viewId)?.el;
-    if (!el) return;
-    el.style.transform = "";
-    setAttr(el, "data-dragging", null);
-  }
-  function lift(p: { x: number; y: number }) {
-    const d = drag!;
-    const panel = findPanel(d.panelId)!;
-    const current = lastRects.get(d.panelId) ??
-      targetRect(d.panelId) ?? { x: p.x - 150, y: p.y - 10, w: 300, h: 200 };
-    const float = doc.floating.find((f) => f.panel.id === d.panelId);
-    let next = doc;
-    let lifted: PanelNode;
-    if (d.kind === "tab" && d.viewId && panel.views.length > 1) {
-      next = detachView(doc, d.viewId);
-      lifted = { kind: "panel", id: uid("panel"), views: [d.viewId], selected: d.viewId };
-    } else {
-      next = removePanel(doc, d.panelId);
-      lifted = panel;
-    }
-    d.wasFloating = float && lifted === panel ? { layer: float.layer } : null;
-    d.lifted = lifted;
-    d.mode = "lifted";
-    d.fromRect = { ...current };
-    d.rect = { ...current };
-    const floatingMove = !!d.wasFloating;
-    const pickW = floatingMove
-      ? current.w
-      : Math.min(current.w, Math.max(240, Math.min(420, viewport.w * 0.32)));
-    const pickH = floatingMove
-      ? current.h
-      : Math.min(current.h, Math.max(160, Math.min(300, viewport.h * 0.36)));
-    d.pickupSize = { w: pickW, h: pickH };
-    d.grab = {
-      x: current.w ? Math.min(1, Math.max(0, (p.x - current.x) / current.w)) : 0.5,
-      y: Math.min(tabbarHeight / 2, Math.max(0, p.y - current.y)),
-    };
-    if (floatingMove) d.grab.y = p.y - current.y;
-    d.pickupStart = performance.now();
-    const from = new Map(lastRects);
-    if (!reduced() && !floatingMove) tween.begin(from, performance.now());
-    doc = next;
-    sync();
-    positionLifted(p);
-    updateDropTarget();
-    schedule();
-  }
-  function positionLifted(p: { x: number; y: number }) {
-    const d = drag!;
-    const w = d.pickupSize.w;
-    const hh = d.pickupSize.h;
-    d.rect = { x: p.x - d.grab.x * w, y: p.y - d.grab.y, w, h: hh };
-  }
-  function liftedRect(time: number): Rect {
-    const d = drag!;
-    if (d.wasFloating || reduced()) return d.rect;
-    const t = Math.min(1, (time - d.pickupStart) / MOTION.pickupMs);
-    const e = 1 - (1 - t) ** 3;
-    const size = {
-      w: d.fromRect.w + (d.rect.w - d.fromRect.w) * e,
-      h: d.fromRect.h + (d.rect.h - d.fromRect.h) * e,
-    };
-    return { x: d.last.x - d.grab.x * size.w, y: d.last.y - d.grab.y, w: size.w, h: size.h };
-  }
-  function hitScene(): HitScene {
-    const d = drag!;
-    const views = d.lifted?.views ?? [];
-    const stage = findStage(doc.root);
-    const panels: PanelBox[] = [];
-    const floatsByZ = new Map(doc.floating.map((f) => [f.panel.id, f]));
-    for (const panel of [...panelsOf(doc.root), ...doc.floating.map((f) => f.panel)]) {
-      const r = targetRect(panel.id);
-      const dom = panelDoms.get(panel.id);
-      if (!r || !dom) continue;
-      const float = floatsByZ.get(panel.id);
-      const visibleRect = float?.layer === "stage" ? intersect(r, stageScreen() ?? r) : r;
-      if (!visibleRect) continue;
-      panels.push({
-        id: panel.id,
-        rect: r,
-        tabbar: { x: r.x, y: r.y, w: r.w, h: barHeight(panel) },
-        tabs: panel.views.map((v) => {
-          const el = dom.tabs.get(v)?.el;
-          return el
-            ? { x: r.x + el.offsetLeft, y: r.y, w: el.offsetWidth, h: tabbarHeight }
-            : { x: r.x, y: r.y, w: 0, h: 0 };
-        }),
-        region: float ? "floating" : regionOf(panel.id),
-        floating: !!float,
-        z: float ? (float.layer === "overlay" ? 1000 : 30) + float.z : 0,
-      });
-    }
-    const sScreen = stageScreen();
-    return {
-      viewport: { x: 0, y: 0, w: viewport.w, h: viewport.h },
-      rootId: doc.root?.id ?? null,
-      stage: stage && sScreen ? { id: stage.id, rect: sScreen, empty: !stage.child } : null,
-      panels,
-      allowed: (region) => allowed(views, region),
-      source: d.lifted?.id,
-    };
-  }
-  function intersect(a: Rect, b: Rect): Rect | null {
-    const x = Math.max(a.x, b.x);
-    const y = Math.max(a.y, b.y);
-    const r = Math.min(a.x + a.w, b.x + b.w);
-    const btm = Math.min(a.y + a.h, b.y + b.h);
-    return r > x && btm > y ? { x, y, w: r - x, h: btm - y } : null;
-  }
-  function updateDropTarget() {
-    const d = drag;
-    if (!d?.active || d.mode !== "lifted") return;
-    const fl = floatingLayer();
-    const views = d.lifted?.views ?? [];
-    const canFloat = !!fl && allowed(views, "floating");
-    let target: DropTarget | null;
-    if (d.alt && canFloat) target = { kind: "float" };
-    else {
-      const scene = hitScene();
-      target = hitTest(scene, d.last);
-      // Moving a floating panel: its body passes over panels freely; only bars and edges dock.
-      if (d.wasFloating && target?.kind === "tab" && target.marker && !pointInBar(target.panel, d.last))
-        target = canFloat ? { kind: "float" } : target;
-      if (d.wasFloating && target?.kind === "split" && !nearEdgeStrict(target.beside, d.last))
-        target = canFloat ? { kind: "float" } : target;
-      // An empty stage accepts floats when floats live in the stage.
-      if (target?.kind === "stage" && fl === "stage" && canFloat) target = { kind: "float" };
-    }
-    d.target = target;
-    setAttr(root, "data-drop", target ? target.kind : "none");
-    renderDrop();
-  }
-  function pointInBar(panelId: string, p: { x: number; y: number }) {
-    const r = targetRect(panelId);
-    return !!r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + barHeight(findPanel(panelId));
-  }
-  function nearEdgeStrict(nodeId: string, p: { x: number; y: number }) {
-    if (nodeId === doc.root?.id) return true;
-    const stage = findStage(doc.root);
-    if (stage?.id === nodeId) return true;
-    const r = targetRect(nodeId);
-    if (!r) return false;
-    const band = 0.14;
-    const x = (p.x - r.x) / r.w;
-    const y = (p.y - r.y) / r.h;
-    return Math.min(x, 1 - x, y, 1 - y) <= band;
-  }
-  function finishDrag(alt: boolean) {
-    const d = drag!;
-    if (!d.active) {
-      endDrag();
-      return;
-    }
-    if (d.mode === "reorder") {
-      resetTabDrag(panelDoms.get(d.panelId));
-      const next = doc;
-      doc = d.origin;
-      endDrag();
-      commit(next, { animate: false });
-      if (d.viewId) focusView(d.viewId, false);
-      return;
-    }
-    if (d.mode !== "lifted" || !d.lifted) {
-      endDrag();
-      return;
-    }
-    d.alt = alt;
-    updateDropTarget();
-    const target = d.target;
-    const lifted = d.lifted;
-    const rect = liftedRect(performance.now());
-    let next: LayoutDocument | null = null;
-    const fl = floatingLayer();
-    if (target?.kind === "tab") next = insertPanel(doc, lifted, { into: target.panel, index: target.index });
-    else if (target?.kind === "split")
-      next = insertPanel(doc, lifted, {
-        beside: target.beside,
-        edge: target.edge,
-        share: target.beside === doc.root?.id ? 0.25 : 0.5,
-      });
-    else if (target?.kind === "stage") next = insertPanel(doc, lifted, { into: target.stage });
-    else if (target?.kind === "float" && fl) {
-      const layerName = d.wasFloating?.layer ?? fl;
-      next = floatPanel(doc, lifted, screenToFloat(rect, layerName), layerName);
-    }
-    const from = new Map<string, Rect>([[lifted.id, rect]]);
-    const origin = d.origin;
-    endDrag();
-    if (!next) {
-      doc = origin;
-      tween.begin(new Map([...lastRects, [lifted.id, rect]]), performance.now());
-      sync();
-      schedule();
-      return;
-    }
-    if (target?.kind === "tab") from.set(target.panel, lastRects.get(target.panel)!);
-    settling.add(target?.kind === "tab" ? target.panel : lifted.id);
-    const selected = lifted.selected;
-    const owner = panelOfView(next, selected);
-    if (owner && next.floating.some((f) => f.panel.id === owner.id)) next = raiseFloat(next, owner.id);
-    doc = origin;
-    commit(next, { from });
-    focusView(selected, false);
-    announce(`Moved ${titleOf(selected)}`);
-  }
-  function cancelDrag() {
-    const d = drag;
-    if (!d) return;
-    if (d.mode === "reorder") resetTabDrag(panelDoms.get(d.panelId));
-    const rect = d.lifted ? liftedRect(performance.now()) : null;
-    const origin = d.origin;
-    const liftedId = d.lifted?.id;
-    endDrag();
-    doc = origin;
-    if (rect && liftedId && !reduced())
-      tween.begin(new Map([...lastRects, [liftedId, rect]]), performance.now());
-    sync();
-    render();
-  }
-  function endDrag() {
-    dragCleanup?.();
-    dragCleanup = null;
-    drag = null;
-    setAttr(root, "data-dragging", null);
-    setAttr(root, "data-drop", null);
-    renderDrop();
-    updateInteractivity();
-    invalidate();
-    schedule();
+  function fromScreenRect(screen: Rect | undefined | null): Rect | null {
+    if (!screen) return null;
+    const p = pad();
+    const a = fromScreen({ x: screen.x - p, y: screen.y - p });
+    const b = fromScreen({ x: screen.x + screen.w + p, y: screen.y + screen.h + p });
+    return { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y };
   }
   function announce(text: string) {
     live.textContent = text;
@@ -2457,7 +1883,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (snapshot) return snapshot;
     // Views being dragged are still open; list them where they were.
     const ids = viewIds(doc);
-    for (const id of drag?.lifted?.views ?? []) if (!ids.includes(id)) ids.push(id);
+    for (const id of lifted()?.views ?? []) if (!ids.includes(id)) ids.push(id);
     const views = ids.map((id) => infoOf(id)!).filter(Boolean);
     snapshot = {
       document: doc,
@@ -2468,22 +1894,127 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         panelId: x.panel.id,
         views: x.panel.views.map((v) => infoOf(v)!).filter(Boolean),
       })),
-      framed,
-      canGoBack: historyIndex > 0 || !!framed,
-      canGoForward: historyIndex < history.length - 1,
-      framings,
-      dragging: !!drag?.active,
+      framed: nav.framed,
+      canGoBack: nav.canGoBack,
+      canGoForward: nav.canGoForward,
+      framings: nav.framings.list(),
+      dragging: !!dragActive(),
     };
     return snapshot;
   }
 
   // ---------------------------------------------------------------- setup
+  dragger = createDragController({
+    root,
+    lifetime,
+    tween,
+    lastRects,
+    reduced,
+    doc: () => doc,
+    setDoc(next) {
+      doc = next;
+      sync();
+      render();
+    },
+    commit(next, from, settle) {
+      if (settle) settling.add(settle);
+      if (next === doc) {
+        // Nothing changed (a cancelled drag): animate everything back into place.
+        if (!reduced()) tween.begin(from, performance.now());
+        sync();
+        render();
+        return;
+      }
+      commit(next, { from });
+    },
+    render: () => render(),
+    schedule,
+    busy(active) {
+      updateInteractivity();
+      if (active) settledState = false;
+      invalidate();
+    },
+    closeMenus: () => menu.close(false),
+    camera: () => camera.value,
+    viewport: () => viewport,
+    inset: pad,
+    tabbarHeight: (panel) => barHeight(panel),
+    toScreen,
+    fromScreen,
+    panelScreen: (world) => inset(toScreen(world), pad()),
+    fromScreenRect,
+    floatWorld(panelId) {
+      const float = doc.floating.find((f) => f.panel.id === panelId);
+      if (!float || float.layer !== "stage") return null;
+      const s = stageWorld();
+      return { x: s.x + float.rect.x * s.w, y: s.y + float.rect.y * s.h, w: float.rect.w * s.w, h: float.rect.h * s.h };
+    },
+    floatingLayer,
+    panelDom: (id) => panelDoms.get(id),
+    frameOnly: (id) => !!panelDoms.get(id)?.el.hasAttribute("data-frame-only"),
+    allowed,
+    framedNode: () => nav.framedNode,
+    minSize(viewIds) {
+      let w = 0;
+      let h = 0;
+      for (const id of viewIds) {
+        const min = minSizeOf(id);
+        w = Math.max(w, min?.width ?? 0);
+        h = Math.max(h, min?.height ?? 0);
+      }
+      return { w, h };
+    },
+    moved(panel, from, to) {
+      // Keep the moved view in frame (prototype): docking a float widens the frame to include it;
+      // floating a docked view frames its desktop.
+      const stage = findStage(doc.root);
+      if (to === "float" && from === "docked" && stage) nav.include([stage.id]);
+      else if (to !== "float" && to !== "tab" && from === "floating") nav.include([panel.id]);
+      else ensureFramedVisible(panel.selected);
+      focusView(panel.selected, false);
+    },
+    announce,
+  });
+  nav = createNavigator({
+    root,
+    lifetime,
+    camera,
+    doc: () => doc,
+    mode: navigationMode,
+    reduced,
+    viewport: () => viewport,
+    fromScreen,
+    toScreen,
+    panelScreen: (world) => inset(toScreen(world), pad()),
+    setGesture(active) {
+      gesture = active;
+      if (active) {
+        tween.stop();
+        settledState = false;
+      }
+      updateInteractivity();
+      schedule();
+    },
+    busy: () => dragActive(),
+    contentOwnsWheel(target) {
+      const surface = target.closest?.("[data-trellis-part=surface]") as HTMLElement | null;
+      if (!surface) return false;
+      return typeOf(surface.dataset.view!).gestures !== "workspace";
+    },
+    titleOf: (node) => (node.kind === "panel" ? titleOf(node.selected) : node.kind === "stage" ? "the stage" : "this group"),
+    schedule,
+    render: () => render(),
+    changed() {
+      for (const [id, dom] of panelDoms) setAttr(dom.el, "data-framed", nav.framed === id ? "" : null);
+      events.emit("navigate", nav.framed);
+      invalidate();
+      emitChange();
+    },
+  });
   function setDocument(next: LayoutDocument, o: { animate?: boolean } = {}) {
     const prepared = prepare(next);
-    framings = prepared.navigation?.framings ?? framings;
     commit(prepared, { animate: o.animate ?? true });
-    const frameId = prepared.navigation?.frame?.[0];
-    if (frameId && frameRect(frameId)) frameTo(frameId);
+    nav.restore(prepared.navigation);
   }
   applyTheme();
   const ro = new ResizeObserver(() => {
@@ -2506,16 +2037,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   {
     const initial = options.document ?? loadPersisted() ?? defaultDocument();
     doc = prepare(initial);
-    framings = doc.navigation?.framings ?? [];
     sync();
-    const frameId = doc.navigation?.frame?.[0];
-    if (frameId && frameRect(frameId) && navigationMode()) {
-      framed = frameId;
-      history = [null, frameId];
-      historyIndex = 1;
-      setAttr(root, "data-framed", "");
-    }
-    camera.jump(framed ? (frameRect(framed) ?? UNIT) : UNIT);
+    nav.restore(doc.navigation);
+    camera.finish();
     const first = panelsOf(doc.root)[0] ?? doc.floating[0]?.panel;
     if (first) setFocus(first.selected, false);
     render();
@@ -2543,41 +2067,25 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     setTitle,
     setParams,
     navigation: {
-      frame: (target) => frameTo(nodeForFrame(target)),
+      frame: (target) => nav.frame(target),
       toggle: (id) => {
         const target = id ?? focusedPanel;
-        return target ? toggleFrame(target) : false;
+        // Floating windows are not camera targets (NAV-12); dock them first (toggleDock).
+        return target ? nav.toggle(resolvePanel(target)?.id ?? target) : false;
       },
-      back,
-      forward,
-      overview: () => frameTo(null),
+      back: () => nav.back(),
+      forward: () => nav.forward(),
+      overview: () => nav.overview(),
+      toggleOverview: () => nav.toggleOverview(),
+      stepOut: () => nav.stepOut(),
+      stepIn: () => nav.stepIn(),
       get framed() {
-        return framed;
+        return nav.framed;
       },
       get camera() {
         return { ...camera.value };
       },
-      framings: {
-        save(name: string) {
-          const framing: Framing = { id: uid("framing"), name, frame: framed ? [framed] : [] };
-          framings = [...framings, framing];
-          invalidate();
-          emitChange();
-          return framing;
-        },
-        go(id: string) {
-          const framing = framings.find((f) => f.id === id);
-          if (!framing) return;
-          const ids = framing.frame.filter((x) => findNode(doc.root, x));
-          frameTo(ids.length ? nodeForFrame(ids) : null);
-        },
-        remove(id: string) {
-          framings = framings.filter((f) => f.id !== id);
-          invalidate();
-          emitChange();
-        },
-        list: () => framings,
-      },
+      framings: nav.framings,
     },
     run,
     getDocument,
@@ -2589,11 +2097,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         } catch {
           /* ignore */
         }
-      framed = null;
-      history = [null];
-      historyIndex = 0;
       setDocument(defaultDocument());
-      retarget();
     },
     views: (filter) =>
       viewIds(doc)
@@ -2611,7 +2115,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       const typesChanged = patch.types && patch.types !== options.types;
       options = { ...options, ...patch };
       if ("theme" in patch || "tokens" in patch || "navigation" in patch || "label" in patch) applyTheme();
-      if ("navigation" in patch && !navigationMode()) frameTo(null, false);
+      if ("navigation" in patch && !navigationMode()) nav.focus(null, false);
       if (typesChanged) {
         for (const record of records.values()) mountContent(record);
         for (const record of records.values())
@@ -2622,7 +2126,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     },
     destroy() {
       if (lifetime.disposed) return;
-      endDragSilently();
+      dragger.cancel();
       for (const id of [...records.keys()]) destroySurface(id);
       lifetime.dispose();
       events.emit("surfaces", []);
@@ -2630,10 +2134,6 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       listeners.clear();
     },
   };
-  function endDragSilently() {
-    dragCleanup?.();
-    drag = null;
-  }
   return handle;
 }
 
