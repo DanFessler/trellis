@@ -192,8 +192,14 @@ button {
 .trellis [data-trellis-part="surface"] {
   background: transparent;
 }
+/* The prototype's faint inner edge along the bottom of each window. */
 .trellis [data-trellis-part="surface"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   box-shadow: inset 0 -1px 0 #ffffff08;
+  pointer-events: none;
 }
 .app-frame {
   display: block;

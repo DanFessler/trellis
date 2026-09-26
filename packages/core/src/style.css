@@ -532,17 +532,6 @@
   background: var(--trellis-panel);
   will-change: transform;
 }
-:where(.trellis [data-trellis-part="surface"])::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow:
-    inset 1px 0 0 var(--trellis-border),
-    inset -1px 0 0 var(--trellis-border),
-    inset 0 -1px 0 var(--trellis-border);
-  pointer-events: none;
-}
 :where(.trellis [data-trellis-part="content"]) {
   position: absolute;
   left: 0;
@@ -582,14 +571,8 @@
 :where(.trellis [data-trellis-part="surface"][data-tabbar="overlay"]) {
   border-radius: var(--trellis-radius);
 }
-:where(.trellis [data-trellis-part="surface"][data-tabbar="overlay"])::after {
-  box-shadow: inset 0 0 0 1px var(--trellis-border);
-}
 :where(.trellis [data-trellis-part="surface"][data-tabbar="hidden"]) {
   border-radius: var(--trellis-radius);
-}
-:where(.trellis [data-trellis-part="surface"][data-tabbar="hidden"])::after {
-  box-shadow: inset 0 0 0 1px var(--trellis-border);
 }
 
 /* ------------------------------------------------------------------ dividers */
