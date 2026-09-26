@@ -6,3 +6,5 @@ package-lock.json
 .claude
 LICENSE*.md
 design/logo/construction.html
+site/src/components/logo-paths.ts
+design/logo/dist
