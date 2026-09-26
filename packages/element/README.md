@@ -2,9 +2,13 @@
 
 Trellis as a `<trellis-workspace>` custom element, for any framework or none.
 
+Install it with the core package:
+
 ```sh
 npm install @danfessler/trellis-element @danfessler/trellis
 ```
+
+Register the element, then declare the workspace in HTML:
 
 ```html
 <script type="module">
@@ -23,8 +27,8 @@ npm install @danfessler/trellis-element @danfessler/trellis
 
 Without a bundler, import `@danfessler/trellis-element/standalone` (a single self-contained module).
 
-Documentation, guides and examples: https://github.com/DanFessler/trellis
+Documentation, guides and examples are in the [Trellis repository](https://github.com/DanFessler/trellis).
 
 ## License
 
-Free for non-commercial use; commercial use requires an active GitHub Sponsorship at the applicable tier or an enterprise license. See LICENSE.md.
+Free for non-commercial use. Commercial use requires an active GitHub Sponsorship at the applicable tier or an enterprise license. See [LICENSE.md](LICENSE.md).

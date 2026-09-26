@@ -1,17 +1,17 @@
 ---
 title: Recipes
-description: Complete patterns — a desktop built from primitives, a live preview iframe, an art program, an IDE and a dashboard.
+description: Complete patterns for a desktop built from primitives, a live preview iframe, an art program, an IDE and a dashboard.
 section: More
 order: 40
 ---
 
 # Recipes
 
-Very different tools, each built from the same handful of primitives. Every recipe is a sketch you can grow; the [examples](/#examples) are full versions.
+Each recipe builds a different kind of tool from the same primitives. The recipes are sketches you can grow, and the [examples](/#examples) are full versions.
 
-## A desktop, built from primitives
+## A desktop built from primitives
 
-A desktop environment is a stage with nothing docked in it: the stage _is_ the desktop, windows are floats that live in the stage, and the dock is a row of launchers plus a tray of hidden panels.
+A desktop environment is a stage with nothing docked in it. The stage _is_ the desktop, and windows are floats that live in the stage. The dock is a row of launchers plus a tray of hidden panels:
 
 ```tsx title="Desktop.tsx"
 import {
@@ -32,7 +32,7 @@ function TitleButtons() {
     <div className="traffic">
       <button aria-label="Close" onClick={() => void view.close()} />
       <button aria-label="Minimize" onClick={() => ws.hide(view.panelId, { toward: dock() ?? undefined })} />
-      {/* Dock beside the desktop and frame both; click again to float back. */}
+      {/* Dock beside the desktop and frame both. Click again to float back. */}
       <button aria-label="Zoom" onClick={() => ws.toggleDock(view.panelId)} />
     </div>
   );
@@ -99,24 +99,26 @@ export function Desktop() {
 }
 ```
 
-Why it works:
+Notes:
 
-- `floating="stage"` puts windows inside the stage, clipped to it. The empty stage is the desktop: dropping in its interior floats a window, and dropping near its edges docks the window beside it.
-- `placement="float"` makes every `open()` a new window, cascaded so they don't stack exactly. `from: e.currentTarget` grows each new window out of its dock icon.
-- Clicking into a window — or opening or focusing it — raises it to the front.
-- The green _Zoom_ button calls `toggleDock(panelId)`: the window docks beside the desktop, along its longer side, and the camera widens to show both. A second click floats it back at the size it had. The panel menu's **Dock beside stage** / **Float** items do the same, and a docked window can then be maximized like any panel.
-- `hide(view.panelId, { toward })` animates a window into the dock; `restore(panelId, { from })` grows it back out. `hideToward` sends the panel menu's built-in **Hide** to the dock too.
-- `navigation="free"` lets users wheel or pinch to zoom around the desktop; when the gesture ends, the camera snaps to whatever fits best — the desktop, or a window docked beside it. Floating windows belong to the desktop and are never framed on their own: double-clicking a title bar frames the desktop. Content lays out at no less than 480 × 320 unless a type sets `minSize`, like Notes here.
-- Windows can still be docked side by side against the desktop's edges. To forbid that, add `allow={{ side: false }}`.
-- For windows that draw their own title bar, set `tabbar="overlay"`: the tab bar becomes a transparent drag strip over the content, which gets `--trellis-titlebar-height` and `--trellis-titlebar-inset-end` to lay out around it. The desktop example does this.
+- `floating="stage"` puts windows inside the stage, clipped to it. The empty stage is the desktop. Dropping a window in its interior floats it, and dropping near its edges docks it beside the desktop.
+- `placement="float"` makes every `open()` a new window, cascaded so windows don't stack exactly. `from: e.currentTarget` grows each new window out of its dock icon.
+- Clicking into a window raises it to the front. So does opening or focusing it.
+- The green _Zoom_ button calls `toggleDock(panelId)`. The window docks beside the desktop, along the desktop's longer side, and the camera widens to show both. A second click floats it back at its previous size. The panel menu's **Dock beside stage** and **Float** items do the same. While docked, the window can be maximized like any panel.
+- `hide(view.panelId, { toward })` animates a window into the dock, and `restore(panelId, { from })` grows it back out. With `hideToward`, the panel menu's built-in **Hide** also sends windows to the dock.
+- `navigation="free"` lets users wheel or pinch to zoom around the desktop. When the gesture ends, the camera snaps to whatever fits best, either the desktop or a window docked beside it.
+- Floating windows belong to the desktop and aren't framed on their own. Double-clicking a title bar frames the desktop.
+- Under free navigation, content lays out at no less than 480 × 320 unless a type sets `minSize`, like Notes here.
+- Windows can still be docked side by side against the desktop's edges. To prevent that, add `allow={{ side: false }}`.
+- For windows that draw their own title bar, set `tabbar="overlay"`. The tab bar becomes a transparent drag strip over the content. The content gets `--trellis-titlebar-height` and `--trellis-titlebar-inset-end` to lay out around the strip. The desktop example does this.
 
-Want custom window menus? Each type's `menu` adds its own items, a `panelMenu` function can drop built-ins such as `hide` for every window, and `renderMenu` lets you draw the menu yourself. See [Panel menus](./menus.md).
+For custom window menus, each type's `menu` adds its own items. A `panelMenu` function can drop built-ins such as `hide` for every window, and `renderMenu` lets you draw the menu yourself. See [Panel menus](./menus.md).
 
 ## A live preview iframe
 
-Previews — a dev server, rendered Markdown, a component playground — are iframes that change often. Changing an iframe view's options reloads it, so pick how updates reach it.
+A preview of a dev server or of rendered Markdown is an iframe whose content changes often. Changing an iframe view's options reloads it, so choose how updates reach it.
 
-**Keep the URL fixed and send updates with `postMessage`.** The frame loads once and keeps its scroll position and state:
+To keep the frame's scroll position and state, keep the URL fixed and send updates with `postMessage`. The frame loads once:
 
 ```tsx title="Preview.tsx"
 <ViewType
@@ -125,6 +127,8 @@ Previews — a dev server, rendered Markdown, a component playground — are ifr
   iframe={{ src: "/preview.html", sandbox: "allow-scripts allow-same-origin" }}
 />
 ```
+
+Send each update to every open preview:
 
 ```ts
 function sendToPreviews(ws: WorkspaceHandle, html: string) {
@@ -135,6 +139,8 @@ function sendToPreviews(ws: WorkspaceHandle, html: string) {
 }
 ```
 
+The preview page renders what it receives:
+
 ```html title="preview.html"
 <script>
   addEventListener("message", (e) => {
@@ -143,7 +149,7 @@ function sendToPreviews(ws: WorkspaceHandle, html: string) {
 </script>
 ```
 
-**Or render with `srcdoc`** when a reload per update is fine — occasional updates, or content with no state to keep. Changing `srcdoc` (for example through params) reloads the frame each time, so debounce frequent updates:
+If a reload per update is fine, render with `srcdoc` instead. That suits occasional updates, or content with no state to keep. Changing `srcdoc` (for example through params) reloads the frame each time, so debounce frequent updates:
 
 ```tsx
 <ViewType<{ html: string }>
@@ -153,15 +159,17 @@ function sendToPreviews(ws: WorkspaceHandle, html: string) {
 />
 ```
 
+Setting new params then replaces the document:
+
 ```ts
 ws.setParams("snippet-1", { html }); // reloads the frame with the new document
 ```
 
-The iframe is only recreated when the computed options change, so other params can change freely.
+Trellis recreates the iframe only when the computed options change, so other params can change freely.
 
 ### Zoom gestures over iframes
 
-Wheel and pinch events inside an iframe go to the iframe's document and never reach the workspace, so in `navigation="free"` users can't zoom while the pointer is over one — not even with <kbd>Alt</kbd> or `gestures: "workspace"`. To support it, forward the events yourself by re-dispatching a `WheelEvent` on `ws.element`. For a same-origin frame:
+Wheel and pinch events inside an iframe go to the iframe's document and don't reach the workspace. In `navigation="free"`, users can't zoom while the pointer is over an iframe, even with <kbd>Alt</kbd> held or with `gestures: "workspace"`. To support it, forward the events yourself by dispatching a new `WheelEvent` on `ws.element`. For a same-origin frame:
 
 ```ts
 function forwardZoomGestures(ws: WorkspaceHandle, frame: HTMLIFrameElement) {
@@ -197,7 +205,7 @@ Pinches arrive as wheel events with `ctrlKey` set, so this forwards them too. Fo
 
 ## An art program
 
-The canvas is the document; tools are palettes. Documents live in the stage and can't leave it; palettes can go anywhere except the stage.
+In an art program the canvas is the document and the tools are palettes. Documents live in the stage and can't leave it. Palettes can go anywhere except the stage:
 
 ```tsx title="Paint.tsx"
 <Workspace theme="medium" floating="stage" navigation="focus" storageKey="paint" version={3}>
@@ -249,10 +257,12 @@ Notes:
 - Keep app state (the image, the selected tool, the current color) in a store _above_ `<Workspace>`. View content keeps React context, so every palette reads the same store no matter where it's docked.
 - `tabbar="auto"` hides the tool strip's tab bar while it's alone in its panel, like classic tool palettes.
 - The canvas uses its own wheel/pinch for zooming the image. `navigation="focus"` has no workspace gestures, so they all go to the canvas. Under `navigation="free"`, the default `gestures="content"` still leaves plain wheels over content alone, but <kbd>Ctrl</kbd>+wheel (pinch) and <kbd>Alt</kbd>+wheel zoom the workspace.
-- `minSize` on dense palettes keeps them legible — below it they scale down instead of reflowing.
+- `minSize` on dense palettes keeps them legible. Below that size they scale down instead of reflowing.
 - Explicit ids on palettes mean `reset()` animates them back rather than recreating them.
 
 ## An IDE
+
+An IDE opens files on the stage and keeps tool panels around it. The editor marks unsaved files with a badge and asks before closing them:
 
 ```tsx title="IDE.tsx"
 import { useState } from "react";
@@ -348,11 +358,11 @@ Opening files from the explorer:
 ws.open("file", { params: { path }, reuse: "params" }); // focus it if already open
 ```
 
-The preview is an iframe: dev servers keep their HMR connection and scroll position through every rearrangement, and `reuse: "type"` keeps it to one.
+The preview is an iframe, so a dev server keeps its HMR connection and scroll position when users rearrange the layout. `reuse: "type"` keeps it to one preview.
 
 ## A dashboard
 
-Dashboards have no stage — every widget is equal — and usually want a flat look.
+A dashboard has no stage, because every widget is equal. It usually wants a flat look too:
 
 ```ts title="dashboard.ts"
 import { createWorkspace, layout as L } from "@danfessler/trellis";
@@ -391,7 +401,9 @@ const ws = createWorkspace(document.getElementById("dashboard")!, {
 });
 ```
 
-- `floating: false` keeps the grid tidy; users can still rearrange by dragging.
-- Double-clicking a chart's tab bar maximizes it for a closer look; double-clicking again restores the previous framing, and <kbd>Esc</kbd> steps out one level.
+Notes:
+
+- `floating: false` keeps the grid tidy. Users can still rearrange it by dragging.
+- Double-clicking a chart's tab bar maximizes it. Double-clicking again restores the previous framing, and <kbd>Esc</kbd> steps out one level.
 - `visibility` pauses charts hidden behind another tab or scrolled out of a maximized view.
-- `resize` fires once after motion settles — charts re-render once per layout change, not per frame.
+- `resize` fires once after motion settles, so charts re-render once per layout change instead of on every frame.

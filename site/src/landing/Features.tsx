@@ -187,50 +187,50 @@ const FEATURES = [
   {
     key: "mounts",
     wide: true,
-    title: "Content mounts once. Then never again.",
-    body: "Every view renders into a container that never moves in the DOM. Dock it, tab it, float it, hide it — iframes keep their session, canvases keep their pixels, and React keeps its state.",
+    title: "Views stay mounted when they move",
+    body: "Each view renders once, into a container that stays put in the DOM. Docking, tabbing, floating and hiding move the container with CSS, so an iframe keeps its session and React keeps its state.",
     art: <MountsOnceArt />,
   },
   {
     key: "motion",
-    title: "Motion that feels native",
-    body: "Spring-driven pickup, drop and zoom from the prototype. Views get one settled size, not a resize per frame.",
+    title: "Animated drags and zoom",
+    body: "Drags, drops and zooms animate, so users can see where each panel went. Views resize when the motion settles, not on every frame.",
     art: <MotionArt />,
   },
   {
     key: "prims",
-    title: "Stage, floating & navigation",
-    body: "A primary stage for documents, panels that float over the stage or the whole app, and animated maximize with free zoom.",
+    title: "A stage, floating panels and zoom",
+    body: "Documents open on a central stage. Panels can float over the stage or the whole app, and users can maximize a panel or zoom around the layout.",
     art: <PrimitivesArt />,
   },
   {
     key: "adapters",
-    title: "Framework-agnostic core",
-    body: "A small vanilla engine with thin adapters. Use React today, a custom element anywhere, or mount plain DOM.",
+    title: "Works with or without React",
+    body: "The core is plain TypeScript with no runtime dependencies. Use it through the React adapter, the <trellis-workspace> element or plain DOM.",
     art: <AdaptersArt />,
   },
   {
     key: "themes",
-    title: "Themeable with CSS tokens",
-    body: "Four built-in themes and plain custom properties. Every built-in rule has zero specificity, so your CSS always wins.",
+    title: "Themed with CSS custom properties",
+    body: "Start from one of four built-in themes and override its tokens. Built-in rules have zero specificity, so your own CSS wins.",
     art: <ThemesArt />,
   },
   {
     key: "persist",
-    title: "Layouts are just JSON",
-    body: "One serializable document holds the whole workspace. Persist it to localStorage with a key, or control it yourself.",
+    title: "The layout is one JSON document",
+    body: "The whole workspace serializes to one document. Pass storageKey to save it in localStorage, or keep it in your own state.",
     art: <PersistArt />,
   },
   {
     key: "rules",
-    title: "Rules, not callbacks",
-    body: "Declare where views may go and how they open. Trellis enforces it during drags and in open().",
+    title: "Placement rules per view type",
+    body: "Declare where each type of view may dock and how it opens. Trellis applies the rules during drags and in open().",
     art: <RulesArt />,
   },
   {
     key: "keys",
-    title: "Keyboard first",
-    body: "Roving tab focus, resizable dividers, context menus and a remappable keymap.",
+    title: "Keyboard navigation and shortcuts",
+    body: "Tabs use roving focus, dividers move with the arrow keys, and Shift+F10 opens the panel menu. You can remap any shortcut.",
     art: <KeysArt />,
   },
 ];
@@ -240,14 +240,14 @@ export function Features() {
     <section className="section" id="features">
       <div className="container">
         <header className="section-head">
-          <p className="eyebrow">Why Trellis</p>
+          <p className="eyebrow">Features</p>
           <h2>
-            The workspace your tool deserves,
-            <br className="br-lg" /> without building a window manager.
+            Users arrange panels however they like,
+            <br className="br-lg" /> and your views keep their state.
           </h2>
           <p className="section-lede">
-            Docking libraries rearrange boxes. Trellis is built for tools people live in all day — where a
-            remount loses work, and motion tells you where things went.
+            Trellis is built for tools people keep open all day. Moving a panel doesn't reload an iframe or
+            reset a canvas, and animation shows where each panel went.
           </p>
         </header>
         <div className="bento">

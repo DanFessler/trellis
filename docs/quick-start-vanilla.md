@@ -3,14 +3,16 @@ title: Quick start (vanilla)
 description: Build a workspace with the framework-agnostic core and plain DOM.
 section: Getting started
 order: 4
-nav: Quick start — Vanilla
+nav: Quick start (vanilla)
 ---
 
 # Quick start (vanilla)
 
-The core package works with plain DOM, or with any framework that can render into an element. This guide builds a small editor with `createWorkspace()`.
+The core package works with plain DOM, or with any framework that can render into an element. In this guide you'll build a small editor with `createWorkspace()`.
 
 ## 1. A host element
+
+Start with an element that has a height:
 
 ```html title="index.html"
 <body style="margin: 0">
@@ -20,6 +22,8 @@ The core package works with plain DOM, or with any framework that can render int
 ```
 
 ## 2. Create the workspace
+
+Pass the host element, your view types and a default layout to `createWorkspace()`:
 
 ```ts title="main.ts"
 import { createWorkspace, layout as L } from "@danfessler/trellis";
@@ -44,7 +48,7 @@ const ws = createWorkspace(document.getElementById("app")!, {
         textarea.value = `// ${view.params.path}`;
         textarea.style.cssText = "width:100%;height:100%;border:0;resize:none";
         element.append(textarea);
-        return () => textarea.remove(); // cleanup when the view closes
+        return () => textarea.remove(); // Runs when the view closes.
       },
     },
     preview: { title: "Preview", iframe: (view) => String(view.params.url) },
@@ -58,7 +62,7 @@ const ws = createWorkspace(document.getElementById("app")!, {
 
 ### How `mount` works
 
-`mount(element, view)` is called **once per view**, when the view is created. `element` is the view's content container; it never moves in the DOM, so whatever you put in it survives docking, tabbing, floating and hiding. Return a function to clean up when the view closes.
+Trellis calls `mount(element, view)` once per view, when the view is created. `element` is the view's content container. It stays put in the DOM, so whatever you put in it survives docking, tabbing, floating and hiding. Return a function to clean up when the view closes.
 
 Use the `view` handle to react to presentation changes:
 
@@ -75,7 +79,7 @@ mount(element, view) {
 }
 ```
 
-`resize` fires once motion settles, not on every animation frame. See [ViewHandle](./core-api.md#viewhandle).
+`resize` fires after motion settles, not on each animation frame. See [ViewHandle](./core-api.md#viewhandle).
 
 ## 3. Describe the layout with the builder
 
@@ -92,6 +96,8 @@ mount(element, view) {
 See [Layout](./layout.md) for details.
 
 ## 4. Open, close and listen
+
+The workspace handle opens views and reports changes:
 
 ```ts
 // Open a document in the stage, or focus it if the same file is already open.
@@ -111,6 +117,8 @@ ws.on("change", (doc) => console.log("layout changed", doc));
 
 ## 5. Persist the layout
 
+To save the layout between sessions, pass `persist`:
+
 ```ts
 createWorkspace(el, {
   // …
@@ -118,15 +126,17 @@ createWorkspace(el, {
 });
 ```
 
-The document is saved to `localStorage` whenever the layout changes and restored on the next load. A different `version` discards the saved layout and uses `defaultLayout`.
+Trellis saves the document to `localStorage` when the layout changes and restores it on the next load. A different `version` discards the saved layout and uses `defaultLayout`.
 
 ## 6. Tear down
+
+To remove the workspace, call `destroy()`:
 
 ```ts
 ws.destroy();
 ```
 
-`destroy()` runs every view's cleanup, removes the DOM and detaches all listeners.
+It runs each view's cleanup, removes the DOM and detaches all listeners.
 
 ## Using another framework
 

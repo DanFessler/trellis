@@ -7,9 +7,11 @@ order: 17
 
 # Theming
 
-Trellis's look comes from one stylesheet driven by CSS custom properties. Every built-in rule is wrapped in `:where()`, so it has **zero specificity** — any selector you write wins, with no `!important` and no specificity battles.
+Trellis styles its chrome with one stylesheet driven by CSS custom properties. Every built-in rule is wrapped in `:where()`, so it has zero specificity. Any selector you write overrides it without `!important`.
 
 ## Built-in themes
+
+Pick a theme with the `theme` option or prop:
 
 ```tsx
 <Workspace theme="dark" />
@@ -37,7 +39,7 @@ Override tokens with the `tokens` option or prop:
 <Workspace theme="dark" tokens={{ "--trellis-accent": "#f60", "--trellis-radius": "4px" }} />
 ```
 
-…or with plain CSS, scoped however you like:
+You can also set them in plain CSS, scoped however you like:
 
 ```css
 .trellis {
@@ -49,7 +51,7 @@ Override tokens with the `tokens` option or prop:
 }
 ```
 
-`tokens` are set as inline styles on the root, so they win over stylesheet values. Each new `tokens` object (a changed prop, or `ws.update({ tokens })`) replaces the previous one: tokens it leaves out are removed, falling back to the stylesheet, and an empty-string value removes that token too.
+Trellis sets `tokens` as inline styles on the root, so they win over stylesheet values. Each new `tokens` object (a changed prop, or `ws.update({ tokens })`) replaces the previous one. Tokens it leaves out are removed and fall back to the stylesheet. An empty-string value also removes that token:
 
 ```ts
 ws.update({ tokens: { "--trellis-accent": "#f60", "--trellis-radius": "4px" } });
@@ -108,7 +110,7 @@ Every element Trellis renders has a `data-trellis-part` attribute:
 | `accessories` / `accessory`                       | Tab-bar area for the selected view's accessory.                                                                                                         |
 | `panel-menu`                                      | The panel's menu button.                                                                                                                                |
 | `surface`                                         | A view's frame. Has `data-view` and `data-type`, plus the type's `className`.                                                                           |
-| `content`                                         | The view's content element — the one your content mounts into.                                                                                          |
+| `content`                                         | The view's content element. Your content mounts into it.                                                                                                |
 | `divider`                                         | A resize handle between split children.                                                                                                                 |
 | `resize`                                          | A floating panel's resize handle (`data-dir="n" \| "se" \| …`).                                                                                         |
 | `backdrop`, `stage-empty`, `empty`, `chrome`      | Slots. See [Core API](./core-api.md#slots).                                                                                                             |
@@ -117,18 +119,18 @@ Every element Trellis renders has a `data-trellis-part` attribute:
 | `source-slot`                                     | While dragging, where the view came from.                                                                                                               |
 | `frame-icon`                                      | The centred icon of a frame-only panel. Sized by `--trellis-frame-icon-size`.                                                                           |
 | `marquee`, `marquee-target`                       | The <kbd>Shift</kbd>+drag marquee and the target it would frame. Unstyled; see [Navigation](./navigation.md#free-navigation-gestures).                  |
-| `menu`                                            | A popup menu — the panel menu and its submenus. See [Menus](#menus).                                                                                    |
+| `menu`                                            | A popup menu: the panel menu or one of its submenus. See [Menus](#menus).                                                                               |
 
 ### Menus
 
-Menus are rendered by Trellis and styled through classes as well as the `menu` part. They live inside the workspace root, so the `--trellis-*` tokens apply.
+You can style Trellis's menus through classes as well as the `menu` part. Menus live inside the workspace root, so the `--trellis-*` tokens apply.
 
-| Selector                                      | Element                                                                                                                                                                                                 |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.trellis-menu`, `[data-trellis-part="menu"]` | The menu (`role="menu"`). Background `--trellis-menu`.                                                                                                                                                  |
-| `.trellis-menu-item`                          | An item (`role="menuitem"`, or `"menuitemcheckbox"` with `aria-checked`). Hover and focus use `--trellis-menu-hover`; disabled items have `aria-disabled="true"`; `danger` items add `.trellis-danger`. |
-| `.trellis-menu-shortcut`                      | An item's right-aligned shortcut.                                                                                                                                                                       |
-| `.trellis-menu-separator`                     | A separator.                                                                                                                                                                                            |
+| Selector                                      | Element                                                                                                                                                                                                     |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.trellis-menu`, `[data-trellis-part="menu"]` | The menu (`role="menu"`). Background `--trellis-menu`.                                                                                                                                                      |
+| `.trellis-menu-item`                          | An item (`role="menuitem"`, or `"menuitemcheckbox"` with `aria-checked`). Hover and focus use `--trellis-menu-hover`. Disabled items have `aria-disabled="true"`, and `danger` items add `.trellis-danger`. |
+| `.trellis-menu-shortcut`                      | An item's right-aligned shortcut.                                                                                                                                                                           |
+| `.trellis-menu-separator`                     | A separator.                                                                                                                                                                                                |
 
 ```css
 .trellis .trellis-menu {
@@ -160,11 +162,23 @@ On the **root** (`.trellis`):
 | `data-busy`                                        | A drag or gesture is in progress; content is non-interactive.               |
 | `data-has-stage`, `data-stage-empty`, `data-empty` | Layout shape.                                                               |
 
-On **panels**: `data-focused`, `data-floating`, `data-lifted` (being dragged), `data-framed`, `data-single` (one tab), `data-compact` (too small for tab titles), `data-frame-only` (smaller than 160 × 64: only the icon shows), `data-tabbar` = `hidden` \| `overlay` when the tab bar isn't above the content, and `data-region` = `stage` \| `side` \| `floating`.
+On **panels**:
 
-On **tabs**: `data-selected`, `data-focused`, `aria-selected`, `data-type` (the view's type) and `data-badge` — `"dot"` when the badge is `true`, `""` for a text or number badge.
+| Attribute         | When                                                             |
+| ----------------- | ---------------------------------------------------------------- |
+| `data-focused`    | The panel has focus.                                             |
+| `data-floating`   | The panel is floating.                                           |
+| `data-lifted`     | The panel is being dragged.                                      |
+| `data-framed`     | The camera is framing the panel.                                 |
+| `data-single`     | The panel has one tab.                                           |
+| `data-compact`    | The panel is too small for tab titles.                           |
+| `data-frame-only` | The panel is smaller than 160 × 64, so only the icon shows.      |
+| `data-tabbar`     | `hidden` or `overlay`, when the tab bar isn't above the content. |
+| `data-region`     | `stage`, `side` or `floating`.                                   |
 
-A `true` badge renders as a dot that swaps with the close button on hover — the familiar "unsaved changes" indicator. Style it with `[data-badge="dot"]`:
+On **tabs**: `data-selected`, `data-focused`, `aria-selected`, `data-type` (the view's type) and `data-badge`. The badge attribute is `"dot"` when the badge is `true`, and `""` for a text or number badge.
+
+A `true` badge renders as a dot that swaps with the close button on hover, like the usual "unsaved changes" indicator. Style it with `[data-badge="dot"]`:
 
 ```css
 .trellis [data-trellis-part="tab"][data-badge="dot"] [data-trellis-part="tab-badge"] {
@@ -179,7 +193,7 @@ On **surfaces**: `data-scaled` while content is scaled below its minimum size, a
 
 ### Overlay tab bars
 
-With `tabbar: "overlay"`, a lone view's content extends under its tab bar and draws its own title bar. The overlaid bar is a transparent drag strip — its tabs are invisible, while accessories and the menu button stay visible — and the content receives two custom properties to lay out around it:
+With `tabbar: "overlay"`, a lone view's content extends under its tab bar and draws its own title bar. The overlaid bar is a transparent drag strip. Its tabs are invisible, but accessories and the menu button stay visible. The content receives two custom properties to lay out around the bar:
 
 | Property                       | Value                                                                   |
 | ------------------------------ | ----------------------------------------------------------------------- |
@@ -215,9 +229,9 @@ createWorkspace(el, { types, tabs: { fill: true, inset: 0 } });
 ws.update({ tabs: { fill: false } }); // back to tabs that fit their titles
 ```
 
-Neither setting touches the rest of the bar: view accessories and the panel menu button keep their place and the bar's own background. The menu button shows unless you pass `panelMenu: false` and the view type has no `menu` items, because the built-in actions (Maximize, Float or Dock, Move to, Hide and Close) always apply.
+Neither setting changes the rest of the bar. View accessories and the panel menu button keep their place and the bar's own background.
 
-The close button always sits at the tab's right edge.
+The menu button shows unless you pass `panelMenu: false` and the view type has no `menu` items. Otherwise the built-in items (Maximize, Float or Dock, Move to, Hide and Close) give it something to show. The close button sits at the tab's right edge.
 
 The root reflects the settings as `data-tab-fill` and `data-tab-bleed` (when `inset` is `0`), and as the `--trellis-tab-inset` token, so your own CSS can follow them.
 
@@ -275,7 +289,7 @@ The root reflects the settings as `data-tab-fill` and `data-tab-bleed` (when `in
 
 ## Using tokens in your content
 
-View content lives inside the workspace root, so it can use the same tokens:
+View content lives inside the workspace root, so it can use the same tokens and follow theme changes:
 
 ```css
 .my-panel {
@@ -284,5 +298,3 @@ View content lives inside the workspace root, so it can use the same tokens:
   border-bottom: 1px solid var(--trellis-border);
 }
 ```
-
-Your content then follows theme changes for free.

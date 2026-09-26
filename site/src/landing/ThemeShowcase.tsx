@@ -95,10 +95,10 @@ export function ThemeShowcase() {
       <div className="container">
         <header className="section-head">
           <p className="eyebrow">Theming</p>
-          <h2>Make it look like your product.</h2>
+          <h2>Match the workspace to your app</h2>
           <p className="section-lede">
-            Pick a built-in theme, then override any token. Everything below is a live Trellis workspace — try
-            dragging a tab while you tweak it.
+            Pick a built-in theme, then override any token. The workspace below is live, so you can drag tabs
+            while you change it.
           </p>
         </header>
         <div className="theming">

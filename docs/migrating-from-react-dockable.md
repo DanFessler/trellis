@@ -8,7 +8,7 @@ nav: From react-dockable
 
 # Migrating from react-dockable
 
-Trellis is the successor to [react-dockable](https://github.com/DanFessler/react-dockable). The ideas carry over — a declarative initial layout, a serializable layout you can persist, themes — but Trellis separates _what can be opened_ from _where things are_, adds a stage, floating panels, hiding and animated navigation, and runs on a framework-agnostic core.
+Trellis is the successor to [react-dockable](https://github.com/DanFessler/react-dockable). The ideas carry over: a declarative initial layout, a serializable layout you can persist, and themes. Trellis also separates _what can be opened_ from _where things are_. It adds a stage, floating panels, hiding and animated navigation, and it runs on a framework-agnostic core.
 
 ## Names
 
@@ -30,8 +30,8 @@ Trellis is the successor to [react-dockable](https://github.com/DanFessler/react
 
 In react-dockable a `Tab` was both a piece of content and its place in the layout, so each tab existed exactly once. Trellis splits those roles:
 
-- a **view type** says what _can_ be opened (title, icon, rules and content);
-- a **view** is one open instance, with an id and params, placed in the layout.
+- A **view type** says what _can_ be opened (title, icon, rules and content).
+- A **view** is one open instance, with an id and params, placed in the layout.
 
 ```tsx
 // react-dockable
@@ -70,20 +70,20 @@ In react-dockable a `Tab` was both a piece of content and its place in the layou
 </Workspace>
 ```
 
-Now the same type can be opened any number of times — `ws.open("canvas", { params: { file } })` — and a missing type in a saved layout shows a placeholder instead of throwing.
+The same type can now be opened any number of times with `ws.open("canvas", { params: { file } })`. A missing type in a saved layout shows a placeholder instead of throwing.
 
 ## Consider a stage
 
-Most tools have a main area: documents, a canvas, an editor. Wrapping it in `<Stage>` makes it the default destination for new views, keeps it from collapsing when empty (show `empty` content instead), and lets rules like `allow={{ stage: false }}` keep tool panels out of it.
+Most tools have a main area for documents, a canvas or an editor. Wrapping it in `<Stage>` makes it the default destination for new views. An empty stage doesn't collapse, and you can show `empty` content in it instead. Rules like `allow={{ stage: false }}` keep tool panels out of it.
 
 ## Persisted layouts
 
-react-dockable layouts can't be loaded directly. Bump your storage key or `version` so users start from your new default layout; Trellis ignores a persisted document whose version doesn't match.
+react-dockable layouts can't be loaded directly. Bump your storage key or `version` so users start from your new default layout. Trellis ignores a persisted document whose version doesn't match.
 
 ## What's new
 
-- Content never remounts: moving, tabbing, floating, hiding and maximizing keep iframes, canvases and React state intact.
+- Moving, tabbing, floating, hiding and maximizing don't remount content, so iframes, canvases and React state stay intact.
 - Floating panels (`floating="overlay"` or `"stage"`), hide/restore, and animated maximize or free zoom (`navigation`).
-- Drag and drop that previews in the real layout — neighbours slide aside to open a slot — with targets at tab bars, panel edges, the gaps between panels and the workspace's outer edge. See [Interaction model](./interaction.md).
+- Drag and drop that previews in the real layout, where neighbours slide aside to open a slot. Targets include tab bars, panel edges, the gaps between panels and the workspace's outer edge. See [Interaction model](./interaction.md).
 - An imperative handle (`ref` or `useWorkspace()`) with `open`, `close`, `float`, `dock`, `toggleDock`, `hide`, `restore` and `navigation`.
 - Vanilla JavaScript and a `<trellis-workspace>` custom element, sharing the same core.

@@ -2,9 +2,13 @@
 
 React components and hooks for Trellis. Requires React 18.3+ and `@danfessler/trellis`.
 
+Install it with the core package:
+
 ```sh
 npm install @danfessler/trellis-react @danfessler/trellis
 ```
+
+Declare view types and an initial layout:
 
 ```tsx
 import { Workspace, ViewType, Split, Stage, View } from "@danfessler/trellis-react";
@@ -21,8 +25,8 @@ import "@danfessler/trellis/style.css";
 </Workspace>;
 ```
 
-Documentation, guides and examples: https://github.com/DanFessler/trellis
+Documentation, guides and examples are in the [Trellis repository](https://github.com/DanFessler/trellis).
 
 ## License
 
-Free for non-commercial use; commercial use requires an active GitHub Sponsorship at the applicable tier or an enterprise license. See LICENSE.md.
+Free for non-commercial use. Commercial use requires an active GitHub Sponsorship at the applicable tier or an enterprise license. See [LICENSE.md](LICENSE.md).

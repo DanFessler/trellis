@@ -3,16 +3,16 @@ title: Quick start (React)
 description: Build a small editor workspace with @danfessler/trellis-react.
 section: Getting started
 order: 3
-nav: Quick start — React
+nav: Quick start (React)
 ---
 
 # Quick start (React)
 
-This guide builds a small editor: a file list on the left, documents in a stage, and a preview. It takes about five minutes.
+In this guide you'll build a small editor with a file list on the left, documents in a stage, and a preview. It takes about five minutes.
 
 ## 1. Render a workspace
 
-`<Workspace>` fills its parent, so give the parent a height.
+`<Workspace>` fills its parent, so give the parent a height:
 
 ```tsx title="App.tsx"
 import { Workspace } from "@danfessler/trellis-react";
@@ -29,7 +29,7 @@ export function App() {
 
 ## 2. Register view types
 
-A **view type** is a kind of content. Declare one with `<ViewType>`; its children render once for every view of that type.
+A view type is a kind of content. Declare one with `<ViewType>`, and its children render once for each view of that type:
 
 ```tsx
 <Workspace theme="dark">
@@ -45,16 +45,18 @@ A **view type** is a kind of content. Declare one with `<ViewType>`; its childre
 </Workspace>
 ```
 
-- `singleton` — at most one Files view exists; opening it again focuses the existing one.
-- `allow={{ stage: false }}` — users cannot drop Files into the stage.
-- `placement="stage"` — new documents open in the stage.
-- `iframe` — Trellis renders the iframe itself. It keeps its state across every move.
+The props used here:
+
+- `singleton` allows at most one Files view. Opening it again focuses the existing one.
+- `allow={{ stage: false }}` stops users from dropping Files into the stage.
+- `placement="stage"` opens new documents in the stage.
+- `iframe` makes Trellis render the iframe itself. The iframe keeps its state when users move it.
 
 `<ViewType>` renders nothing by itself. See the [React API](./react-api.md#viewtype) for every prop.
 
 ## 3. Describe the initial layout
 
-Layout components describe the **initial** layout. They are compiled once when the workspace mounts; after that, the user owns the layout.
+Layout components describe the initial layout. Trellis compiles them once, when the workspace mounts. After that, the user owns the layout:
 
 ```tsx
 <Workspace theme="dark">
@@ -77,7 +79,7 @@ Layout components describe the **initial** layout. They are compiled once when t
 
 ## 4. Read view state in content
 
-Inside view content, `useView()` returns the view's handle and its current state. It re-renders when presentation state settles — never on every animation frame.
+Inside view content, `useView()` returns the view's handle and its current state. It re-renders when presentation state settles, not on each animation frame:
 
 ```tsx title="Editor.tsx"
 import { useState } from "react";
@@ -104,11 +106,11 @@ export function Editor() {
 }
 ```
 
-`view.size`, `view.visible`, `view.focused`, `view.placement` and more are available — see [`useView`](./react-api.md#useview).
+The handle also has `view.size`, `view.visible`, `view.focused`, `view.placement` and more. See [`useView`](./react-api.md#useview).
 
 ## 5. Open views
 
-Anything rendered inside the workspace (view content, `Workspace.Chrome`) can call `useWorkspace()` to get the imperative handle.
+Anything rendered inside the workspace, such as view content or `Workspace.Chrome`, can call `useWorkspace()` to get the imperative handle:
 
 ```tsx title="FileList.tsx"
 import { useWorkspace } from "@danfessler/trellis-react";
@@ -129,7 +131,7 @@ export function FileList() {
 
 `reuse: "params"` focuses an already-open view with the same params instead of opening a duplicate. See [Opening views](./opening-views.md).
 
-For UI outside the workspace — a toolbar, a menu bar — wrap both in `<WorkspaceProvider>`, or use a ref:
+For UI outside the workspace, such as a toolbar, wrap both in `<WorkspaceProvider>` or use a ref:
 
 ```tsx
 import { useRef } from "react";
@@ -150,13 +152,15 @@ function Shell() {
 
 ## 6. Remember the layout
 
-Add `storageKey` and the layout is saved to `localStorage` and restored on reload. Bump `version` whenever you change the default layout in a way that should reset saved ones.
+With `storageKey`, Trellis saves the layout to `localStorage` and restores it on reload. When you change the default layout in a way that should reset saved ones, bump `version`:
 
 ```tsx
 <Workspace theme="dark" storageKey="my-editor" version={1}>
 ```
 
 ## The whole thing
+
+Here's the finished app, with free navigation turned on:
 
 ```tsx title="App.tsx"
 import { Workspace, ViewType, Split, Stage, Panel, View } from "@danfessler/trellis-react";

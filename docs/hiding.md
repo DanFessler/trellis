@@ -1,14 +1,14 @@
 ---
-title: Hiding & building a dock
+title: Hiding and building a dock
 description: Hide and restore panels with animation, and render your own dock, tray or window menu.
 section: Guides
 order: 15
-nav: Hiding & docks
+nav: Hiding and docks
 ---
 
-# Hiding & building a dock
+# Hiding and building a dock
 
-Hiding takes a panel out of the layout without closing anything. Its views stay mounted and keep their state; Trellis remembers where the panel was, and `restore()` puts it back. Combined with the snapshot's `hidden` list, that's everything you need for a dock, a tray of minimized palettes, or a _Window_ menu.
+Hiding takes a panel out of the layout without closing anything. Its views stay mounted and keep their state. Trellis remembers where the panel was, and `restore()` puts it back. With the snapshot's `hidden` list, you can build a dock, a tray of minimized palettes or a _Window_ menu.
 
 ## Hide and restore
 
@@ -20,27 +20,29 @@ ws.restore(panelId); // an id from snapshot.hidden
 
 What gets hidden depends on the id:
 
-- A **panel id** — or the id of a view that is alone in its panel — hides the whole panel.
-- The id of a **view that shares its panel** hides just that tab. The rest of the panel stays put, and `restore()` puts the tab back into the same panel. The tab animates out of its panel toward `toward`, like a whole panel does.
+- A panel id hides the whole panel. So does the id of a view that's alone in its panel.
+- The id of a view that shares its panel hides only that tab. The rest of the panel stays put, and `restore()` puts the tab back into the same panel. The tab animates out of its panel toward `toward`, like a whole panel does.
 
-Users can also hide a panel from its menu (**Hide**) — see [the built-in Hide](#the-built-in-hide) to animate it into your dock. The `panel.hide` keyboard command exists but has no default shortcut.
+Users can also hide a panel with **Hide** in its menu. To animate it into your dock, see [the built-in Hide](#the-built-in-hide). The `panel.hide` keyboard command exists but has no default shortcut.
 
 ### Animating toward a button
 
-Pass `toward` to animate the panel shrinking into an element — your dock icon — and `from` to grow it back out of one:
+To animate the panel shrinking into an element, such as your dock icon, pass `toward`. To grow it back out of one, pass `from`:
 
 ```ts
 ws.hide(panelId, { toward: dockButton });
 ws.restore(panelId, { from: dockButton });
 ```
 
-Both accept an `Element` or a `Rect` in pixels relative to the workspace's top-left corner. The whole window — chrome and content — flies into the target over 300 ms and back out of it over 380 ms, on `cubic-bezier(.2, .75, .2, 1)`, fading to 10% opacity at the small end. Without `toward`, the panel shrinks and fades toward the bottom of where it was; without `from`, a restored panel fades in where it lands. With reduced motion, both happen instantly.
+Both accept an `Element` or a `Rect` in pixels relative to the workspace's top-left corner. The whole window, chrome and content, flies into the target over 300 ms and back out of it over 380 ms. Both use `cubic-bezier(.2, .75, .2, 1)` and fade to 10% opacity at the small end.
+
+Without `toward`, the panel shrinks and fades toward the bottom of where it was. Without `from`, a restored panel fades in where it lands. With reduced motion, both happen instantly.
 
 `open()` takes the same kind of target: `ws.open("notes", { from: launcher })` grows a new panel out of a launcher. See [Opening views](./opening-views.md#launching-from-a-button).
 
 ### The built-in Hide
 
-The panel menu's **Hide** item doesn't know where your dock is. Tell it with `hideToward`, a workspace option (and `<Workspace>` prop) that receives the panel id and returns an `Element` or `Rect` — or nothing, for the default animation:
+The panel menu's **Hide** item doesn't know where your dock is. Tell it with `hideToward`, a workspace option and `<Workspace>` prop. It receives the panel id and returns an `Element` or a `Rect`. Return nothing to get the default animation:
 
 ```tsx
 <Workspace hideToward={() => document.querySelector(".dock")}>{/* … */}</Workspace>
@@ -57,18 +59,18 @@ createWorkspace(el, {
 
 A hidden panel remembers how to return:
 
-- a **floating** panel returns to the same rect and layer;
-- a **docked** panel returns beside the neighbour that absorbed its space, at the same share;
-- the stage's only panel returns into the stage;
-- a single hidden tab returns into the panel it came from.
+- A floating panel returns to the same rect and layer.
+- A docked panel returns beside the neighbour that absorbed its space, at the same share.
+- The stage's only panel returns into the stage.
+- A single hidden tab returns into the panel it came from.
 
-If that spot no longer exists — its neighbour was closed, say — the panel comes back floating near the middle of the workspace. Restoring focuses the panel's selected view.
+If that spot no longer exists, for example because its neighbour was closed, the panel comes back floating near the middle of the workspace. Restoring focuses the panel's selected view.
 
-Revealing a hidden view any other way — `open()` with `reuse`, or `focus(viewId)` — restores its panel automatically.
+Revealing a hidden view another way also restores its panel. That includes `open()` with `reuse` and `focus(viewId)`.
 
 ## Reading hidden panels
 
-`getSnapshot().hidden` lists hidden panels — including single hidden tabs, each as its own entry — in the order they were hidden:
+`getSnapshot().hidden` lists hidden panels in the order they were hidden. A single hidden tab gets its own entry:
 
 ```ts
 interface HiddenEntry {
@@ -81,7 +83,7 @@ A view inside a hidden panel reports `placement: "hidden"` and `visible: false`.
 
 ## A dock in React
 
-Anything rendered inside `<Workspace>` — including `<Workspace.Chrome>`, a full-size overlay layer — can use the workspace hooks.
+Anything rendered inside `<Workspace>` can use the workspace hooks. That includes `<Workspace.Chrome>`, a full-size overlay layer:
 
 ```tsx
 import { useWorkspace, useWorkspaceSelector, Workspace } from "@danfessler/trellis-react";
@@ -108,7 +110,7 @@ function Dock() {
 </Workspace>;
 ```
 
-The chrome layer ignores pointer events itself, but its direct children receive them — position your dock absolutely within it:
+The chrome layer ignores pointer events itself, but its direct children receive them. Position your dock absolutely within it:
 
 ```css
 .dock {
@@ -123,7 +125,7 @@ The chrome layer ignores pointer events itself, but its direct children receive 
 
 ### Minimize buttons
 
-Give panels a way to minimize themselves into the dock. A type's `accessory` renders in the tab bar while the view is selected. Hiding by `view.panelId` hides the whole panel, with the animation:
+To let panels minimize themselves into the dock, give the view type an `accessory`. It renders in the tab bar while the view is selected. Hiding by `view.panelId` hides the whole panel, with the animation:
 
 ```tsx
 function MinimizeButton() {
@@ -145,9 +147,11 @@ function MinimizeButton() {
 </ViewType>;
 ```
 
-`view.hide()` hides just that view (or its panel, if it's alone), without a `toward` target.
+`view.hide()` hides only that view (or its panel, if it's alone), without a `toward` target.
 
 ## A dock in vanilla
+
+This version rebuilds the dock's buttons whenever the workspace changes:
 
 ```ts
 const dock = document.querySelector<HTMLElement>(".dock")!;
@@ -165,8 +169,8 @@ ws.subscribe(render);
 render();
 ```
 
-`subscribe` fires on any state change; `getSnapshot()` is cached between changes, so this is cheap.
+`subscribe` fires on any state change. `getSnapshot()` is cached between changes, so this is cheap.
 
 ## Hidden panels and persistence
 
-Hidden panels are part of the document (`document.hidden`) and persist with it — a palette hidden yesterday is still in the dock today.
+Hidden panels are part of the document (`document.hidden`) and persist with it. A palette hidden yesterday is still in the dock today.

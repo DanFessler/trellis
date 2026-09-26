@@ -368,7 +368,7 @@ export function Inspector() {
           );
         })}
       </ul>
-      <p className="d-note">Clocks start when content mounts. Drag panels anywhere — they never reset.</p>
+      <p className="d-note">Clocks start when content mounts. Moving a panel doesn't reset them.</p>
     </div>
   );
 }
@@ -381,6 +381,6 @@ body{display:grid;place-items:center;text-align:center}
 .leaf{width:34px;height:34px;margin:0 auto;animation:sway 3s ease-in-out infinite;transform-origin:50% 100%}
 @keyframes sway{50%{transform:rotate(9deg)}}
 </style></head><body><div><svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="#79b93f" stroke-width="1.6" stroke-linecap="round"><path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15"/><path d="M5 19 14 10"/></svg>
-<div class="t" id="t">0:00</div><div>iframe alive · never reloaded</div></div>
+<div class="t" id="t">0:00</div><div>iframe uptime · not reloaded</div></div>
 <script>var s=Date.now();setInterval(function(){var x=Math.floor((Date.now()-s)/1000);document.getElementById("t").textContent=Math.floor(x/60)+":"+String(x%60).padStart(2,"0")},250)</script></body></html>`;
 export const PREVIEW_URL = "data:text/html;charset=utf-8," + encodeURIComponent(PREVIEW_HTML);

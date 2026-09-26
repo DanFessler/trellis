@@ -7,7 +7,9 @@ order: 15.5
 
 # Panel menus
 
-Every panel has one menu. It opens from the **⋯** button at the end of the tab bar, from right-clicking the tab bar, and from <kbd>Shift</kbd>+<kbd>F10</kbd> or <kbd>Menu</kbd> on a focused tab. Right-clicking a tab selects that tab first, so the menu always belongs to the tab you clicked. Right-clicking a view's [accessory](./react-api.md) doesn't open it: accessories handle their own clicks.
+Each panel has one menu. It opens from the **⋯** button at the end of the tab bar, from right-clicking the tab bar, and from <kbd>Shift</kbd>+<kbd>F10</kbd> or <kbd>Menu</kbd> on a focused tab. Right-clicking a tab selects that tab first, so the menu belongs to the tab you clicked.
+
+Right-clicking a view's [accessory](./react-api.md) doesn't open the menu, because accessories handle their own clicks.
 
 The menu is built in three steps:
 
@@ -18,6 +20,8 @@ The menu is built in three steps:
 Menus are data, not components, so they work the same in React, vanilla JavaScript and the web component.
 
 ## Items for a view type
+
+A view type's `menu` returns entries of this shape:
 
 ```ts
 type MenuEntry = MenuItem | "separator";
@@ -45,13 +49,13 @@ interface MenuItem {
 />
 ```
 
-Separators at the start or end of a menu, and repeated separators, are removed, so every step can add them freely.
+Trellis removes separators at the start or end of a menu, and repeated separators, so each step can add them freely.
 
 `shortcut` only labels the item. To make the key work, handle it in your app, or use the workspace [keymap](./keyboard-accessibility.md) for built-in commands.
 
 ## The built-in items
 
-The built-ins give every panel what drag and drop can do, so it's all reachable from the keyboard. Which ones appear depends on where the panel is and what it's allowed to do.
+The built-in items cover what drag and drop can do, so it's reachable from the keyboard. Which ones appear depends on where the panel is and what it's allowed to do.
 
 | Id                           | Item                                        | Shown                                                          |
 | ---------------------------- | ------------------------------------------- | -------------------------------------------------------------- |
@@ -95,7 +99,7 @@ The context has `panelId`, the selected `view` (a `ViewHandle`) and the panel's 
 
 ## Render menus yourself
 
-To show panel menus with your own component, for example your design system's dropdown or a native menu in Electron, pass `renderMenu`. Trellis then never shows its own menu; it calls your function with a request instead:
+To show panel menus with your own component, pass `renderMenu`. That could be your design system's dropdown or a native menu in Electron. Trellis then calls your function with a request and doesn't show its own menu:
 
 ```ts
 interface MenuRequest {

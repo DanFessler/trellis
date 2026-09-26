@@ -124,7 +124,7 @@ export function DocsPage({ slug }: { slug: string }) {
   const next = index >= 0 && index < docs.length - 1 ? docs[index + 1] : null;
 
   useEffect(() => {
-    document.title = meta ? `${meta.title} — Trellis` : "Not found — Trellis";
+    document.title = meta ? `${meta.title} · Trellis` : "Not found · Trellis";
     document.querySelector('meta[name="description"]')?.setAttribute("content", meta?.description ?? "");
   }, [meta]);
 

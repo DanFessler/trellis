@@ -19,11 +19,11 @@ export function CodeSample() {
     <section className="section" id="code">
       <div className="container code-grid">
         <div className="code-copy-col">
-          <p className="eyebrow">Developer experience</p>
-          <h2>Describe the workspace. Trellis runs it.</h2>
+          <p className="eyebrow">Usage</p>
+          <h2>Register your views and an initial layout</h2>
           <p className="section-lede">
-            Register view types, sketch an initial layout, and render your components. Trellis owns dragging,
-            docking, focus, motion and persistence; your content just renders.
+            Trellis handles dragging, docking, focus, animation and saving the layout. Your components render
+            inside the views.
           </p>
           <ul className="checks">
             <li>
@@ -96,28 +96,28 @@ const EXAMPLES: ExampleInfo[] = [
   {
     name: "paint",
     title: "Paint",
-    body: "An art program: documents on the stage, brush, color, layers and navigator palettes docked around it.",
+    body: "An art program with documents on the stage and brush, color, layers and navigator palettes docked around them.",
     tags: ["React", "stage", "palettes"],
     shape: "paint",
   },
   {
     name: "ide",
     title: "IDE",
-    body: "Explorer, editor tabs, terminal, problems and outline — plus a live-preview iframe that keeps running through every move.",
+    body: "Explorer, editor tabs, terminal, problems and outline, plus a live-preview iframe that keeps running when you move it.",
     tags: ["React", "iframes", "persistence"],
     shape: "ide",
   },
   {
     name: "desktop",
     title: "Desktop",
-    body: "A desktop built only from primitives: windows are stage floats, the dock restores hidden panels, and you can zoom around it.",
+    body: "A desktop with no window code of its own. Windows are panels floating on the stage, and the dock restores hidden ones.",
     tags: ["React", "floating", "free zoom"],
     shape: "desktop",
   },
   {
     name: "vanilla",
     title: "Ops dashboard",
-    body: "No framework: live charts, logs and a runbook iframe with createWorkspace and plain DOM — plus a <trellis-workspace> version.",
+    body: "Live charts, logs and a runbook iframe, built with createWorkspace and plain DOM. Includes a <trellis-workspace> version.",
     tags: ["TypeScript", "core", "custom element"],
     shape: "vanilla",
   },
@@ -221,9 +221,9 @@ export function Examples() {
       <div className="container">
         <header className="section-head">
           <p className="eyebrow">Examples</p>
-          <h2>Same engine. Very different tools.</h2>
+          <h2>Four apps built with Trellis</h2>
           <p className="section-lede">
-            Complete applications built with Trellis. Open one in a new tab and rearrange everything.
+            Each one is a complete app. Open it in a new tab and try rearranging the panels.
           </p>
         </header>
         <div className="examples">
@@ -266,10 +266,10 @@ export function Pricing() {
       <div className="container">
         <header className="section-head center">
           <p className="eyebrow">License</p>
-          <h2>Free to explore. Fair to ship.</h2>
+          <h2>Free for non-commercial use</h2>
           <p className="section-lede">
-            Trellis is source-available. Non-commercial work is free; commercial use is licensed through
-            GitHub Sponsors; organizations with more than ten people get an enterprise agreement.
+            Trellis is source-available. Commercial use is licensed through GitHub Sponsors, and organizations
+            with more than ten people need an enterprise license.
           </p>
         </header>
         <div className="tiers">
@@ -300,7 +300,7 @@ export function Pricing() {
             <p className="tier-desc">Commercial use by an individual, while you sponsor on GitHub.</p>
             <ul>
               <li>
-                <Check /> Commercial projects & client work
+                <Check /> Commercial projects and client work
               </li>
               <li>
                 <Check /> Bundle in products you ship
@@ -325,7 +325,7 @@ export function Pricing() {
                 <Check /> Everyone on the team is covered
               </li>
               <li>
-                <Check /> Internal tools & products
+                <Check /> Internal tools and products
               </li>
               <li>
                 <Check /> Directly funds development
@@ -349,7 +349,7 @@ export function Pricing() {
                 <Check /> Priority support
               </li>
               <li>
-                <Check /> Legal review & SLAs
+                <Check /> Legal review and SLAs
               </li>
             </ul>
             <a
@@ -361,7 +361,7 @@ export function Pricing() {
           </article>
         </div>
         <p className="tiers-foot">
-          Prices are GitHub Sponsors tiers. A summary, not legal advice — read the{" "}
+          Prices are GitHub Sponsors tiers. This is a summary, not legal advice. Read the{" "}
           <Link href="/docs/license">license terms</Link>.
         </p>
       </div>
@@ -376,8 +376,8 @@ export function FinalCta() {
       <div className="container">
         <div className="final-card">
           <div className="final-lattice" aria-hidden="true" />
-          <h2>Give your tool a workspace people won’t want to leave.</h2>
-          <p>Install the core and the React adapter, and have a dockable layout running in a few minutes.</p>
+          <h2>Add a dockable workspace to your app</h2>
+          <p>Install the core and the React adapter, then follow the quick start to get a layout running.</p>
           <div className="hero-ctas">
             <Link className="btn btn-primary" href="/docs/quick-start-react">
               Read the quick start <Arrow />

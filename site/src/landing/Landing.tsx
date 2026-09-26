@@ -33,7 +33,7 @@ function Lattice({ className }: { className: string }) {
 export function Landing() {
   const { location } = useRouter();
   useEffect(() => {
-    document.title = "Trellis — Dockable, zoomable workspaces for web tools";
+    document.title = "Trellis · Dockable, zoomable workspaces for web tools";
     if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -47,7 +47,7 @@ export function Landing() {
           <div className="container hero-copy">
             <Link className="pill" href="/docs/migrating-from-react-dockable">
               <span className="pill-tag">Preview</span>
-              <span className="pill-long">Trellis 0.1 — the successor to react-dockable</span>
+              <span className="pill-long">Trellis 0.1, the successor to react-dockable</span>
               <span className="pill-short">The successor to react-dockable</span>
               <Arrow />
             </Link>
@@ -56,8 +56,9 @@ export function Landing() {
               <br /> room to <span className="grow">grow</span>.
             </h1>
             <p className="hero-sub">
-              Trellis is a dockable, zoomable workspace for art programs, IDEs, editors and dashboards. Drag
-              tabs anywhere, float panels, zoom into focus — and your content never remounts.
+              Trellis is a dockable, zoomable workspace for web tools such as art programs and IDEs. Users can
+              drag tabs anywhere, float panels and zoom in on one of them. Moving a view doesn't remount its
+              content.
             </p>
             <div className="hero-ctas">
               <Link className="btn btn-primary" href="/docs/quick-start-react">

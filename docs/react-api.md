@@ -7,6 +7,8 @@ order: 30
 
 # React API
 
+`@danfessler/trellis-react` wraps the core in React components and hooks. Import what you need:
+
 ```ts
 import {
   Workspace,
@@ -32,7 +34,7 @@ import {
 } from "@danfessler/trellis-react";
 ```
 
-The package also re-exports every type from the core (`WorkspaceHandle`, `LayoutDocument`, `ViewHandle`, `Placement`, …). Remember to import the stylesheet once: `import "@danfessler/trellis/style.css"`.
+The package also re-exports every type from the core, such as `WorkspaceHandle`, `LayoutDocument`, `ViewHandle` and `Placement`. Import the stylesheet once with `import "@danfessler/trellis/style.css"`.
 
 ## `<Workspace>`
 
@@ -44,38 +46,38 @@ Creates a workspace in a `div` that fills its parent (`width: 100%; height: 100%
 </Workspace>
 ```
 
-| Prop                 | Type                                                        | Default         | Description                                                                                                                                |
-| -------------------- | ----------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `children`           | `ReactNode`                                                 |                 | View types, layout, and the slots `Workspace.Empty`, `Workspace.Backdrop`, `Workspace.StageEmpty` and `Workspace.Chrome`.                  |
-| `theme`              | `"light" \| "medium" \| "dark" \| "darker" \| "system"`     | `"system"`      | Built-in theme.                                                                                                                            |
-| `tokens`             | `Record<string, string>`                                    |                 | CSS custom properties set on the root. A new object replaces the previous set: omitted tokens are removed, and an empty string clears one. |
-| `floating`           | `false \| "overlay" \| "stage"`                             | `"overlay"`     | Layer for floating panels.                                                                                                                 |
-| `navigation`         | `false \| "focus" \| "free"`                                | `"focus"`       | Maximize / zoom behaviour. See [Navigation](./navigation.md).                                                                              |
-| `motion`             | `"system" \| "full" \| "reduced"`                           | `"system"`      | Animation policy.                                                                                                                          |
-| `keymap`             | `Keymap`                                                    |                 | Partial command → combo map; `null` disables a command.                                                                                    |
-| `panelMenu`          | `boolean \| (entries, context) => MenuEntry[]`              | `true`          | Built-in menu items on or off, or a function that edits every panel's menu. See [Panel menus](./menus.md).                                 |
-| `renderMenu`         | `(request: MenuRequest) => void`                            |                 | Show panel menus with your own component. See [Panel menus](./menus.md#render-menus-yourself).                                             |
-| `tabs`               | `{ fill?: boolean; inset?: number }`                        |                 | Tab style: `fill` stretches tabs across the tab row, `inset` is the space around them in pixels. See [Theming](./theming.md#tab-styles).   |
-| `hideToward`         | `(panelId: string) => Element \| Rect \| null \| undefined` |                 | Where the built-in **Hide** animates to, e.g. your dock. See [Hiding](./hiding.md#the-built-in-hide).                                      |
-| `label`              | `string`                                                    | `"Workspace"`   | Accessible name of the workspace region.                                                                                                   |
-| `storageKey`         | `string`                                                    |                 | Persist to `localStorage` under this key.                                                                                                  |
-| `version`            | `string \| number`                                          |                 | Your layout version; a mismatch discards the saved layout.                                                                                 |
-| `defaultLayout`      | `LayoutDocument \| LayoutSpec \| null`                      |                 | Initial layout as data. JSX layout children take precedence.                                                                               |
-| `document`           | `LayoutDocument`                                            |                 | Controlled layout. Pair with `onDocumentChange`.                                                                                           |
-| `onDocumentChange`   | `(doc: LayoutDocument) => void`                             |                 | Committed layout changes.                                                                                                                  |
-| `onOpen`             | `(view: ViewInfo) => void`                                  |                 | A view was added.                                                                                                                          |
-| `onClose`            | `(view: ViewInfo) => void`                                  |                 | A view was removed.                                                                                                                        |
-| `onFocus`            | `(viewId: string \| null) => void`                          |                 | Focus moved.                                                                                                                               |
-| `onNavigate`         | `(framed: string \| null) => void`                          |                 | The camera framed a node, or returned to the overview.                                                                                     |
-| `onMissingType`      | `(type, id) => "drop" \| "placeholder"`                     | `"placeholder"` | A document references an unregistered type.                                                                                                |
-| `className`, `style` |                                                             |                 | Applied to the host `div`.                                                                                                                 |
-| `ref`                | `Ref<WorkspaceHandle>`                                      |                 | The [imperative handle](./core-api.md#workspacehandle). `null` until mounted.                                                              |
+| Prop                 | Type                                                        | Default                     | Description                                                                                                                                                               |
+| -------------------- | ----------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `children`           | `ReactNode`                                                 |                             | View types, [layout components](#layout-components), and the slots `Workspace.Empty`, `Workspace.Backdrop`, `Workspace.StageEmpty` and `Workspace.Chrome`.                |
+| `theme`              | `"light" \| "medium" \| "dark" \| "darker" \| "system"`     | `"system"`                  | The built-in theme.                                                                                                                                                       |
+| `tokens`             | `Record<string, string>`                                    |                             | CSS custom properties set on the workspace root. A new object replaces the previous set, so omitted tokens are removed, and an empty string removes a token.              |
+| `floating`           | `false \| "overlay" \| "stage"`                             | `"overlay"`                 | The layer floating panels live in.                                                                                                                                        |
+| `navigation`         | `false \| "focus" \| "free"`                                | `"focus"`                   | The navigation mode. `"free"` adds gestures and a default 480 × 320 content minimum. See [Navigation](./navigation.md).                                                   |
+| `motion`             | `"system" \| "full" \| "reduced"`                           | `"system"`                  | The animation policy.                                                                                                                                                     |
+| `keymap`             | `Keymap`                                                    |                             | Changes key bindings with a partial map of command to combo. `null` disables a command.                                                                                   |
+| `panelMenu`          | `boolean \| (entries, context) => MenuEntry[]`              | `true`                      | Turns the [built-in menu items](./menus.md#the-built-in-items) on or off, or edits every panel's menu with a function. See [Panel menus](./menus.md).                     |
+| `renderMenu`         | `(request: MenuRequest) => void`                            |                             | Shows panel menus with your own component instead of the built-in one. See [Panel menus](./menus.md#render-menus-yourself).                                               |
+| `tabs`               | `{ fill?: boolean; inset?: number }`                        | `{ fill: false, inset: 4 }` | Sets the tab style. `fill` stretches tabs across the tab row, and `inset` is the space around them in pixels (`0` is full-bleed). See [Theming](./theming.md#tab-styles). |
+| `hideToward`         | `(panelId: string) => Element \| Rect \| null \| undefined` |                             | Picks where the built-in menu's **Hide** animates to, such as your dock or tray button. See [Hiding](./hiding.md#the-built-in-hide).                                      |
+| `label`              | `string`                                                    | `"Workspace"`               | The accessible name of the workspace region.                                                                                                                              |
+| `onMissingType`      | `(type, id) => "drop" \| "placeholder"`                     | `"placeholder"`             | Decides what happens to a view whose type isn't registered. See [Unknown view types](./layout.md#unknown-view-types).                                                     |
+| `storageKey`         | `string`                                                    |                             | Saves the layout to `localStorage` under this key and restores it from there. Read once, when the workspace mounts.                                                       |
+| `version`            | `string \| number`                                          |                             | Your layout version. A saved layout with a different `version` is discarded. Read once, when the workspace mounts.                                                        |
+| `defaultLayout`      | `LayoutDocument \| LayoutSpec \| null`                      |                             | The initial layout when nothing is persisted or passed as `document`. JSX layout children take precedence. Read once, when the workspace mounts.                          |
+| `document`           | `LayoutDocument`                                            |                             | The controlled layout. It overrides persistence. Pair it with `onDocumentChange`.                                                                                         |
+| `onDocumentChange`   | `(doc: LayoutDocument) => void`                             |                             | Called with each committed layout change.                                                                                                                                 |
+| `onOpen`             | `(view: ViewInfo) => void`                                  |                             | Called when a view is added.                                                                                                                                              |
+| `onClose`            | `(view: ViewInfo) => void`                                  |                             | Called when a view is removed.                                                                                                                                            |
+| `onFocus`            | `(viewId: string \| null) => void`                          |                             | Called when focus moves.                                                                                                                                                  |
+| `onNavigate`         | `(framed: string \| null) => void`                          |                             | Called when the camera frames a node or returns to the overview.                                                                                                          |
+| `className`, `style` |                                                             |                             | Applied to the host `div`.                                                                                                                                                |
+| `ref`                | `Ref<WorkspaceHandle>`                                      |                             | The [imperative handle](./core-api.md#workspacehandle). `null` until the workspace mounts.                                                                                |
 
-`theme`, `tokens`, `tabs`, `floating`, `navigation`, `motion`, `keymap`, `panelMenu` and `label` can change at any time. `storageKey`, `version` and the initial layout are read when the workspace mounts. Event props, `hideToward`, a `panelMenu` function and `renderMenu` always call the latest function.
+`theme`, `tokens`, `tabs`, `floating`, `navigation`, `motion`, `keymap`, `panelMenu`, `renderMenu` and `label` can change at any time. Event props, `onMissingType`, `hideToward`, a `panelMenu` function and `renderMenu` always call the latest function.
 
 ### `<Workspace.Empty>`
 
-Rendered when the workspace has no panels at all.
+Renders its children when the workspace has nothing in it:
 
 ```tsx
 <Workspace.Empty>
@@ -85,7 +87,9 @@ Rendered when the workspace has no panels at all.
 
 ### `<Workspace.Backdrop>` and `<Workspace.StageEmpty>`
 
-Render into the stage's slots — behind the stage's panels and floats, and over the stage while it has no panels. They do the same as `<Stage backdrop>` and `<Stage empty>`, but work when the layout comes from `defaultLayout` data (or persistence) rather than a JSX `<Stage>`. If both are given, the `<Stage>` props win.
+Render into the stage's slots. `<Workspace.Backdrop>` renders behind the stage's panels and floats, and `<Workspace.StageEmpty>` renders over the stage while it has no panels.
+
+They do the same as `<Stage backdrop>` and `<Stage empty>`, and they also work when the layout comes from `defaultLayout` data or persistence. If both are given, the `<Stage>` props win.
 
 ```tsx
 <Workspace defaultLayout={L.stage()}>
@@ -100,9 +104,9 @@ Render into the stage's slots — behind the stage's panels and floats, and over
 
 ### `<Workspace.Chrome>`
 
-A full-size layer above the workspace for your own overlays — a dock, minimap, HUD or toolbar. The layer itself ignores the pointer; its direct children receive pointer events. Content here can use the workspace hooks.
+Renders a full-size layer above the workspace for your own overlays, such as a dock, minimap, HUD or toolbar. The layer itself ignores the pointer, but its direct children receive pointer events. Content here can use the workspace hooks.
 
-The chrome layer lives inside the workspace and is clipped to it. For app-wide overlays — menus that extend past the workspace, a toolbar above it — render outside `<Workspace>` and use [`<WorkspaceProvider>`](#workspaceprovider).
+The chrome layer lives inside the workspace and is clipped to it. For app-wide overlays, such as menus that extend past the workspace or a toolbar above it, render outside `<Workspace>` and use [`<WorkspaceProvider>`](#workspaceprovider).
 
 ```tsx
 <Workspace.Chrome>
@@ -112,7 +116,7 @@ The chrome layer lives inside the workspace and is clipped to it. For app-wide o
 
 ## `<WorkspaceProvider>`
 
-Makes the workspace hooks available to UI **outside** `<Workspace>` — app bars, menus, status bars, a dock. Wrap both the workspace and that UI:
+Makes the workspace hooks available to UI outside `<Workspace>`, such as app bars, menus, status bars and a dock. Wrap both the workspace and that UI:
 
 ```tsx
 import {
@@ -143,11 +147,11 @@ function NewButton() {
 </WorkspaceProvider>;
 ```
 
-Under a provider, `useWorkspaceState()` and `useWorkspaceSelector()` return an empty snapshot until the workspace mounts, and `useWorkspace()` throws until then — use `useOptionalWorkspace()` in UI that can render first. A provider serves one workspace.
+Under a provider, `useWorkspaceState()` and `useWorkspaceSelector()` return an empty snapshot until the workspace mounts. `useWorkspace()` throws until then, so use `useOptionalWorkspace()` in UI that can render first. A provider serves one workspace.
 
 ## `<ViewType>`
 
-Registers a kind of view. Renders nothing itself; must be a direct child of `<Workspace>` (fragments are fine).
+Registers a kind of view. It renders nothing itself and must be a direct child of `<Workspace>`. Fragments are fine.
 
 ```tsx
 <ViewType id="doc" title={(v) => String(v.params.path)} placement="stage" icon={<FileIcon />}>
@@ -155,40 +159,42 @@ Registers a kind of view. Renders nothing itself; must be a direct child of `<Wo
 </ViewType>
 ```
 
-| Prop        | Type                                                                       | Description                                                                                                                                                                                                                           |
-| ----------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`        | `string`                                                                   | **Required.** The type name used by `<View type>` and `open(type)`.                                                                                                                                                                   |
-| `title`     | `string \| (view: ViewHandle) => string`                                   | Tab label. Defaults to the type id.                                                                                                                                                                                                   |
-| `icon`      | `ReactNode \| string`                                                      | Tab icon: a React node, or trusted SVG/HTML markup. Without one, the empty icon slot takes no space.                                                                                                                                  |
-| `children`  | `ReactNode`                                                                | Content, rendered once per view. Use `useView()` inside.                                                                                                                                                                              |
-| `render`    | `(view: ViewApi) => ReactNode`                                             | Alternative to children: render from the view's state.                                                                                                                                                                                |
-| `accessory` | `ReactNode \| (view: ViewApi) => ReactNode`                                | Rendered in the tab bar while this view is selected.                                                                                                                                                                                  |
-| `iframe`    | `string \| IframeOptions \| (view: ViewHandle) => string \| IframeOptions` | Render an iframe instead of React content: a URL, or [`IframeOptions`](./core-api.md#iframeoptions) (`src`, `srcdoc`, `sandbox`, `allow`, `referrerPolicy`, `title`). It reloads only when the computed options change.               |
-| `mount`     | `(element, view, parts) => void \| (() => void)`                           | Render vanilla content instead of React content.                                                                                                                                                                                      |
-| `menu`      | `MenuEntry[] \| (view: ViewHandle) => MenuEntry[]`                         | Items at the top of the panel menu while this view is selected.                                                                                                                                                                       |
-| `placement` | `Placement`                                                                | Default placement for `open()`.                                                                                                                                                                                                       |
-| `allow`     | `{ stage?, side?, floating? }`                                             | Regions users may drop it into. All `true` by default.                                                                                                                                                                                |
-| `singleton` | `boolean`                                                                  | At most one instance.                                                                                                                                                                                                                 |
-| `closable`  | `boolean`                                                                  | `false` removes the close button and ignores close commands.                                                                                                                                                                          |
-| `minSize`   | `{ width, height }`                                                        | Content lays out at no less than this size and scales down below it. Defaults to 480 × 320 with `navigation="free"`, none otherwise.                                                                                                  |
-| `tabbar`    | `"always" \| "auto" \| "never" \| "overlay"`                               | Tab bar visibility. `"auto"` hides it while the view is alone in its panel; `"never"` always hides it; `"overlay"` floats it over a lone view's content, which draws its own title bar. See [Theming](./theming.md#overlay-tab-bars). |
-| `gestures`  | `"content" \| "workspace"`                                                 | Who owns a plain wheel over the content. Default `"content"`; `"workspace"` lets it zoom the workspace.                                                                                                                               |
-| `className` | `string`                                                                   | Extra class on the view's surface.                                                                                                                                                                                                    |
+| Prop        | Type                                                                       | Default                                            | Description                                                                                                                            |
+| ----------- | -------------------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`        | `string`                                                                   |                                                    | **Required.** The type id that `<View type>` and `open(type)` refer to.                                                                |
+| `title`     | `string \| (view: ViewHandle) => string`                                   | The type id                                        | The tab label.                                                                                                                         |
+| `icon`      | `ReactNode \| string`                                                      |                                                    | The tab icon: a React node, or trusted SVG/HTML markup. Without one, the empty icon slot takes no space.                               |
+| `children`  | `ReactNode`                                                                |                                                    | The content, rendered once per view. Use [`useView()`](#useview) inside.                                                               |
+| `render`    | `(view: ViewApi) => ReactNode`                                             |                                                    | Renders content from the view's state, as an alternative to `children`.                                                                |
+| `accessory` | `ReactNode \| (view: ViewApi) => ReactNode`                                |                                                    | Content for the tab bar while this view is selected.                                                                                   |
+| `iframe`    | `string \| IframeOptions \| (view: ViewHandle) => string \| IframeOptions` |                                                    | Renders an iframe instead: a URL, or [`IframeOptions`](./core-api.md#iframeoptions). It reloads only when the computed options change. |
+| `mount`     | `(element, view, parts) => void \| (() => void)`                           |                                                    | Renders vanilla content instead of React content. See [`ViewTypeDefinition`](./core-api.md#viewtypedefinition).                        |
+| `menu`      | `MenuEntry[] \| (view: ViewHandle) => MenuEntry[]`                         |                                                    | Items at the top of the panel menu while this view is selected.                                                                        |
+| `placement` | `Placement`                                                                |                                                    | The default [placement](./core-api.md#placement) for `open()`.                                                                         |
+| `allow`     | `{ stage?, side?, floating? }`                                             | All `true`                                         | The regions users may drop this view into.                                                                                             |
+| `singleton` | `boolean`                                                                  |                                                    | Allows at most one instance. `open()` focuses the existing one.                                                                        |
+| `closable`  | `boolean`                                                                  |                                                    | `false` removes the close button and ignores close commands.                                                                           |
+| `minSize`   | `{ width, height }`                                                        | 480 × 320 with `navigation="free"`, none otherwise | The smallest size content lays out at. Below it, content scales down.                                                                  |
+| `tabbar`    | `"always" \| "auto" \| "never" \| "overlay"`                               | `"always"`                                         | When the tab bar shows. See [Tab bar modes](./core-api.md#tab-bar-modes).                                                              |
+| `gestures`  | `"content" \| "workspace"`                                                 | `"content"`                                        | Who handles a plain wheel over the content. `"workspace"` lets it zoom the workspace with `navigation="free"`.                         |
+| `className` | `string`                                                                   |                                                    | An extra class on the view's surface.                                                                                                  |
 
-Content precedence: `iframe`, then `mount`, then `render`, then `children`.
+When a type has more than one kind of content, `iframe` wins, then `mount`, then `render`, then `children`.
 
-**Content keeps its context.** Children render through portals, so they see React context from above `<Workspace>` — your stores, routers and themes work as usual.
+Children render through portals, so they see React context from above `<Workspace>`. Your stores, routers and themes work as usual.
 
-**Changing props never remounts content.** Function props (`title`, `iframe`, `mount`, `menu`) are called through stable wrappers that read the latest render, so inline arrow functions are fine. Content only remounts if an iframe's computed options actually change, or you switch a type between `iframe`, `mount` and React content.
+Changing props doesn't remount content. Function props (`title`, `iframe`, `mount` and `menu`) go through stable wrappers that read the latest render, so inline arrow functions are fine. Content remounts only when an iframe's computed options change, or when you switch a type between `iframe`, `mount` and React content.
 
 ### `MenuEntry`
+
+An item in a panel menu, used by `menu`, `panelMenu` and `renderMenu`:
 
 ```ts
 type MenuEntry = MenuItem | "separator";
 interface MenuItem {
   id?: string;
   label: string;
-  shortcut?: string; // a hint such as "⌘S"; it doesn't bind the key
+  shortcut?: string; // a hint such as "⌘S", which doesn't bind the key
   disabled?: boolean;
   checked?: boolean;
   danger?: boolean;
@@ -201,17 +207,17 @@ See [Panel menus](./menus.md) for how view type items, the built-ins, `panelMenu
 
 ## Layout components
 
-Describe the **initial** layout. Read once, when the workspace mounts. See [Layout](./layout.md).
+Layout components describe the initial layout. Read once, when the workspace mounts. See [Layout](./layout.md).
 
-| Component    | Props                                                                                                                                           |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<Split>`    | `axis?: "x" \| "y"` (default `"x"`), `weights?: number[]`, `id?: string`                                                                        |
-| `<Panel>`    | `selected?: number`, `id?: string`. Children: `<View>`s.                                                                                        |
-| `<View>`     | `type: string`, `params?: object`, `id?: string`, `title?: string`                                                                              |
-| `<Stage>`    | `backdrop?: ReactNode`, `empty?: ReactNode`, `id?: string`                                                                                      |
-| `<Floating>` | `rect: { x, y, w, h }` (fractions 0–1 of the layer), `layer?: "stage" \| "overlay"` (default `"overlay"`). Children: one `<Panel>` or `<View>`. |
+| Component    | Props                                                                                                                                              |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<Split>`    | `axis?: "x" \| "y"` (default `"x"`), `weights?: number[]`, `id?: string`. Children: layout components.                                             |
+| `<Panel>`    | `selected?: number`, `id?: string`. Children: `<View>`s.                                                                                           |
+| `<View>`     | `type: string`, `params?: object`, `id?: string`, `title?: string`. A `<View>` outside a `<Panel>` gets its own panel.                             |
+| `<Stage>`    | `backdrop?: ReactNode`, `empty?: ReactNode`, `id?: string`. Children: layout components. At most one per workspace.                                |
+| `<Floating>` | `rect: { x, y, w, h }` (fractions 0 to 1 of the layer), `layer?: "stage" \| "overlay"` (default `"overlay"`). Children: one `<Panel>` or `<View>`. |
 
-`<Stage backdrop>` renders behind the stage's panels (a canvas, wallpaper or grid); `<Stage empty>` renders when the stage has no panels. Both can use the workspace hooks.
+`<Stage backdrop>` renders behind the stage's panels, such as a canvas, wallpaper or grid. `<Stage empty>` renders when the stage has no panels. Both can use the workspace hooks.
 
 `<Floating>` declares an initial floating panel. Place it anywhere among the workspace's children:
 
@@ -233,7 +239,7 @@ Describe the **initial** layout. Read once, when the workspace mounts. See [Layo
 function useView<P extends object = Params>(): ViewApi<P>;
 ```
 
-The view whose content is rendering. Returns the [`ViewHandle`](./core-api.md#viewhandle) methods merged with its current state, and re-renders when that state changes. Presentation state (size, visibility) settles after motion, so this never re-renders per animation frame. Throws outside view content.
+Returns the view whose content is rendering. The result merges the [`ViewHandle`](./core-api.md#viewhandle) methods with the view's current state, and re-renders when that state changes. Presentation state, such as size and visibility, settles after motion, so the hook doesn't re-render on every animation frame. Throws outside view content.
 
 ```tsx
 function Canvas() {
@@ -251,7 +257,7 @@ function Canvas() {
 
 #### Typed params
 
-Params can be declared as an interface; the generics accept any object type.
+You can declare params as an interface. The generics accept any object type:
 
 ```tsx
 interface DocParams {
@@ -277,7 +283,7 @@ function Toolbar() {
 function useOptionalView(): ViewHandle | null;
 ```
 
-The raw view handle, or `null` outside view content. Doesn't subscribe to state. Useful in shared components that may or may not render inside a view.
+Returns the raw view handle, or `null` outside view content. It doesn't subscribe to state. Use it in shared components that may or may not render inside a view.
 
 ### `useViewTitle`
 
@@ -285,7 +291,7 @@ The raw view handle, or `null` outside view content. Doesn't subscribe to state.
 function useViewTitle(title: string | null | undefined): void;
 ```
 
-Keeps the tab title in sync with a value. Empty values are ignored. The title is stored in the document like `setTitle()`.
+Keeps the tab title in sync with a value. Empty values are ignored. Trellis stores the title in the document, like `setTitle()`.
 
 ```tsx
 useViewTitle(dirty ? `${name} •` : name);
@@ -294,10 +300,10 @@ useViewTitle(dirty ? `${name} •` : name);
 ### `useViewBadge`
 
 ```ts
-function useViewBadge(badge: string | number | null | undefined): void;
+function useViewBadge(badge: string | number | boolean | null | undefined): void;
 ```
 
-Shows a badge on the view's tab, and clears it on unmount. Pass `true` for a dot — the conventional "unsaved changes" marker, which swaps with the close button on hover.
+Shows a badge on the view's tab, and clears it on unmount. Pass `true` for a dot, the usual marker for unsaved changes. The dot swaps with the close button on hover.
 
 ```tsx
 useViewBadge(dirty); // a dot while dirty
@@ -310,7 +316,7 @@ useViewBadge(errors || null); // a count, or nothing
 function useCloseGuard(guard: () => boolean | Promise<boolean>): void;
 ```
 
-Veto closing: return `false` (or resolve `false`) to keep the view open. Runs for the close button, menus, shortcuts and `close()` — not for `close({ force: true })`. Always calls the latest guard.
+Adds a close guard. Return or resolve `false` to keep the view open. The guard runs for the close button, menus, shortcuts and `close()`, but not for `close({ force: true })`. The hook always calls the latest guard.
 
 ```tsx
 useCloseGuard(async () => !dirty || (await confirmDialog("Discard changes?")));
@@ -322,7 +328,7 @@ useCloseGuard(async () => !dirty || (await confirmDialog("Discard changes?")));
 function useWorkspace(): WorkspaceHandle;
 ```
 
-The imperative handle — inside view content, stage slots and `Workspace.Chrome`/`Workspace.Empty`, and anywhere under a [`<WorkspaceProvider>`](#workspaceprovider) once the workspace has mounted. Throws otherwise; elsewhere, use the `ref` prop.
+Returns the workspace's [imperative handle](./core-api.md#workspacehandle). It works inside view content, stage slots, `Workspace.Chrome` and `Workspace.Empty`. It also works anywhere under a [`<WorkspaceProvider>`](#workspaceprovider) after the workspace mounts. Elsewhere it throws, so use the `ref` prop instead.
 
 ### `useOptionalWorkspace`
 
@@ -330,7 +336,7 @@ The imperative handle — inside view content, stage slots and `Workspace.Chrome
 function useOptionalWorkspace(): WorkspaceHandle | null;
 ```
 
-Like `useWorkspace`, but returns `null` instead of throwing.
+Returns the workspace's handle, or `null` where `useWorkspace` would throw.
 
 ### `useWorkspaceState`
 
@@ -338,7 +344,7 @@ Like `useWorkspace`, but returns `null` instead of throwing.
 function useWorkspaceState(): WorkspaceSnapshot;
 ```
 
-Subscribes to the whole [snapshot](./core-api.md#workspacesnapshot) — layout, focus, hidden panels, navigation. Re-renders on every change; prefer `useWorkspaceSelector` for narrow reads.
+Returns the whole [snapshot](./core-api.md#workspacesnapshot), which covers layout, focus, hidden panels and navigation. It re-renders on every change. For narrow reads, use `useWorkspaceSelector`.
 
 ### `useWorkspaceSelector`
 
@@ -346,7 +352,7 @@ Subscribes to the whole [snapshot](./core-api.md#workspacesnapshot) — layout, 
 function useWorkspaceSelector<T>(select: (s: WorkspaceSnapshot) => T, equal?: (a: T, b: T) => boolean): T;
 ```
 
-Re-renders only when the selected value changes (by `Object.is`, or your `equal`).
+Returns part of the snapshot, and re-renders only when that part changes. Values are compared with `Object.is`, or with your `equal` function.
 
 ```tsx
 const framed = useWorkspaceSelector((s) => s.framed);
@@ -359,7 +365,7 @@ const hiddenIds = useWorkspaceSelector(
 
 ## Re-exports
 
-`layout`, `createDocument` and `formatCombo` are re-exported from the core so React apps need only one import. See [Core API](./core-api.md).
+`layout`, `createDocument` and `formatCombo` are re-exported from the core, so React apps need only one import. See [Core API](./core-api.md).
 
 ## Server rendering
 

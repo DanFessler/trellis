@@ -2,9 +2,13 @@
 
 The framework-agnostic core of Trellis: dockable, zoomable workspaces for web tools.
 
+Install it:
+
 ```sh
 npm install @danfessler/trellis
 ```
+
+Create a workspace in an element:
 
 ```ts
 import { createWorkspace, layout as L } from "@danfessler/trellis";
@@ -16,8 +20,8 @@ const ws = createWorkspace(element, {
 });
 ```
 
-Documentation, guides and examples: https://github.com/DanFessler/trellis
+Documentation, guides and examples are in the [Trellis repository](https://github.com/DanFessler/trellis).
 
 ## License
 
-Free for non-commercial use; commercial use requires an active GitHub Sponsorship at the applicable tier or an enterprise license. See LICENSE.md.
+Free for non-commercial use. Commercial use requires an active GitHub Sponsorship at the applicable tier or an enterprise license. See [LICENSE.md](LICENSE.md).

@@ -6,16 +6,7 @@
   Trellis
 </h1>
 
-**Dockable, zoomable workspaces for web tools.**
-
-Trellis gives your app the layout system of a professional tool — tabbed panels that users drag, split, float, hide and maximize — with motion that feels physical and content that never loses its state. It is built for tool builders: art programs, IDEs, editors, dashboards and anything else where users arrange their own workspace.
-
-- **State-preserving by design.** Each view's content is mounted once, into a container that never moves in the DOM. Docking, tabbing, floating, hiding and maximizing never remount it, so iframes don't reload and React state, canvases and editors stay exactly as they were.
-- **A stage, not a desktop.** An optional primary region for your documents or canvas, with its own backdrop and empty state. Tool panels live around it; rules keep documents in the stage and tools out of it.
-- **Motion that carries its weight.** Spring-driven framing, eased layout transitions and a lifted-drag feel, carried over from the prototype.
-- **Framework-agnostic.** A small DOM core with thin adapters: React, a `<trellis-workspace>` custom element, or plain JavaScript.
-- **Themeable.** Four built-in themes and a documented set of CSS custom properties, part attributes and state attributes. Every built-in rule has zero specificity, so your CSS wins.
-- **Persistent.** One serializable layout document; save it, restore it, control it.
+Trellis is a layout engine for web apps where users arrange their own workspace, with tabbed panels they can drag, split, float, hide and maximize.
 
 ## Packages
 
@@ -27,9 +18,13 @@ Trellis gives your app the layout system of a professional tool — tabbed panel
 
 ## Quick start (React)
 
+Install the core and the React adapter:
+
 ```sh
 npm install @danfessler/trellis @danfessler/trellis-react
 ```
+
+Declare the view types, then the initial layout:
 
 ```tsx
 import { Workspace, ViewType, Split, Stage, Panel, View, useView } from "@danfessler/trellis-react";
@@ -65,6 +60,14 @@ export function App() {
 
 ## Quick start (vanilla)
 
+Install the core:
+
+```sh
+npm install @danfessler/trellis
+```
+
+Create a workspace in an element:
+
 ```ts
 import { createWorkspace, layout as L } from "@danfessler/trellis";
 import "@danfessler/trellis/style.css";
@@ -80,6 +83,15 @@ const ws = createWorkspace(document.getElementById("app")!, {
 ws.open("notes", { placement: "float" });
 ```
 
+## Documentation
+
+- [Introduction](docs/introduction.md) and [Installation](docs/installation.md)
+- Quick starts for [React](docs/quick-start-react.md) and [vanilla JavaScript](docs/quick-start-vanilla.md)
+- [Concepts](docs/concepts.md)
+- Reference: [React API](docs/react-api.md), [Core API](docs/core-api.md) and [Web component](docs/web-component.md)
+- [Recipes](docs/recipes.md) and [FAQ](docs/faq.md)
+- [Migrating from react-dockable](docs/migrating-from-react-dockable.md)
+
 ## Development
 
 ```sh
@@ -93,14 +105,14 @@ npm run build:all    # packages + website with examples (site/dist)
 npm run verify:pack  # pack tarballs and build a fresh app against React 18 and 19
 ```
 
-Examples live in [`examples/`](examples):
+The examples live in [`examples/`](examples):
 
-| Example                       | Shows                                                                                                | Run                                      |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| [`paint`](examples/paint)     | An art program: documents on the stage, tool palettes, floating navigator, close guards, persistence | `npm run dev -w trellis-example-paint`   |
-| [`ide`](examples/ide)         | An editor with explorer, terminal, live-preview iframe, command palette and status bar               | `npm run dev -w trellis-example-ide`     |
-| [`desktop`](examples/desktop) | The desktop rebuilt from public primitives: stage floats, free zoom, dock, minimap          | `npm run dev -w trellis-example-desktop` |
-| [`vanilla`](examples/vanilla) | A framework-free ops dashboard, plus a `<trellis-workspace>` page declared in HTML                   | `npm run dev -w trellis-example-vanilla` |
+| Example                       | Shows                                                                                                  | Run                                      |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| [`paint`](examples/paint)     | An art program: documents on the stage, tool palettes, floating navigator, close guards, persistence   | `npm run dev -w trellis-example-paint`   |
+| [`ide`](examples/ide)         | An editor with explorer, terminal, live-preview iframe, command palette and status bar                 | `npm run dev -w trellis-example-ide`     |
+| [`desktop`](examples/desktop) | A desktop environment built from public primitives, with stage floats, free zoom, a dock and a minimap | `npm run dev -w trellis-example-desktop` |
+| [`vanilla`](examples/vanilla) | A framework-free ops dashboard, plus a `<trellis-workspace>` page declared in HTML                     | `npm run dev -w trellis-example-vanilla` |
 
 ## License
 

@@ -274,7 +274,7 @@ export interface WorkspaceHandle {
   setParams(viewId: string, patch: object): void;
   navigation: {
     frame(target: string | string[] | "all" | "stage"): void;
-    /** Maximize a docked or stage-floating panel, or restore it if it is maximized. Returns false for overlay floats, hidden panels, or when navigation is off. */
+    /** Maximize a docked panel, or restore it if it is maximized. Returns false for floating or hidden panels, or when navigation is off. (Double-clicking a stage float's tab bar frames the stage instead.) */
     toggle(panelOrViewId?: string): boolean;
     back(): void;
     forward(): void;

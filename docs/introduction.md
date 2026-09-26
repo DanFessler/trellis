@@ -1,27 +1,27 @@
 ---
 title: Introduction
-description: What Trellis is, what it is for, and how it is put together.
+description: What Trellis is, what it's for, and how the packages fit together.
 section: Getting started
 order: 1
 ---
 
 # Introduction
 
-Trellis gives web-based tools — art programs, IDEs, editors, dashboards — a dockable, zoomable workspace. Users drag tabs between panels, dock them against any edge, float them, hide them to a tray, and zoom into a single panel. Your content renders once and never remounts.
+Trellis is a layout engine for web apps where people arrange their own workspace, such as an art program or an IDE. Users drag tabs between panels, dock them against any edge, float them, hide them to a tray, and zoom into a single panel.
 
-It is the successor in spirit to react-dockable, rebuilt from scratch as a framework-agnostic engine with thin adapters, and with the animated motion from the prototype.
+Trellis succeeds react-dockable. It's a rewrite from scratch: a framework-agnostic engine with thin adapters, and animated motion throughout.
 
 ## What makes it different
 
-**Content mounts once.** Each view renders into a container that never moves in the DOM. Docking, tabbing, floating, hiding and zooming only reposition that container. An `<iframe>` keeps its session, a `<canvas>` keeps its pixels, a WebGL context is never lost, and React components keep their state.
+Each view renders once, into a container that stays put in the DOM. Docking, tabbing, floating, hiding and zooming move the container, not the content. An `<iframe>` keeps its session, a `<canvas>` keeps its pixels and WebGL context, and React components keep their state. Content remounts only when what it renders changes, such as an iframe's URL.
 
-**Motion is part of the model.** Picking up a panel, dropping it, maximizing and hiding are animated. While you drag, the layout itself opens a slot where the panel will land — the interaction model is ported from the prototype. Views are told their new size once motion settles instead of on every frame, so expensive content does not re-layout sixty times a second.
+Picking up a panel, dropping it, maximizing and hiding are all animated. While you drag, the layout opens a slot where the panel will land. Views learn their new size after motion settles, not on every frame, so expensive content doesn't re-layout sixty times a second.
 
-**It has opinions about pro tools.** A workspace can have a _stage_ — the primary region where documents open. Panels can float over the stage or over the whole app. Any docked panel can be maximized with an animated zoom, and in _free_ navigation users scroll, pinch and marquee-select their way around the workspace like a canvas, with the camera snapping to whatever fits best.
+A workspace can have a _stage_, the primary region where documents open. Panels can float over the stage or over the whole app. You can maximize any docked panel with an animated zoom. In _free_ navigation, users move around the workspace like a canvas by scrolling, pinching and marquee-selecting, and the camera snaps to whatever fits best.
 
-**Rules instead of callbacks.** View types declare where they may be docked (`allow`), where they open (`placement`), whether only one may exist (`singleton`), whether they can be closed, and a minimum layout size. Trellis enforces the rules during drags and in `open()`.
+View types declare rules in place of callbacks. A type says where it may be docked (`allow`), where it opens (`placement`), whether only one may exist (`singleton`), whether it can be closed, and its minimum layout size. Trellis enforces these rules during drags and in `open()`.
 
-**Everything is one JSON document.** The whole layout — splits, panels, floating and hidden panels, view params — is a serializable `LayoutDocument`. Persist it with one option or control it yourself.
+The whole layout is a serializable `LayoutDocument`. It holds the splits, panels, floating and hidden panels, and view params. You can persist it with one option or control it yourself.
 
 ## Packages
 
@@ -32,6 +32,8 @@ It is the successor in spirit to react-dockable, rebuilt from scratch as a frame
 | `@danfessler/trellis-element` | A `<trellis-workspace>` custom element for any framework, or none. _In development._                                |
 
 ## A first look
+
+Here's a complete workspace in React:
 
 ```tsx title="App.tsx"
 import { Workspace, ViewType, Split, Stage, View } from "@danfessler/trellis-react";
@@ -60,11 +62,11 @@ export function App() {
 }
 ```
 
-That is a complete workspace: users can drag the Layers tab to any edge of the workspace, float it from its menu, maximize the canvas, and open more canvases into the stage.
+Users can drag the Layers tab to any edge of the workspace, float it from its menu, maximize the canvas, and open more canvases into the stage.
 
 ## Where to next
 
-- [Installation](./installation.md) — packages, the stylesheet and sizing the host element.
-- [Quick start (React)](./quick-start-react.md) or [Quick start (vanilla)](./quick-start-vanilla.md) — a working workspace in a few minutes.
-- [Concepts](./concepts.md) — view types, views, panels, splits, the stage, floating and navigation.
-- [Interaction model](./interaction.md) — how dragging, docking and navigation behave.
+- [Installation](./installation.md) covers the packages, the stylesheet and sizing the host element.
+- [Quick start (React)](./quick-start-react.md) and [Quick start (vanilla)](./quick-start-vanilla.md) build a working workspace in a few minutes.
+- [Concepts](./concepts.md) explains view types, views, panels, splits, the stage, floating and navigation.
+- [Interaction model](./interaction.md) describes how dragging, docking and navigation behave.

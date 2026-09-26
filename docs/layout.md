@@ -7,17 +7,17 @@ order: 11
 
 # Layout
 
-There are three ways to describe a layout, and they all end up as the same `LayoutDocument`:
+You can describe a layout in three ways, and each one ends up as the same `LayoutDocument`:
 
-1. **JSX** layout components (React).
-2. The **`layout` builder**, compiled with `createDocument()` (any framework).
-3. A **`LayoutDocument`** object written or stored directly.
+- JSX layout components, in React.
+- The `layout` builder, compiled with `createDocument()`, in any framework.
+- A `LayoutDocument` object that you write or store directly.
 
-A layout you provide is the _initial_ layout. After the workspace mounts, users own it; to change it programmatically, use the imperative API or [`setDocument()`](./persistence.md#controlled-layouts-react).
+A layout you provide is the _initial_ layout. After the workspace mounts, users own it. To change it from code, use the imperative API or [`setDocument()`](./persistence.md#controlled-layouts-react).
 
 ## JSX layouts (React)
 
-Place `<Split>`, `<Panel>`, `<View>`, `<Stage>` and `<Floating>` as children of `<Workspace>`, next to your `<ViewType>` registrations.
+Place `<Split>`, `<Panel>`, `<View>`, `<Stage>` and `<Floating>` as children of `<Workspace>`, next to your `<ViewType>` registrations:
 
 ```tsx
 <Workspace>
@@ -49,17 +49,17 @@ Place `<Split>`, `<Panel>`, `<View>`, `<Stage>` and `<Floating>` as children of 
 | `<Stage>`    | `backdrop?`, `empty?`, `id?`                     | At most one. Multiple children are arranged in a row.                                                 |
 | `<Floating>` | `rect`, `layer?`                                 | An initial floating panel. Children: one `<Panel>` or `<View>`. See [below](#floating-panels-in-jsx). |
 
-Rules worth knowing:
+JSX layout follows these rules:
 
-- Layout components are read **once**, when the workspace mounts. Changing them later has no effect.
-- They must be direct children of `<Workspace>` (or of each other). Fragments are fine, but wrapping layout in your own component is not — `<Workspace>` reads its children's element types and won't render your component to find them.
+- Layout components are read once, when the workspace mounts. Changing them later has no effect.
+- They must be direct children of `<Workspace>` or of each other. Fragments work. Your own wrapper components don't, because `<Workspace>` reads its children's element types and won't render your component to find them.
 - If there are several top-level layout children, they are placed in a row.
 - JSX layout takes precedence over the `defaultLayout` prop, and a persisted or controlled document takes precedence over both.
 - `<Workspace.Backdrop>` and `<Workspace.StageEmpty>` fill the stage's slots when the stage comes from a data layout rather than a JSX `<Stage>`.
 
 ### Floating panels in JSX
 
-`<Floating>` wraps a `<Panel>` or a bare `<View>` and floats it in the initial layout. `rect` is in fractions (0–1) of the layer; `layer` is `"stage"` or `"overlay"` (the default).
+`<Floating>` wraps a `<Panel>` or a bare `<View>` and floats it in the initial layout. `rect` is in fractions of the layer, from 0 to 1. `layer` is `"stage"` or `"overlay"` (the default):
 
 ```tsx
 <Workspace floating="stage">
@@ -79,11 +79,11 @@ Rules worth knowing:
 </Workspace>
 ```
 
-`<Floating>` counts as JSX layout: a workspace with only `<Floating>` children (and no docked layout) starts with just those floats, and ignores `defaultLayout`.
+`<Floating>` counts as JSX layout. A workspace whose only layout children are `<Floating>` starts with those floats and no docked layout, and ignores `defaultLayout`.
 
 ## The `layout` builder
 
-The builder produces plain `LayoutSpec` objects. It is exported from both packages.
+The builder produces plain `LayoutSpec` objects. Both packages export it:
 
 ```ts
 import { layout as L } from "@danfessler/trellis"; // or "@danfessler/trellis-react"
@@ -117,7 +117,7 @@ Pass a spec as `defaultLayout` (core option or React prop). The workspace compil
 
 ### `createDocument()` and initial floats
 
-`createDocument(spec, options)` compiles a spec into a `LayoutDocument` yourself. Its options let you add floating panels and a version:
+To compile a spec into a `LayoutDocument` yourself, call `createDocument(spec, options)`. Its options let you add floating panels and a version:
 
 ```ts
 import { createDocument, layout as L } from "@danfessler/trellis";
@@ -135,17 +135,21 @@ const doc = createDocument(L.row([L.view("tools"), L.stage(L.view("doc"))], [1, 
 createWorkspace(el, { types, floating: "stage", defaultLayout: doc });
 ```
 
-Float rects are fractions (0–1) of their layer: the stage for `layer: "stage"`, the whole workspace for `"overlay"`.
+Float rects are fractions of their layer, from 0 to 1. The layer is the stage for `layer: "stage"` and the whole workspace for `"overlay"`.
 
 `createDocument()` throws if a layout contains more than one stage, a stage inside a stage, or two views with the same explicit `id`.
 
 ## View ids
 
-Views in a layout get deterministic ids unless you pass `id`: the type name and a counter — `editor-1`, `editor-2`, `layers-1`. Because the default layout always produces the same ids, [`reset()`](./persistence.md#resetting) can keep those views mounted. Give ids to views you want to refer to later — for example to `focus("inspector")` or to target them in a placement — and to singletons you may want to reopen by id.
+Unless you pass `id`, views in a layout get deterministic ids made of the type name and a counter, such as `editor-1` and `editor-2`. The default layout produces the same ids each time, so [`reset()`](./persistence.md#resetting) can keep those views mounted.
 
-Panel and split ids work the same way; set them when you want stable targets such as `{ into: "tools" }`.
+Give ids to views you want to refer to later, for example to call `focus("inspector")` or to target them in a placement. Singletons you may want to reopen by id need one too.
+
+Panel and split ids work the same way. Set them when you want stable targets such as `{ into: "tools" }`.
 
 ## The `LayoutDocument` format
+
+This is the full shape of a document:
 
 ```ts
 interface LayoutDocument {
@@ -201,9 +205,9 @@ interface Framing {
 }
 ```
 
-`navigation.frame` and each framing's `frame` store the **views** a framing showed, as panel ids, rather than a node; on load, the camera frames the smallest node or sibling range that holds those that survive. See [Navigation](./navigation.md#saved-framings).
+`navigation.frame` and each framing's `frame` store the views a framing showed, as panel ids, and not a node. On load, the camera frames the smallest node or sibling range that holds the ones that still exist. See [Navigation](./navigation.md#saved-framings).
 
-A small example:
+Here's a small document:
 
 ```json
 {
@@ -231,8 +235,8 @@ A small example:
 }
 ```
 
-Documents that come from storage or from you are **sanitized** before use: unknown fields are ignored, views referenced twice or missing records are dropped, empty panels and splits are removed, and invalid weights are repaired. The core also exports `sanitize(doc)` and `emptyDocument()` if you want to do this yourself.
+Trellis sanitizes documents from storage or from you before using them. It ignores unknown fields and drops views that are referenced twice or have no record. It also removes empty panels and splits, and repairs invalid weights. To do this yourself, the core exports `sanitize(doc)` and `emptyDocument()`.
 
 ### Unknown view types
 
-If a document references a type that isn't registered, `onMissingType(type, id)` decides what happens: return `"placeholder"` (the default) to keep the view with an "Unavailable" placeholder, or `"drop"` to remove it.
+If a document references a type that isn't registered, `onMissingType(type, id)` decides what happens. Return `"placeholder"` (the default) to keep the view with an "Unavailable" placeholder, or `"drop"` to remove it.
