@@ -371,6 +371,8 @@ export interface WorkspaceProps {
   tokens?: Record<string, string>;
   keymap?: Keymap;
   panelMenu?: boolean;
+  /** Tab layout: `fill` makes tabs share the bar; `inset` (px) is the margin around them (0 = full-bleed). */
+  tabs?: { fill?: boolean; inset?: number };
   /** Where the built-in "Hide" animates to, e.g. your dock or tray button. */
   hideToward?(panelId: string): Element | { x: number; y: number; w: number; h: number } | null | undefined;
   label?: string;
@@ -468,6 +470,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       tokens: p.tokens,
       keymap: p.keymap,
       panelMenu: p.panelMenu,
+      tabs: p.tabs,
       label: p.label,
       document: p.document,
       defaultLayout:
@@ -519,6 +522,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       keymap: props.keymap,
       panelMenu: props.panelMenu,
       label: props.label,
+      tabs: props.tabs,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [

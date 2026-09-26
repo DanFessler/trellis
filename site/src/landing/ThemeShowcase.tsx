@@ -183,16 +183,37 @@ export function ThemeShowcase() {
               label="Theming demo workspace"
               navigation="focus"
             >
-              <ViewType id="explorer" title="Explorer" singleton allow={{ stage: false }}>
+              <ViewType
+                id="explorer"
+                title="Explorer"
+                singleton
+                allow={{ stage: false }}
+                minSize={{ width: 140, height: 120 }}
+              >
                 <Explorer />
               </ViewType>
-              <ViewType id="file" title={(v) => String(v.params.name)} placement="stage">
+              <ViewType
+                id="file"
+                title={(v) => String(v.params.name)}
+                placement="stage"
+                minSize={{ width: 300, height: 160 }}
+              >
                 <CssView lines={changed} />
               </ViewType>
-              <ViewType id="terminal" title="Terminal" allow={{ stage: false }}>
+              <ViewType
+                id="terminal"
+                title="Terminal"
+                allow={{ stage: false }}
+                minSize={{ width: 300, height: 90 }}
+              >
                 <Terminal />
               </ViewType>
-              <ViewType id="outline" title="Outline" allow={{ stage: false }}>
+              <ViewType
+                id="outline"
+                title="Outline"
+                allow={{ stage: false }}
+                minSize={{ width: 140, height: 120 }}
+              >
                 <ul className="ts-tree">
                   <li style={{ paddingLeft: 10 }}>.trellis</li>
                   <li style={{ paddingLeft: 24 }}>--trellis-accent</li>

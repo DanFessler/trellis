@@ -231,7 +231,14 @@ const ws = createWorkspace(document.getElementById("app")!, {
   navigation: "free",
   persist: { key: "trellis-ops-dashboard", version: 3 },
   types: {
-    kpis: { title: "Overview", icon: ICONS.kpis, placement: "stage", closable: false, mount: kpis },
+    kpis: {
+      title: "Overview",
+      minSize: { width: 360, height: 140 },
+      icon: ICONS.kpis,
+      placement: "stage",
+      closable: false,
+      mount: kpis,
+    },
     chart: {
       title: (v) => capitalize(String(v.params.metric ?? "requests")),
       icon: ICONS.chart,
@@ -248,10 +255,22 @@ const ws = createWorkspace(document.getElementById("app")!, {
         },
       ],
     },
-    log: { title: "Events", icon: ICONS.log, mount: log },
-    regions: { title: "Regions", icon: ICONS.table, singleton: true, mount: regions },
-    notes: { title: "Notes", icon: ICONS.notes, singleton: true, mount: notes },
-    runbook: { title: "Runbook", icon: ICONS.docs, iframe: runbook },
+    log: { title: "Events", minSize: { width: 240, height: 160 }, icon: ICONS.log, mount: log },
+    regions: {
+      title: "Regions",
+      minSize: { width: 280, height: 160 },
+      icon: ICONS.table,
+      singleton: true,
+      mount: regions,
+    },
+    notes: {
+      title: "Notes",
+      minSize: { width: 200, height: 120 },
+      icon: ICONS.notes,
+      singleton: true,
+      mount: notes,
+    },
+    runbook: { title: "Runbook", minSize: { width: 260, height: 180 }, icon: ICONS.docs, iframe: runbook },
   },
   defaultLayout: L.row(
     [

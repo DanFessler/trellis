@@ -119,7 +119,7 @@ function specFrom(el: Element): LayoutSpec | null {
 const ElementBase = (typeof HTMLElement === "undefined" ? class {} : HTMLElement) as typeof HTMLElement;
 
 export class TrellisWorkspaceElement extends ElementBase {
-  static observedAttributes = ["theme", "floating", "navigation", "motion", "panel-menu"];
+  static observedAttributes = ["theme", "floating", "navigation", "motion", "panel-menu", "tab-fill", "tab-inset"];
   private handle: WorkspaceHandle | null = null;
   private pending = false;
   private _types: ViewTypes = {};
@@ -202,6 +202,14 @@ export class TrellisWorkspaceElement extends ElementBase {
         : {}),
       ...(this.hasAttribute("motion") ? { motion: this.attr("motion") } : {}),
       ...(this.hasAttribute("panel-menu") ? { panelMenu: bool(this, "panel-menu") } : {}),
+      ...(this.hasAttribute("tab-fill") || this.hasAttribute("tab-inset")
+        ? {
+            tabs: {
+              fill: bool(this, "tab-fill") ?? false,
+              ...(this.hasAttribute("tab-inset") ? { inset: Number(this.getAttribute("tab-inset")) } : {}),
+            },
+          }
+        : {}),
       ...this._options,
     };
   }

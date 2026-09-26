@@ -229,17 +229,26 @@ function HeroWorkspace() {
           >
             <ViewType
               id="sketch"
+              minSize={{ width: 320, height: 220 }}
               title={(v) => String(v.params.name ?? "Sketch")}
               icon={ICONS.sketch}
               placement="stage"
               allow={{ side: false }}
               render={() => <Sketch />}
             />
-            <ViewType id="code" title="Sprout.tsx" icon={ICONS.code} placement="stage" singleton>
+            <ViewType
+              id="code"
+              title="Sprout.tsx"
+              icon={ICONS.code}
+              placement="stage"
+              singleton
+              minSize={{ width: 300, height: 200 }}
+            >
               <CodeView />
             </ViewType>
             <ViewType
               id="layers"
+              minSize={{ width: 150, height: 140 }}
               title="Layers"
               icon={ICONS.layers}
               singleton
@@ -248,11 +257,19 @@ function HeroWorkspace() {
             >
               <Layers />
             </ViewType>
-            <ViewType id="color" title="Color" icon={ICONS.color} singleton allow={{ stage: false }}>
+            <ViewType
+              id="color"
+              title="Color"
+              icon={ICONS.color}
+              singleton
+              allow={{ stage: false }}
+              minSize={{ width: 150, height: 140 }}
+            >
               <ColorPicker />
             </ViewType>
             <ViewType
               id="brush"
+              minSize={{ width: 180, height: 90 }}
               title="Brush"
               icon={ICONS.brush}
               singleton
@@ -263,6 +280,7 @@ function HeroWorkspace() {
             </ViewType>
             <ViewType
               id="inspector"
+              minSize={{ width: 200, height: 180 }}
               title="Inspector"
               icon={ICONS.inspect}
               singleton
@@ -270,7 +288,14 @@ function HeroWorkspace() {
             >
               <Inspector />
             </ViewType>
-            <ViewType id="preview" title="Preview" icon={ICONS.preview} singleton iframe={PREVIEW_URL} />
+            <ViewType
+              id="preview"
+              title="Preview"
+              icon={ICONS.preview}
+              singleton
+              iframe={PREVIEW_URL}
+              minSize={{ width: 200, height: 160 }}
+            />
           </Workspace>
         </div>
       </div>

@@ -178,6 +178,10 @@ export interface WorkspaceOptions {
   document?: LayoutDocument;
   /** Save to and restore from localStorage. */
   persist?: { key: string; version?: string | number };
+  /** Tab layout. `fill`: tabs share the bar's width (a lone tab becomes a full-width header).
+   * `inset`: margin in px around the tab row; 0 makes tabs full-bleed with the panel. Defaults:
+   * `{ fill: false, inset: 4 }`. Also available as the `--trellis-tab-inset` token. */
+  tabs?: { fill?: boolean; inset?: number };
   /** Built-in panel menu items. Default true. */
   panelMenu?: boolean;
   /** Where the built-in "Hide" animates to, e.g. your dock or tray button. */

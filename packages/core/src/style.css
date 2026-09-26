@@ -9,6 +9,7 @@
   --trellis-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --trellis-font-size: 12.5px;
   --trellis-tab-max-width: 220px;
+  --trellis-tab-inset: 4px;
 
   /* Colors: light */
   --trellis-bg: #dfe0e4;
@@ -237,6 +238,8 @@
 }
 
 /* ------------------------------------------------------------------ tab bar */
+/* Tab layout tokens: --trellis-tab-inset is the margin around the tab row (0 = full-bleed tabs);
+ * data-tab-fill on the root makes tabs share the bar's width. Defaults keep compact inset tabs. */
 :where(.trellis [data-trellis-part="tabbar"]) {
   position: absolute;
   inset: 0 0 auto 0;
@@ -244,7 +247,7 @@
   display: flex;
   align-items: stretch;
   gap: 2px;
-  padding: 0 4px 0 4px;
+  padding: 0 calc(var(--trellis-tab-inset) / 2) 0 0;
   background: var(--trellis-tabbar);
   border-radius: var(--trellis-radius) var(--trellis-radius) 0 0;
   box-shadow: inset 0 -1px 0 var(--trellis-border);
@@ -260,7 +263,7 @@
   gap: 2px;
   min-width: 0;
   flex: 1 1 auto;
-  padding-top: 4px;
+  padding: var(--trellis-tab-inset) var(--trellis-tab-inset) 0;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -287,48 +290,91 @@
     background-color 120ms,
     color 120ms;
 }
-:where(.trellis [data-trellis-part="tab"][data-dragging]) {
-  z-index: 1;
-  transition: none !important;
-  background: var(--trellis-tab-active);
-  color: var(--trellis-text);
-  box-shadow:
-    0 0 0 1px var(--trellis-border),
-    0 4px 12px -4px rgba(0, 0, 0, 0.25);
-}
 :where(.trellis [data-trellis-part="tab"]:hover) {
   background: var(--trellis-tab-hover);
   color: var(--trellis-text);
 }
+/* The selected tab joins the content below it: same fill, flared bottom corners, and it covers
+ * the bar's bottom border. */
 :where(.trellis [data-trellis-part="tab"][data-selected]) {
+  z-index: 1;
   background: var(--trellis-tab-active);
   color: var(--trellis-text);
-  box-shadow:
-    inset 1px 0 0 var(--trellis-border),
-    inset -1px 0 0 var(--trellis-border),
-    inset 0 1px 0 var(--trellis-border);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--trellis-text) 7%, transparent);
 }
+:where(.trellis [data-trellis-part="tab"][data-selected])::before,
 :where(.trellis [data-trellis-part="tab"][data-selected])::after {
   content: "";
   position: absolute;
-  left: 1px;
-  right: 1px;
-  bottom: -1px;
-  height: 2px;
-  background: var(--trellis-tab-active);
+  bottom: 0;
+  width: var(--trellis-tab-radius);
+  height: var(--trellis-tab-radius);
+  pointer-events: none;
 }
-:where(.trellis [data-trellis-part="panel"][data-focused] [data-trellis-part="tab"][data-selected])::before {
-  content: "";
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  top: 0;
-  height: 2px;
-  border-radius: 0 0 2px 2px;
-  background: var(--trellis-accent);
+:where(.trellis [data-trellis-part="tab"][data-selected])::before {
+  right: 100%;
+  background: radial-gradient(
+    circle at 0 0,
+    transparent var(--trellis-tab-radius),
+    var(--trellis-tab-active) calc(var(--trellis-tab-radius) + 0.5px)
+  );
+}
+:where(.trellis [data-trellis-part="tab"][data-selected])::after {
+  left: 100%;
+  background: radial-gradient(
+    circle at 100% 0,
+    transparent var(--trellis-tab-radius),
+    var(--trellis-tab-active) calc(var(--trellis-tab-radius) + 0.5px)
+  );
+}
+/* The focused panel's selected tab carries the accent along its top. */
+:where(.trellis [data-trellis-part="panel"][data-focused] [data-trellis-part="tab"][data-selected]),
+:where(.trellis [data-trellis-part="tabbar"][data-focused] [data-trellis-part="tab"][data-selected]) {
+  background:
+    linear-gradient(var(--trellis-accent), var(--trellis-accent)) center top / calc(100% - 16px) 2px no-repeat,
+    var(--trellis-tab-active);
 }
 :where(.trellis [data-trellis-part="tab"]:focus-visible) {
   box-shadow: inset var(--trellis-focus-ring);
+}
+/* Reordering within the strip: neighbours slide, the dragged tab rides on top (prototype). */
+:where(.trellis [data-trellis-part="tab"][data-sorting]) {
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+:where(.trellis [data-trellis-part="tab"][data-dragging]) {
+  z-index: 2;
+  transition: none;
+  background: var(--trellis-tab-active);
+  color: var(--trellis-text);
+  cursor: grabbing;
+}
+/* Fill: tabs share the bar's width; a lone tab becomes a full-width header. */
+:where(.trellis[data-tab-fill] [data-trellis-part="tab"]) {
+  flex: 1 1 0;
+  max-width: none;
+}
+/* A lone filled tab reads as a header, not a tab: one continuous hairline under the whole bar. */
+:where(.trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single]) {
+  background: var(--trellis-tab-active);
+}
+:where(.trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single] [data-trellis-part="tab"][data-selected]) {
+  background: transparent;
+  box-shadow: none;
+}
+:where(.trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single] [data-trellis-part="tab"][data-selected])::before,
+:where(.trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single] [data-trellis-part="tab"][data-selected])::after {
+  display: none;
+}
+:where(.trellis[data-tab-fill] [data-trellis-part="tabbar"][data-single][data-focused] [data-trellis-part="tab"][data-selected]) {
+  background: linear-gradient(var(--trellis-accent), var(--trellis-accent)) center top / calc(100% - 16px) 2px no-repeat;
+}
+/* Full-bleed (no inset): tabs meet the panel's edges, so no flares and square inner corners. */
+:where(.trellis[data-tab-bleed] [data-trellis-part="tab"]) {
+  border-radius: 0;
+}
+:where(.trellis[data-tab-bleed] [data-trellis-part="tab"][data-selected])::before,
+:where(.trellis[data-tab-bleed] [data-trellis-part="tab"][data-selected])::after {
+  display: none;
 }
 :where(.trellis [data-trellis-part="tab-icon"]) {
   display: inline-grid;

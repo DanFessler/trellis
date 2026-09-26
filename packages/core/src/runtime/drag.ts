@@ -547,6 +547,28 @@ export function createDragController(host: DragHost) {
   }
 
   // ---------------------------------------------------------------- previews
+  /** A seam slot grows from the seam's current position: the edge of the sibling after it (or
+   * before it, at the end), measured where that sibling is on screen now. */
+  function seamOrigin(d: DragSession, preview: Map<string, Entry>, slot: Rect): Rect {
+    const parentId = preview.get(DROP_SLOT)?.parent;
+    const parent = parentId ? preview.get(parentId)?.node : null;
+    const collapsedAtCenter =
+      parent?.kind === "split" && parent.axis === "y"
+        ? { ...slot, y: slot.y + slot.h / 2, h: 0 }
+        : { ...slot, x: slot.x + slot.w / 2, w: 0 };
+    if (!parent || parent.kind !== "split") return collapsedAtCenter;
+    const index = parent.children.findIndex((c) => c.id === DROP_SLOT);
+    const after = parent.children[index + 1];
+    const before = parent.children[index - 1];
+    const neighbour = after ? currentWorld(d, after.id) : before ? currentWorld(d, before.id) : null;
+    if (!neighbour) return collapsedAtCenter;
+    if (parent.axis === "x") {
+      const x = after ? neighbour.x : neighbour.x + neighbour.w;
+      return { ...slot, x, w: 0 };
+    }
+    const y = after ? neighbour.y : neighbour.y + neighbour.h;
+    return { ...slot, y, h: 0 };
+  }
   function restingLayout(d: DragSession): Map<string, Rect> {
     const rects = new Map(d.base);
     for (const [id, entry] of d.dropBase) rects.set(id, entry.rect);
@@ -570,6 +592,22 @@ export function createDragController(host: DragHost) {
     return rect;
   }
   const worldOf = (id: string) => host.fromScreenRect(host.lastRects.get(id));
+  /** Where a node is on screen right now (world units): its own rect, or the union of its panels. */
+  function currentWorld(d: DragSession, id: string): Rect | null {
+    const own = worldOf(id);
+    if (own) return own;
+    const node = findNode(d.pdoc.root, id);
+    const rects = node ? leafIds(node).map(worldOf).filter((r): r is Rect => !!r) : [];
+    if (!rects.length) return d.dropBase.get(id)?.rect ?? null;
+    const x = Math.min(...rects.map((r) => r.x));
+    const y = Math.min(...rects.map((r) => r.y));
+    return {
+      x,
+      y,
+      w: Math.max(...rects.map((r) => r.x + r.w)) - x,
+      h: Math.max(...rects.map((r) => r.y + r.h)) - y,
+    };
+  }
 
   function apply(d: DragSession, next: DropTarget | null) {
     if (sameTarget(next, d.target)) return;
@@ -605,22 +643,22 @@ export function createDragController(host: DragHost) {
       const placeholder: PanelNode = { kind: "panel", id: DROP_SLOT, views: [DROP_SLOT], selected: DROP_SLOT };
       const spec = next.spec;
       if (spec.seam || !d.dropBase.get(spec.id)) {
-        const preview = layoutRects(applyDockTarget(d.pdoc.root, spec, placeholder, "__trellis-seam-preview"));
+        const previewRoot = applyDockTarget(d.pdoc.root, spec, placeholder, "__trellis-seam-preview");
+        const preview = layoutRects(previewRoot);
         for (const [id, entry] of preview) d.layoutTargets.set(id, entry.rect);
         const slot = preview.get(DROP_SLOT)?.rect;
-        if (slot)
-          setSlotFrom(
-            spec.seam?.axis === "y"
-              ? { ...slot, y: slot.y + slot.h / 2, h: 0 }
-              : { ...slot, x: slot.x + slot.w / 2, w: 0 },
-          );
+        if (slot) setSlotFrom(seamOrigin(d, preview, slot));
       } else {
         const r = dropRects(d.dropBase.get(spec.id)!.rect, spec.edge);
         d.layoutTargets.set(spec.id, r.remaining);
         d.layoutTargets.set(DROP_SLOT, r.slot);
-        setSlotFrom(r.collapsed);
+        // Grow from the target's edge where it is now, even if the target is still moving.
+        const current = currentWorld(d, spec.id);
+        setSlotFrom(current ? dropRects(current, spec.edge).collapsed : r.collapsed);
       }
-    } else if (d.target && d.target.kind !== "float") {
+    } else if (!next && d.target && d.target.kind !== "float") {
+      // Leaving a target for nowhere collapses its slot; moving onto the desktop (a float) just
+      // lets it fade where it is, since a desktop drop reserves no slot (prototype).
       const slot = previous.get(DROP_SLOT);
       const world = slot ? host.fromScreenRect(slot) : null;
       if (world) {

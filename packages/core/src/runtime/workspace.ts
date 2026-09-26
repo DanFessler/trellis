@@ -232,6 +232,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   let appliedTokens = new Set<string>();
   function applyTheme() {
     setAttr(root, "data-theme", options.theme ?? "system");
+    const tabs = options.tabs ?? {};
+    setAttr(root, "data-tab-fill", tabs.fill ? "" : null);
+    setAttr(root, "data-tab-bleed", tabs.inset === 0 ? "" : null);
+    if (tabs.inset !== undefined) root.style.setProperty("--trellis-tab-inset", `${tabs.inset}px`);
+    else if (!options.tokens?.["--trellis-tab-inset"]) root.style.removeProperty("--trellis-tab-inset");
     setAttr(root, "aria-label", options.label ?? "Workspace");
     const tokens = options.tokens ?? {};
     for (const key of appliedTokens) if (!(key in tokens)) root.style.removeProperty(key);
@@ -662,6 +667,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       }
       setAttr(dom.el, "data-focused", focusedPanel === panelId ? "" : null);
       setAttr(dom.el, "data-single", panel.views.length === 1 ? "" : null);
+      // Mirrored on the bar, which may be detached from the panel (overlay bars).
+      setAttr(dom.tabbar, "data-focused", focusedPanel === panelId ? "" : null);
+      setAttr(dom.tabbar, "data-single", panel.views.length === 1 ? "" : null);
       const iconSource = records.get(panel.selected)?.icon.innerHTML ?? "";
       const icon = iconSource || `<b>${escapeHtml(titleOf(panel.selected).slice(0, 1).toUpperCase())}</b>`;
       if (dom.frameIcon.innerHTML !== icon) dom.frameIcon.innerHTML = icon;
@@ -2239,7 +2247,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     update(patch) {
       const typesChanged = patch.types && patch.types !== options.types;
       options = { ...options, ...patch };
-      if ("theme" in patch || "tokens" in patch || "navigation" in patch || "label" in patch) applyTheme();
+      if ("theme" in patch || "tokens" in patch || "navigation" in patch || "label" in patch || "tabs" in patch)
+        applyTheme();
       if ("navigation" in patch && !navigationMode()) nav.focus(null, false);
       if (typesChanged) {
         for (const record of records.values()) mountContent(record);
