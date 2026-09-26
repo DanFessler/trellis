@@ -70,7 +70,7 @@ export function Problems() {
                     .map((d, i) => (
                       <button
                         key={i}
-                        className="tree-row problem"
+                        className="tree-row problem-row"
                         onClick={() => openFile(ws, d.path, { line: d.line, col: d.col, length: d.len })}
                       >
                         <SeverityIcon severity={d.severity} size={14} />

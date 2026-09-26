@@ -180,7 +180,7 @@ export function createWorkspace(
   let focusedPanel: string | null = null;
   let focusedView: string | null = null;
   let lastStagePanel: string | null = null;
-  const badges = new Map<string, string | number | null>();
+  const badges = new Map<string, string | number | boolean | null>();
   const panelDoms = new Map<string, PanelDom>();
   const records = new Map<string, SurfaceRecord>();
   const dividerEls = new Map<string, HTMLElement>();
@@ -344,7 +344,8 @@ export function createWorkspace(
     params: (id: string) => doc.views[id]?.params ?? {},
     setTitle: (id: string, title: string) => setTitle(id, title),
     setParams: (id: string, patch: object) => setParams(id, patch),
-    setBadge: (id: string, badge: string | number | null) => {
+    element: (id: string) => records.get(id)!.content,
+    setBadge: (id: string, badge: string | number | boolean | null) => {
       badges.set(id, badge);
       records.get(id)?.controller.update({ badge });
       updateTabs();
@@ -602,9 +603,13 @@ export function createWorkspace(
         const title = titleOf(viewId);
         if (tab.title.textContent !== title) tab.title.textContent = title;
         const badge = badges.get(viewId);
-        const text = badge === null || badge === undefined || badge === "" ? "" : String(badge);
+        const dot = badge === true;
+        const text = badge === null || badge === undefined || badge === "" || typeof badge === "boolean" ? "" : String(badge);
         if (tab.badge.textContent !== text) tab.badge.textContent = text;
-        setAttr(tab.badge, "hidden", text ? null : "");
+        setAttr(tab.badge, "hidden", text || dot ? null : "");
+        setAttr(tab.badge, "data-dot", dot ? "" : null);
+        setAttr(tab.el, "data-badge", dot ? "dot" : text ? "" : null);
+        setAttr(tab.el, "data-type", doc.views[viewId]?.type ?? null);
         setAttr(tab.el, "aria-selected", String(selected));
         setAttr(tab.el, "tabindex", selected ? "0" : "-1");
         if (selected && !tab.el.hasAttribute("data-selected")) revealTab(dom.tablist, tab.el);
@@ -1662,11 +1667,13 @@ export function createWorkspace(
       schedule();
     }
   }
-  function toggleFrame(id: string) {
+  function toggleFrame(id: string): boolean {
+    if (!navigationMode()) return false;
     const nodeId = findNode(doc.root, id) ? id : (panelOfView(doc, id)?.id ?? null);
-    if (!nodeId || !findNode(doc.root, nodeId)) return;
+    if (!nodeId || !findNode(doc.root, nodeId)) return false;
     if (framed === nodeId) back();
     else frameTo(nodeId === doc.root?.id ? null : nodeId);
+    return true;
   }
   function back() {
     if (historyIndex > 0) {
@@ -2372,7 +2379,7 @@ export function createWorkspace(
       frame: (target) => frameTo(nodeForFrame(target)),
       toggle: (id) => {
         const target = id ?? focusedPanel;
-        if (target) toggleFrame(target);
+        return target ? toggleFrame(target) : false;
       },
       back,
       forward,

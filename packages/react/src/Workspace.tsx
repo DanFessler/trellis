@@ -132,7 +132,8 @@ export function useView<P extends object = Params>(): ViewApi<P> {
         workspace: view.workspace,
         setTitle: (title: string) => view.setTitle(title),
         setParams: (patch: Partial<P>) => view.setParams(patch),
-        setBadge: (badge: string | number | null) => view.setBadge(badge),
+        setBadge: (badge: string | number | boolean | null) => view.setBadge(badge),
+        element: view.element,
         focus: () => view.focus(),
         close: (options?: { force?: boolean }) => view.close(options),
         hide: () => view.hide(),
@@ -156,7 +157,7 @@ export function useViewTitle(title: string | null | undefined) {
   }, [view, title]);
 }
 /** Show a badge on the view's tab. */
-export function useViewBadge(badge: string | number | null | undefined) {
+export function useViewBadge(badge: string | number | boolean | null | undefined) {
   const view = useContext(ViewContext);
   useEffect(() => {
     if (!view) return;

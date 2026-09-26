@@ -57,7 +57,7 @@ export interface ViewState {
   /** Visual scale applied below `minSize` (1 otherwise). */
   scale: number;
   title: string;
-  badge: string | number | null;
+  badge: string | number | boolean | null;
   panelId: string;
   params: Params;
 }
@@ -84,11 +84,14 @@ export interface ViewHandle<P extends object = Params> {
   readonly size: { width: number; height: number };
   readonly scale: number;
   readonly title: string;
-  readonly badge: string | number | null;
+  readonly badge: string | number | boolean | null;
   readonly workspace: WorkspaceHandle;
+  /** The content container (for vanilla content or reaching an iframe). Never moves in the DOM. */
+  readonly element: HTMLElement;
   setTitle(title: string): void;
   setParams(patch: Partial<P>): void;
-  setBadge(badge: string | number | null): void;
+  /** A count or label shown in the tab; `true` shows a dot (e.g. unsaved changes); null clears it. */
+  setBadge(badge: string | number | boolean | null): void;
   focus(): void;
   close(options?: { force?: boolean }): Promise<boolean>;
   hide(): void;
@@ -210,7 +213,8 @@ export interface WorkspaceHandle {
   setParams(viewId: string, patch: object): void;
   navigation: {
     frame(target: string | string[] | "all" | "stage"): void;
-    toggle(panelOrViewId?: string): void;
+    /** Maximize a docked panel, or restore it if it is maximized. Returns false for floating or hidden panels. */
+    toggle(panelOrViewId?: string): boolean;
     back(): void;
     forward(): void;
     overview(): void;

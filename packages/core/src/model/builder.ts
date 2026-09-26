@@ -82,9 +82,30 @@ export function createDocument(
   options: { floating?: FloatSpec[]; version?: string | number } = {},
 ): LayoutDocument {
   const views: LayoutDocument["views"] = {};
+  // Views without an explicit id get deterministic ones ("editor-1", "editor-2"), so the same
+  // layout yields the same ids every time and reset() can keep their content mounted.
+  const explicit = new Set<string>();
+  const collect = (spec: LayoutSpec | undefined) => {
+    if (!spec) return;
+    if (spec.kind === "view") spec.id && explicit.add(spec.id);
+    else if (spec.kind === "panel") spec.views.forEach(collect);
+    else if (spec.kind === "split") spec.children.forEach(collect);
+    else collect(spec.child);
+  };
+  collect(root ?? undefined);
+  for (const f of options.floating ?? []) collect(f.panel);
+  const counters = new Map<string, number>();
+  const nextId = (type: string) => {
+    let id: string;
+    do {
+      const n = (counters.get(type) ?? 0) + 1;
+      counters.set(type, n);
+      id = `${type}-${n}`;
+    } while (explicit.has(id) || views[id]);
+    return id;
+  };
   const addView = (spec: ViewSpec) => {
-    let id = spec.id ?? uid(spec.type);
-    while (views[id] && !spec.id) id = uid(spec.type);
+    const id = spec.id ?? nextId(spec.type);
     if (views[id]) throw Error(`Trellis: duplicate view id "${id}"`);
     views[id] = {
       type: spec.type,

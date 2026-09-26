@@ -61,6 +61,12 @@ describe("builder", () => {
     expect(() => createDocument(L.row([L.view("x", { id: "a" }), L.view("x", { id: "a" })]))).toThrow(/duplicate/);
     expect(() => createDocument(L.row([L.stage(), L.stage()]))).toThrow(/one stage/);
   });
+  it("generates deterministic ids that avoid explicit ones", () => {
+    const spec = L.row([L.view("x"), L.view("x", { id: "x-2" }), L.view("x"), L.view("y")]);
+    const a = viewIds(createDocument(spec));
+    expect(a).toEqual(["x-1", "x-2", "x-3", "y-1"]);
+    expect(viewIds(createDocument(spec))).toEqual(a);
+  });
   it("generates unique ids when omitted", () => {
     const doc = createDocument(L.row([L.view("x"), L.view("x"), L.view("x")]));
     expect(new Set(viewIds(doc)).size).toBe(3);

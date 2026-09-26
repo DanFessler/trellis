@@ -285,6 +285,17 @@ export function Editor() {
       } else insert("\n" + indent);
       return;
     }
+    if (e.key === "}" && !mod && s === end) {
+      // Typing a closing brace on a whitespace-only line outdents it one step.
+      const from = lineStart(value, s);
+      const lead = value.slice(from, s);
+      if (lead.length >= 2 && /^ +$/.test(lead)) {
+        e.preventDefault();
+        ta.setSelectionRange(s - 2, s);
+        insert("}");
+        return;
+      }
+    }
     if (e.key === "Backspace" && !mod && s === end && s > 0) {
       // Delete a whole indent step when the caret sits in leading whitespace.
       const from = lineStart(value, s);
@@ -418,8 +429,8 @@ export function EditorAccessory() {
         Ln {cursor?.line ?? 1}, Col {cursor?.col ?? 1}
         {cursor?.selected ? ` (${cursor.selected} selected)` : ""}
       </span>
-      <span className="accessory-sep" />
-      <span>{LANGUAGE_NAMES[languageOf(view.params.path)]}</span>
+      <span className="accessory-sep collapsible" />
+      <span className="collapsible">{LANGUAGE_NAMES[languageOf(view.params.path)]}</span>
     </span>
   );
 }

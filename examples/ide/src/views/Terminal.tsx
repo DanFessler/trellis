@@ -57,17 +57,34 @@ function Ls({ names }: { names: string[] }) {
 export function Terminal() {
   const ws = useWorkspace();
   const view = useView();
-  const [entries, setEntries] = useState<Entry[]>(() => [
-    {
-      id: nextId++,
-      kind: "out",
-      node: (
-        <span className="muted">
-          Pulse dev shell · type <span className="accent">help</span> for commands
-        </span>
+  const [entries, setEntries] = useState<Entry[]>(() => {
+    const out = (node: ReactNode): Entry => ({ id: nextId++, kind: "out", node });
+    return [
+      { id: nextId++, kind: "in", node: "npm run dev" },
+      out(""),
+      out(
+        <span>
+          {"  "}
+          <span className="ok">VITE v7.3.0</span> <span className="muted"> ready in </span>212 ms
+        </span>,
       ),
-    },
-  ]);
+      out(""),
+      out(
+        <span>
+          {"  "}
+          <span className="ok">➜</span> <span className="muted"> Local:   </span>
+          <span className="accent">http://localhost:5173/</span>
+        </span>,
+      ),
+      out(
+        <span className="muted">
+          {"  "}
+          <span className="ok">➜</span> Preview is live in the panel on the right · type <span className="accent">help</span> for commands
+        </span>,
+      ),
+      out(""),
+    ];
+  });
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
@@ -78,9 +95,12 @@ export function Terminal() {
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
   }, [entries, busy]);
+  // Keep the prompt focused when the view gains focus or a streamed command finishes.
   useEffect(() => {
-    if (view.focused && document.activeElement === document.body) inputRef.current?.focus({ preventScroll: true });
-  }, [view.focused]);
+    if (!view.focused || busy) return;
+    const active = document.activeElement;
+    if (!active || active === document.body || scroller.current?.contains(active)) inputRef.current?.focus({ preventScroll: true });
+  }, [view.focused, busy]);
 
   const print = (...nodes: ReactNode[]) =>
     setEntries((prev) => [...prev, ...nodes.map((node) => ({ id: nextId++, kind: "out" as const, node }))]);

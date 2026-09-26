@@ -17,6 +17,10 @@ export class Menu {
     this.close(false);
     this.restoreFocus = document.activeElement as HTMLElement | null;
     const el = h("div", { class: "trellis-menu", role: "menu", "data-trellis-part": "menu" });
+    // Drop leading, trailing and repeated separators.
+    entries = entries.filter(
+      (e, i, all) => e !== "separator" || (i > 0 && i < all.length - 1 && all[i - 1] !== "separator"),
+    );
     for (const entry of entries) {
       if (entry === "separator") {
         el.append(h("div", { class: "trellis-menu-separator", role: "separator" }));

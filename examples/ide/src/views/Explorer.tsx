@@ -65,7 +65,7 @@ export function Explorer() {
               <span className="tree-chevron">{open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}</span>
               <span className="tree-folder">{open ? <FolderOpenIcon size={14} /> : <FolderIcon size={14} />}</span>
               <span className={"tree-name" + (hasProblem ? " has-problem" : "")}>{node.name}</span>
-              {hasProblem && <span className="tree-dot problem" />}
+              {hasProblem && <span className="tree-dot folder-problem" />}
             </button>
             {open && render(node.children, depth + 1)}
           </div>

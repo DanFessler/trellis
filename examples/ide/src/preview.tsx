@@ -119,7 +119,7 @@ export function PreviewAccessory() {
   return (
     <span className="accessory-text">
       <span className="live-dot" />
-      <span title="Time since this iframe last loaded. Move the panel around — it keeps counting.">
+      <span className="collapsible" title="Time since this iframe last loaded. Move the panel around — it keeps counting.">
         {bootedAt ? `live · up ${uptime(Date.now() - bootedAt)}` : "loading…"}
       </span>
       <button

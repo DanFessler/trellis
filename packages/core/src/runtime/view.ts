@@ -12,7 +12,8 @@ export interface ViewHost {
   params(id: string): Params;
   setTitle(id: string, title: string): void;
   setParams(id: string, patch: object): void;
-  setBadge(id: string, badge: string | number | null): void;
+  setBadge(id: string, badge: string | number | boolean | null): void;
+  element(id: string): HTMLElement;
   focus(id: string): void;
   close(id: string, options?: { force?: boolean }): Promise<boolean>;
   hide(id: string): void;
@@ -74,7 +75,10 @@ export class ViewController implements ViewHandle {
   setParams(patch: object) {
     this.host.setParams(this.id, patch);
   }
-  setBadge(badge: string | number | null) {
+  get element() {
+    return this.host.element(this.id);
+  }
+  setBadge(badge: string | number | boolean | null) {
     this.host.setBadge(this.id, badge);
   }
   focus() {

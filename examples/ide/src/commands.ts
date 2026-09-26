@@ -11,14 +11,14 @@ export interface Command {
   run(ws: WorkspaceHandle): void;
 }
 
-export const PANEL_TYPES = [
+export const PANEL_TYPES: { type: string; title: string; shortcut?: string }[] = [
   { type: "explorer", title: "Explorer", shortcut: `${mod}B` },
   { type: "search", title: "Search", shortcut: `${mod}${shift}F` },
   { type: "terminal", title: "Terminal", shortcut: `${mod}J` },
   { type: "problems", title: "Problems", shortcut: `${mod}${shift}M` },
   { type: "preview", title: "Preview" },
   { type: "outline", title: "Outline" },
-] as const;
+];
 
 /**
  * Toggle a tool panel the way editors do: open it if missing, restore it if hidden,
@@ -121,7 +121,12 @@ export function buildCommands(): Command[] {
       title: "New Terminal",
       category: "Terminal",
       keywords: "shell console",
-      run: (ws) => ws.open("terminal", { placement: "tab", focus: true }),
+      run: (ws) => {
+        // Open next to the existing terminal, as another tab in its panel.
+        const snap = ws.getSnapshot();
+        const existing = snap.views.find((v) => v.type === "terminal" && !snap.hidden.some((h) => h.panelId === v.panelId));
+        ws.open("terminal", { placement: existing ? { into: existing.panelId } : undefined, focus: true });
+      },
     },
     {
       id: "view.maximize",

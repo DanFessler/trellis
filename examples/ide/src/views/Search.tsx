@@ -116,7 +116,7 @@ export function Search() {
               </button>
               {open &&
                 r.matches.map((m, i) => {
-                  const start = Math.max(0, m.col - 24);
+                  const start = Math.max(0, m.col - 10);
                   const pre = m.text.slice(start, m.col).trimStart();
                   return (
                     <button

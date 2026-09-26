@@ -352,6 +352,27 @@
   line-height: 16px;
   text-align: center;
 }
+:where(.trellis [data-trellis-part="tab-badge"][data-dot]) {
+  min-width: 8px;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--trellis-text-muted);
+}
+:where(.trellis [data-trellis-part="tab"][data-selected] [data-trellis-part="tab-badge"][data-dot]) {
+  background: var(--trellis-text);
+}
+/* A dot (e.g. unsaved changes) sits where the close button is, and yields to it on hover. */
+:where(.trellis [data-trellis-part="tab"][data-badge="dot"]:not(:hover) [data-trellis-part="tab-close"]) {
+  display: none;
+}
+:where(.trellis [data-trellis-part="tab"][data-badge="dot"]:hover [data-trellis-part="tab-badge"]) {
+  display: none;
+}
+:where(.trellis [data-trellis-part="tab"][data-badge="dot"] [data-trellis-part="tab-badge"]) {
+  margin: 0 6px;
+}
 :where(.trellis [data-trellis-part="tab-close"], .trellis [data-trellis-part="panel-menu"]) {
   flex: none;
   display: inline-grid;
