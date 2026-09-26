@@ -52,7 +52,7 @@ export function DocumentView() {
   useViewTitle(doc.dirty ? `${doc.name} •` : doc.name);
   useCloseGuard(() => guardDocument(doc));
 
-  // Tool panels follow the most recently focused document.
+  // Tool panels follow the most recently focused document (see also the workspace "focus" event in App).
   useEffect(() => {
     if (view.focused || (view.selected && !documents.get(app.get().activeDoc))) app.set({ activeDoc: view.id });
   }, [view.focused, view.selected, view.id]);
@@ -97,7 +97,7 @@ function PaintCanvas({ doc, visible }: { doc: PaintDoc; visible: boolean }) {
     ctx.beginPath();
     ctx.rect(x, y, w, h);
     ctx.clip();
-    ctx.fillStyle = checkerPattern(ctx);
+    ctx.fillStyle = checkerPattern(ctx) ?? "#fff";
     ctx.fillRect(x, y, w, h);
     ctx.imageSmoothingEnabled = zoom < 2;
     ctx.imageSmoothingQuality = "high";

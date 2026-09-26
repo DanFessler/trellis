@@ -136,9 +136,9 @@ export const ArrowDownIcon = make(<path d="m6 9 6 6 6-6" />);
 export const ChevronRightIcon = make(<path d="m9 6 6 6-6 6" />);
 export const MergeIcon = make(
   <>
-    <path d="M8 3v5a4 4 0 0 0 4 4 4 4 0 0 1 4 4v5" />
-    <path d="M16 3v5a4 4 0 0 1-2 3.5" />
-    <path d="m5 18 3 3 3-3" transform="translate(5 0)" />
+    <rect x="4" y="3" width="16" height="6" rx="1.5" />
+    <path d="M12 9v7M8.5 12.5 12 16l3.5-3.5" />
+    <path d="M4 20h16" />
   </>,
 );
 export const UndoIcon = make(

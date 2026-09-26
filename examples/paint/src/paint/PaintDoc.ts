@@ -36,14 +36,14 @@ export interface HistoryEntry {
   redo(): void;
 }
 
-export interface DocParams {
+export type DocParams = {
   name?: string;
   width?: number;
   height?: number;
   background?: string; // "transparent" or a hex color
   sample?: string;
   cloneOf?: string;
-}
+};
 
 let uidCounter = 0;
 const uid = (p: string) => `${p}-${Date.now().toString(36)}-${(uidCounter++).toString(36)}`;

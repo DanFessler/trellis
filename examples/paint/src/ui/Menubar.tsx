@@ -14,6 +14,7 @@ export interface TopMenu {
 
 export function Menubar({ menus }: { menus: TopMenu[] }) {
   const [open, setOpen] = useState<number | null>(null);
+  const viaKeyboard = useRef(false);
   const bar = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (open === null) return;
@@ -47,11 +48,13 @@ export function Menubar({ menus }: { menus: TopMenu[] }) {
             onPointerDown={(e) => {
               if (e.button !== 0) return;
               e.preventDefault();
+              viaKeyboard.current = false;
               setOpen(open === i ? null : i);
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
                 e.preventDefault();
+                viaKeyboard.current = true;
                 setOpen(i);
               }
             }}
@@ -59,18 +62,18 @@ export function Menubar({ menus }: { menus: TopMenu[] }) {
           >
             {m.label}
           </button>
-          {open === i && <Dropdown items={m.items()} close={() => setOpen(null)} />}
+          {open === i && <Dropdown items={m.items()} close={() => setOpen(null)} autoFocus={viaKeyboard.current} />}
         </div>
       ))}
     </div>
   );
 }
 
-function Dropdown({ items, close }: { items: MenuDef[]; close(): void }) {
+function Dropdown({ items, close, autoFocus }: { items: MenuDef[]; close(): void; autoFocus: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    ref.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus({ preventScroll: true });
-  }, []);
+    if (autoFocus) ref.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus({ preventScroll: true });
+  }, [autoFocus]);
   return (
     <div
       className="dropdown"
