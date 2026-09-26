@@ -83,10 +83,18 @@ npm test             # unit tests (Vitest)
 npm run test:e2e     # browser tests (Playwright: Chromium and Firefox; WebKit in CI)
 npm run typecheck
 npm run build        # the three packages
-npm run build:all    # packages + website with examples
+npm run build:all    # packages + website with examples (site/dist)
+npm run verify:pack  # pack tarballs and build a fresh app against React 18 and 19
 ```
 
-Examples live in [`examples/`](examples): a painting program, an IDE, the desktop rebuilt from public primitives, and a framework-free dashboard. Run any of them with `npm run dev -w <name>`.
+Examples live in [`examples/`](examples):
+
+| Example | Shows | Run |
+| --- | --- | --- |
+| [`paint`](examples/paint) | An art program: documents on the stage, tool palettes, floating navigator, close guards, persistence | `npm run dev -w trellis-example-paint` |
+| [`ide`](examples/ide) | An editor with explorer, terminal, live-preview iframe, command palette and status bar | `npm run dev -w trellis-example-ide` |
+| [`desktop`](examples/desktop) | The desktop rebuilt from public primitives: stage floats, free zoom, dock, minimap | `npm run dev -w trellis-example-desktop` |
+| [`vanilla`](examples/vanilla) | A framework-free ops dashboard, plus a `<trellis-workspace>` page declared in HTML | `npm run dev -w trellis-example-vanilla` |
 
 ## License
 
