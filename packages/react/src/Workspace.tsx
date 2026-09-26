@@ -46,40 +46,80 @@ const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : us
 // ------------------------------------------------------------------ contexts
 const WorkspaceContext = createContext<WorkspaceHandle | null>(null);
 const ViewContext = createContext<ViewHandle | null>(null);
-
-/** The workspace's imperative handle. Available inside `<Workspace>` and in view content. */
-export function useWorkspace(): WorkspaceHandle {
-  const ws = useContext(WorkspaceContext);
-  if (!ws) throw Error("Trellis: useWorkspace() must be used inside <Workspace>");
-  return ws;
+interface ProviderValue {
+  ws: WorkspaceHandle | null;
+  set(ws: WorkspaceHandle | null): void;
 }
+const ProviderContext = createContext<ProviderValue | null>(null);
+
+/** Makes the hooks available to UI outside `<Workspace>` (app bars, menus, status bars).
+ * Wrap both the workspace and that UI. */
+export function WorkspaceProvider({ children }: { children?: ReactNode }) {
+  const [ws, set] = useState<WorkspaceHandle | null>(null);
+  const value = useMemo(() => ({ ws, set }), [ws]);
+  return <ProviderContext.Provider value={value}>{children}</ProviderContext.Provider>;
+}
+
 /** Like useWorkspace, but returns null outside a workspace or before it mounts. */
 export function useOptionalWorkspace(): WorkspaceHandle | null {
-  return useContext(WorkspaceContext);
+  const own = useContext(WorkspaceContext);
+  const provided = useContext(ProviderContext);
+  return own ?? provided?.ws ?? null;
+}
+/** The workspace's imperative handle. Available inside `<Workspace>`, in view content, and
+ * anywhere under a `<WorkspaceProvider>` once the workspace has mounted. */
+export function useWorkspace(): WorkspaceHandle {
+  const ws = useOptionalWorkspace();
+  if (!ws) throw Error("Trellis: useWorkspace() must be used inside <Workspace> or <WorkspaceProvider> after mount");
+  return ws;
 }
 
-/** Subscribe to workspace state (layout, focus, hidden panels, navigation). */
+const noop = () => () => {};
+let emptySnapshot: WorkspaceSnapshot | null = null;
+function getEmptySnapshot(): WorkspaceSnapshot {
+  return (emptySnapshot ??= {
+    document: { schema: 1, root: null, floating: [], hidden: [], views: {} },
+    focusedPanel: null,
+    focusedView: null,
+    views: [],
+    hidden: [],
+    framed: null,
+    canGoBack: false,
+    canGoForward: false,
+    framings: [],
+    dragging: false,
+  });
+}
+function useStore(): { subscribe: (fn: () => void) => () => void; get: () => WorkspaceSnapshot } {
+  const ws = useOptionalWorkspace();
+  const inProvider = !!useContext(ProviderContext);
+  if (!ws && !inProvider)
+    throw Error("Trellis: workspace state hooks must be used inside <Workspace> or <WorkspaceProvider>");
+  return ws ? { subscribe: ws.subscribe, get: ws.getSnapshot } : { subscribe: noop, get: getEmptySnapshot };
+}
+/** Subscribe to workspace state (layout, focus, hidden panels, navigation).
+ * Under a provider, returns an empty snapshot until the workspace mounts. */
 export function useWorkspaceState(): WorkspaceSnapshot {
-  const ws = useWorkspace();
-  return useSyncExternalStore(ws.subscribe, ws.getSnapshot, ws.getSnapshot);
+  const { subscribe, get } = useStore();
+  return useSyncExternalStore(subscribe, get, get);
 }
 /** Select part of the workspace state; re-renders only when the selection changes. */
 export function useWorkspaceSelector<T>(select: (s: WorkspaceSnapshot) => T, equal: (a: T, b: T) => boolean = Object.is): T {
-  const ws = useWorkspace();
+  const { subscribe, get: getSnapshot } = useStore();
   const last = useRef<{ value: T } | null>(null);
   const get = () => {
-    const next = select(ws.getSnapshot());
+    const next = select(getSnapshot());
     if (last.current && equal(last.current.value, next)) return last.current.value;
     last.current = { value: next };
     return next;
   };
-  return useSyncExternalStore(ws.subscribe, get, get);
+  return useSyncExternalStore(subscribe, get, get);
 }
 
-export type ViewApi<P extends Params = Params> = ViewHandle<P> & ViewState & { params: P };
+export type ViewApi<P extends object = Params> = ViewHandle<P> & ViewState & { params: P };
 
 /** The view whose content is rendering. Re-renders when its presentation state settles. */
-export function useView<P extends Params = Params>(): ViewApi<P> {
+export function useView<P extends object = Params>(): ViewApi<P> {
   const view = useContext(ViewContext) as ViewHandle<P> | null;
   if (!view) throw Error("Trellis: useView() must be used inside view content");
   const state = useSyncExternalStore(view.subscribe, view.getState, view.getState);
@@ -133,9 +173,9 @@ export function useCloseGuard(guard: () => boolean | Promise<boolean>) {
 }
 
 // ------------------------------------------------------------------ declarative components
-type Renderable<P extends Params> = ReactNode | ((view: ViewApi<P>) => ReactNode);
+type Renderable<P extends object> = ReactNode | ((view: ViewApi<P>) => ReactNode);
 
-export interface ViewTypeProps<P extends Params = Params> extends ViewRules {
+export interface ViewTypeProps<P extends object = Params> extends ViewRules {
   /** Unique type name. `<View type>` and `open(type)` refer to it. */
   id: string;
   title?: string | ((view: ViewHandle<P>) => string);
@@ -154,7 +194,7 @@ export interface ViewTypeProps<P extends Params = Params> extends ViewRules {
   className?: string;
 }
 /** Register a kind of view. Renders nothing itself. */
-export function ViewType<P extends Params = Params>(_props: ViewTypeProps<P>): null {
+export function ViewType<P extends object = Params>(_props: ViewTypeProps<P>): null {
   return null;
 }
 
@@ -181,7 +221,7 @@ export function Panel(_props: PanelProps): null {
 export interface ViewProps {
   type: string;
   id?: string;
-  params?: Params;
+  params?: object;
   title?: string;
 }
 /** Initial layout: one view. A bare view is wrapped in its own panel. */
@@ -431,6 +471,13 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
   }, [ws, typesKey]);
 
   useImperativeHandle(forwarded ?? props.ref, () => ws as WorkspaceHandle, [ws]);
+  const provider = useContext(ProviderContext);
+  const setProvided = provider?.set;
+  useIsomorphicLayoutEffect(() => {
+    if (!setProvided) return;
+    setProvided(ws);
+    return () => setProvided(null);
+  }, [setProvided, ws]);
 
   const surfaces = useSyncExternalStore(
     (notify) => (ws ? ws.on("surfaces", notify) : () => {}),

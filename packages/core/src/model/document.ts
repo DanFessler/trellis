@@ -355,8 +355,10 @@ export function restorePanel(
   if (restore.kind === "floating")
     return floatPanel(without, panel, restore.rect, restore.layer);
   if (restore.kind === "tab") {
+    const target = locatePanel(without, restore.panel);
     const node = findNode(without.root, restore.panel);
-    if (node) return insertPanel(without, panel, { into: restore.panel });
+    if ((target && target.where !== "hidden") || node?.kind === "stage")
+      return insertPanel(without, panel, { into: restore.panel });
   }
   if (restore.kind === "docked" && findNode(without.root, restore.beside))
     return insertPanel(without, panel, {

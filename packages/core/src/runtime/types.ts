@@ -25,7 +25,7 @@ export interface MenuItem {
 }
 export type MenuEntry = MenuItem | "separator";
 
-export interface ViewTypeDefinition<P extends Params = Params> extends ViewRules {
+export interface ViewTypeDefinition<P extends object = Params> extends ViewRules {
   /** Tab label. A view can override it with `setTitle()`. */
   title?: string | ((view: ViewHandle<P>) => string);
   /** Trusted SVG/HTML markup for the tab icon. Adapters can render richer icons. */
@@ -71,7 +71,7 @@ export interface ViewEvents {
   change(state: ViewState): void;
 }
 
-export interface ViewHandle<P extends Params = Params> {
+export interface ViewHandle<P extends object = Params> {
   readonly id: string;
   readonly type: string;
   readonly params: P;
@@ -133,7 +133,8 @@ export interface WorkspaceSlots {
 export type Theme = "light" | "medium" | "dark" | "darker" | "system";
 
 export interface OpenOptions {
-  params?: Params;
+  /** Serializable data for the view (any plain object; interfaces are fine). */
+  params?: object;
   id?: string;
   title?: string;
   placement?: Placement;
@@ -204,7 +205,7 @@ export interface WorkspaceHandle {
     target: { beside: string; edge: Edge; share?: number } | { into: string; index?: number } | "stage",
   ): void;
   setTitle(viewId: string, title: string): void;
-  setParams(viewId: string, patch: Params): void;
+  setParams(viewId: string, patch: object): void;
   navigation: {
     frame(target: string | string[] | "all" | "stage"): void;
     toggle(panelOrViewId?: string): void;

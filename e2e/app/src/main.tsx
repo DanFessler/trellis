@@ -1,7 +1,19 @@
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createWorkspace, layout as L, type WorkspaceOptions } from "@danfessler/trellis";
-import { Panel, Split, Stage, View, ViewType, Workspace, useCloseGuard, useView, useWorkspace } from "@danfessler/trellis-react";
+import {
+  Panel,
+  Split,
+  Stage,
+  View,
+  ViewType,
+  Workspace,
+  WorkspaceProvider,
+  useCloseGuard,
+  useView,
+  useWorkspace,
+  useWorkspaceState,
+} from "@danfessler/trellis-react";
 import "@danfessler/trellis-element";
 import "@danfessler/trellis/style.css";
 
@@ -77,9 +89,19 @@ function Opener() {
     </button>
   );
 }
+function Status() {
+  const state = useWorkspaceState();
+  return (
+    <div data-test="status" style={{ position: "fixed", left: 0, bottom: 0, zIndex: 10 }}>
+      {state.views.length}:{state.focusedView ?? "none"}
+    </div>
+  );
+}
 if (scenario === "react") {
   createRoot(app).render(
     <StrictMode>
+      <WorkspaceProvider>
+      <Status />
       <Workspace motion="reduced" ref={(h) => void (w.ws = h)}>
         <ViewType id="counter" title={(v) => String(v.params.name)} placement="stage">
           <Counter />
@@ -97,6 +119,7 @@ if (scenario === "react") {
           </Stage>
         </Split>
       </Workspace>
+      </WorkspaceProvider>
     </StrictMode>,
   );
 }

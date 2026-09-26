@@ -281,6 +281,13 @@
     background-color 120ms,
     color 120ms;
 }
+:where(.trellis [data-trellis-part="tab"][data-dragging]) {
+  z-index: 1;
+  transition: none !important;
+  background: var(--trellis-tab-active);
+  color: var(--trellis-text);
+  box-shadow: 0 0 0 1px var(--trellis-border), 0 4px 12px -4px rgba(0, 0, 0, 0.25);
+}
 :where(.trellis [data-trellis-part="tab"]:hover) {
   background: var(--trellis-tab-hover);
   color: var(--trellis-text);

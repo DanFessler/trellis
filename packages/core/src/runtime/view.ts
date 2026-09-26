@@ -11,7 +11,7 @@ export interface ViewHost {
   workspace: WorkspaceHandle;
   params(id: string): Params;
   setTitle(id: string, title: string): void;
-  setParams(id: string, patch: Params): void;
+  setParams(id: string, patch: object): void;
   setBadge(id: string, badge: string | number | null): void;
   focus(id: string): void;
   close(id: string, options?: { force?: boolean }): Promise<boolean>;
@@ -71,8 +71,8 @@ export class ViewController implements ViewHandle {
   setTitle(title: string) {
     this.host.setTitle(this.id, title);
   }
-  setParams(patch: Partial<Params>) {
-    this.host.setParams(this.id, patch as Params);
+  setParams(patch: object) {
+    this.host.setParams(this.id, patch);
   }
   setBadge(badge: string | number | null) {
     this.host.setBadge(this.id, badge);

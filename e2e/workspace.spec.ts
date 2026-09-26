@@ -162,6 +162,27 @@ test.describe("vanilla workspace", () => {
     expect(await page.evaluate(() => (window as any).mounts.outline)).toBe(1);
   });
 
+  test("hides a single tab and restores it into its panel", async ({ page }) => {
+    await tab(page, "b").click();
+    await surface(page, "b").locator("input").fill("tab state");
+    await page.evaluate(() => (window as any).ws.hide("b"));
+    await expect(tab(page, "b")).toHaveCount(0);
+    await expect(tab(page, "a")).toBeVisible();
+    const hidden = await page.evaluate(() => (window as any).ws.getSnapshot().hidden);
+    expect(hidden).toHaveLength(1);
+    await page.evaluate((id) => (window as any).ws.restore(id), hidden[0].panelId);
+    expect(await panelOf(page, "b")).toBe("docs");
+    await tab(page, "b").click();
+    await expect(surface(page, "b").locator("input")).toHaveValue("tab state");
+  });
+
+  test("lists dragged views in the snapshot mid-drag", async ({ page }) => {
+    await drag(page, center(await box(tab(page, "b"))), { x: 600, y: 500 }, false);
+    const ids = await page.evaluate(() => (window as any).ws.getSnapshot().views.map((v: any) => v.id));
+    expect(ids).toContain("b");
+    await page.mouse.up();
+  });
+
   test("maximizes a panel by double-clicking its tab bar; Escape returns", async ({ page }) => {
     const bar = panel(page, "left").locator("[data-trellis-part=tabbar]");
     const b = await box(bar);
@@ -303,6 +324,13 @@ test.describe("react adapter", () => {
     await expect(surface(page, "c1").locator("[data-test=focused]")).toHaveText("true");
     await page.locator("[data-test=open]").click();
     await expect(page.getByRole("tab", { name: "new" })).toBeVisible();
+  });
+
+  test("hooks work outside the workspace under a provider", async ({ page }) => {
+    await expect(page.locator("[data-test=status]")).toHaveText(/^3:/);
+    await tab(page, "c2").click();
+    await surface(page, "c2").click();
+    await expect(page.locator("[data-test=status]")).toHaveText("3:c2");
   });
 
   test("useCloseGuard vetoes closing", async ({ page }) => {

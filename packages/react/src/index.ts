@@ -1,5 +1,6 @@
 export {
   Workspace,
+  WorkspaceProvider,
   ViewType,
   Split,
   Panel,

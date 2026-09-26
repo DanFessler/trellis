@@ -16,7 +16,7 @@ export interface ViewSpec {
   kind: "view";
   type: string;
   id?: string;
-  params?: Params;
+  params?: object;
   title?: string;
 }
 export interface PanelSpec {
@@ -88,7 +88,7 @@ export function createDocument(
     if (views[id]) throw Error(`Trellis: duplicate view id "${id}"`);
     views[id] = {
       type: spec.type,
-      ...(spec.params ? { params: spec.params } : {}),
+      ...(spec.params ? { params: spec.params as Params } : {}),
       ...(spec.title ? { title: spec.title } : {}),
     };
     return id;

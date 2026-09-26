@@ -116,6 +116,8 @@ interface DragSession {
   target: DropTarget | null;
   last: { x: number; y: number };
   alt: boolean;
+  /** Pointer offset within the tab being reordered. */
+  grabTab: number;
 }
 
 const TYPE_PLACEHOLDER = (type: string): ViewTypeDefinition => ({
@@ -341,7 +343,7 @@ export function createWorkspace(
     },
     params: (id: string) => doc.views[id]?.params ?? {},
     setTitle: (id: string, title: string) => setTitle(id, title),
-    setParams: (id: string, patch: Params) => setParams(id, patch),
+    setParams: (id: string, patch: object) => setParams(id, patch),
     setBadge: (id: string, badge: string | number | null) => {
       badges.set(id, badge);
       records.get(id)?.controller.update({ badge });
@@ -1125,7 +1127,7 @@ export function createWorkspace(
   function infoOf(viewId: string): ViewInfo | null {
     const record = doc.views[viewId];
     if (!record) return null;
-    const panel = panelOfView(doc, viewId);
+    const panel = panelOfView(doc, viewId) ?? (drag?.lifted?.views.includes(viewId) ? drag.lifted : null);
     return {
       id: viewId,
       type: record.type,
@@ -1256,7 +1258,7 @@ export function createWorkspace(
         ...doc.views,
         [id]: {
           type,
-          ...(o.params ? { params: o.params } : {}),
+          ...(o.params ? { params: o.params as Params } : {}),
           ...(o.title ? { title: o.title } : {}),
         },
       },
@@ -1336,6 +1338,14 @@ export function createWorkspace(
     return locatePanel(doc, id)?.panel ?? panelOfView(doc, id);
   }
   function hide(id: string, o: { toward?: Element | Rect } = {}) {
+    // A view that shares its panel is hidden on its own and restored into the same panel.
+    const owner = !locatePanel(doc, id) ? panelOfView(doc, id) : null;
+    if (owner && owner.views.length > 1 && !doc.hidden.some((x) => x.panel.id === owner.id)) {
+      const alone: PanelNode = { kind: "panel", id: uid("panel"), views: [id], selected: id };
+      const detached = detachView(doc, id);
+      commit({ ...detached, hidden: [...detached.hidden, { panel: alone, restore: { kind: "tab", panel: owner.id } }] });
+      return;
+    }
     const panel = resolvePanel(id);
     if (!panel || doc.hidden.some((x) => x.panel.id === panel.id)) return;
     const from = lastRects.get(panel.id) ?? targetRect(panel.id);
@@ -1428,7 +1438,7 @@ export function createWorkspace(
     updateTabs();
     emitChange();
   }
-  function setParams(viewId: string, patch: Params) {
+  function setParams(viewId: string, patch: object) {
     const record = doc.views[viewId];
     if (!record) return;
     doc = { ...doc, views: { ...doc.views, [viewId]: { ...record, params: { ...(record.params ?? {}), ...patch } } } };
@@ -1776,6 +1786,7 @@ export function createWorkspace(
       target: null,
       last: { x: e.clientX, y: e.clientY },
       alt: false,
+      grabTab: 0,
     };
     const move = (ev: PointerEvent) => {
       if (!drag || ev.pointerId !== drag.pointerId) return;
@@ -1838,8 +1849,13 @@ export function createWorkspace(
       const panel = findPanel(d.panelId)!;
       const dom = panelDoms.get(d.panelId);
       const start = localPoint({ clientX: d.start.x, clientY: d.start.y });
-      if (d.kind === "tab" && panel.views.length > 1 && dom) d.mode = "reorder";
-      else lift(start);
+      if (d.kind === "tab" && panel.views.length > 1 && dom) {
+        d.mode = "reorder";
+        const tabEl = dom.tabs.get(d.viewId!)?.el;
+        const r = lastRects.get(d.panelId);
+        d.grabTab = tabEl && r ? start.x - (r.x + tabEl.offsetLeft - dom.tablist.scrollLeft) : 0;
+        setAttr(tabEl ?? root, "data-dragging", "");
+      } else lift(start);
       invalidate();
     }
     if (d.mode === "reorder") {
@@ -1848,6 +1864,7 @@ export function createWorkspace(
       if (!dom || !r) return;
       const withinBar = p.y > r.y - 24 && p.y < r.y + tabbarHeight + 24 && p.x > r.x - 24 && p.x < r.x + r.w + 24;
       if (!withinBar) {
+        resetTabDrag(dom);
         lift(p);
       } else {
         const panel = locatePanel(doc, d.panelId)?.panel;
@@ -1866,11 +1883,26 @@ export function createWorkspace(
         const order = [...others];
         order.splice(index, 0, d.viewId!);
         if (order.join() !== panel.views.join()) {
-          const next = reorderTabs(doc, d.panelId, order);
-          doc = next;
+          // FLIP: slide the other tabs from their old positions.
+          const before = new Map(others.map((v) => [v, dom.tabs.get(v)!.el.offsetLeft]));
+          doc = reorderTabs(doc, d.panelId, order);
           syncTabs(findPanel(d.panelId)!);
           updateTabs();
+          if (!reduced())
+            for (const v of others) {
+              const el = dom.tabs.get(v)!.el;
+              const dx = before.get(v)! - el.offsetLeft;
+              if (!dx) continue;
+              el.style.transition = "none";
+              el.style.transform = `translateX(${dx}px)`;
+              void el.offsetWidth;
+              el.style.transition = "transform 180ms var(--trellis-ease)";
+              el.style.transform = "";
+            }
         }
+        const dragged = dom.tabs.get(d.viewId!)!.el;
+        const slot = r.x + dragged.offsetLeft - dom.tablist.scrollLeft;
+        dragged.style.transform = `translateX(${p.x - d.grabTab - slot}px)`;
         return;
       }
     }
@@ -1879,6 +1911,13 @@ export function createWorkspace(
       updateDropTarget();
       schedule();
     }
+  }
+  function resetTabDrag(dom: PanelDom | undefined) {
+    if (!dom || !drag?.viewId) return;
+    const el = dom.tabs.get(drag.viewId)?.el;
+    if (!el) return;
+    el.style.transform = "";
+    setAttr(el, "data-dragging", null);
   }
   function lift(p: { x: number; y: number }) {
     const d = drag!;
@@ -2017,6 +2056,7 @@ export function createWorkspace(
       return;
     }
     if (d.mode === "reorder") {
+      resetTabDrag(panelDoms.get(d.panelId));
       const next = doc;
       doc = d.origin;
       endDrag();
@@ -2065,6 +2105,7 @@ export function createWorkspace(
   function cancelDrag() {
     const d = drag;
     if (!d) return;
+    if (d.mode === "reorder") resetTabDrag(panelDoms.get(d.panelId));
     const rect = d.lifted ? liftedRect(performance.now()) : null;
     const origin = d.origin;
     const liftedId = d.lifted?.id;
@@ -2236,7 +2277,10 @@ export function createWorkspace(
   }
   function getSnapshot(): WorkspaceSnapshot {
     if (snapshot) return snapshot;
-    const views = viewIds(doc).map((id) => infoOf(id)!).filter(Boolean);
+    // Views being dragged are still open; list them where they were.
+    const ids = viewIds(doc);
+    for (const id of drag?.lifted?.views ?? []) if (!ids.includes(id)) ids.push(id);
+    const views = ids.map((id) => infoOf(id)!).filter(Boolean);
     snapshot = {
       document: doc,
       focusedPanel,
