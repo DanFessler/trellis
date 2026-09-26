@@ -297,6 +297,8 @@ test.describe("free navigation", () => {
     for (let i = 0; i < 6; i++) await page.mouse.wheel(0, -60);
     await page.keyboard.up("Control");
     await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).not.toBeNull();
+    const cam = await page.evaluate(() => (window as any).ws.navigation.camera);
+    expect(cam.w).toBeLessThan(1);
     await page.evaluate(() => (window as any).ws.navigation.overview());
     await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).toBeNull();
   });

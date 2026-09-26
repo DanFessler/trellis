@@ -187,6 +187,8 @@ export interface WorkspaceEvents {
   close(view: ViewInfo): void;
   focus(viewId: string | null): void;
   navigate(framed: string | null): void;
+  /** Every frame the camera moves (world rect, 0–1). For minimaps; don't re-render a framework tree from it. */
+  camera(rect: Rect): void;
   surfaces(surfaces: readonly Surface[]): void;
 }
 
@@ -213,6 +215,8 @@ export interface WorkspaceHandle {
     forward(): void;
     overview(): void;
     readonly framed: string | null;
+    /** The visible region of the layout right now, in world units (the whole layout is 0–1). */
+    readonly camera: Rect;
     framings: {
       save(name: string): Framing;
       go(id: string): void;

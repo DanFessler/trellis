@@ -843,6 +843,7 @@ export function createWorkspace(
       if (reduced()) camera.finish();
       else moving = camera.step(dt) || moving;
     }
+    cameraChanged();
     if (tween.active) moving = tween.step(time) || moving;
     if (!tween.active) settling.clear();
     if (drag?.active && drag.mode === "lifted" && time - drag.pickupStart < MOTION.pickupMs) moving = true;
@@ -1727,12 +1728,19 @@ export function createWorkspace(
       next.x = Math.min(1 - next.w, Math.max(0, next.x));
       next.y = Math.min(1 - next.h, Math.max(0, next.y));
       camera.jump(next);
+      cameraChanged();
       schedule();
       lifetime.clearTimeout(snapTimer);
       snapTimer = lifetime.timeout(snapToBestFit, 160);
     },
     { passive: false },
   );
+  let lastCamera: Rect = { ...UNIT };
+  function cameraChanged() {
+    if (sameRect(lastCamera, camera.value)) return;
+    lastCamera = { ...camera.value };
+    if (events.has("camera")) events.emit("camera", { ...camera.value });
+  }
   function snapToBestFit() {
     gesture = false;
     updateInteractivity();
@@ -2371,6 +2379,9 @@ export function createWorkspace(
       overview: () => frameTo(null),
       get framed() {
         return framed;
+      },
+      get camera() {
+        return { ...camera.value };
       },
       framings: {
         save(name: string) {
