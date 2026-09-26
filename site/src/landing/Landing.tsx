@@ -87,7 +87,7 @@ export function Landing() {
                 <span className="hint-key">Double-click</span> a tab bar to maximize
               </li>
               <li>
-                <kbd>Alt</kbd> while dragging to float
+                <span className="hint-key">Drop</span> a panel over the canvas to float it
               </li>
               <li>
                 <kbd>Esc</kbd> to zoom back out

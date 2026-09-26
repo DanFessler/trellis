@@ -267,6 +267,9 @@
   min-width: 0;
   flex: 1 1 auto;
   padding: var(--trellis-tab-inset) var(--trellis-tab-inset) 0;
+  /* Room at the end for the selected tab's flared corner, which reaches past the tab. Without it
+   * the flare overflows the row, which then scrolls a few pixels and shifts every tab left. */
+  padding-inline-end: max(var(--trellis-tab-inset), var(--trellis-tab-radius));
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;

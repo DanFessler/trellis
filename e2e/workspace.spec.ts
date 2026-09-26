@@ -81,6 +81,32 @@ test.describe("vanilla workspace", () => {
     expect(await page.evaluate(() => (window as any).mounts.a)).toBe(1);
   });
 
+  test("a split-off filled tab sits at the start of its row", async ({ page }) => {
+    // The selected tab's flared corner once overflowed a full row, leaving it scrolled a few px.
+    for (const inset of [4, 0]) {
+      await page.evaluate((inset) => (window as any).ws.update({ tabs: { fill: true, inset } }), inset);
+      const target = await box(panel(page, "docs"));
+      await drag(page, center(await box(tab(page, "b"))), {
+        x: target.x + target.width - 20,
+        y: target.y + target.height / 2,
+      });
+      await page.waitForTimeout(700);
+      const rows = await page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>("[data-trellis-part=tabs]")].map((list) => ({
+          scroll: list.scrollLeft,
+          offset: Math.round(
+            list.firstElementChild!.getBoundingClientRect().left -
+              list.closest("[data-trellis-part=tabbar]")!.getBoundingClientRect().left,
+          ),
+        })),
+      );
+      for (const row of rows) expect(row).toEqual({ scroll: 0, offset: inset });
+      // Put b back so the next round starts from the same layout.
+      await drag(page, center(await box(tab(page, "b"))), center(await box(tab(page, "a"))));
+      await page.waitForTimeout(700);
+    }
+  });
+
   test("reorders tabs within a tab bar", async ({ page }) => {
     const a = await box(tab(page, "a"));
     const b = await box(tab(page, "b"));
