@@ -948,10 +948,17 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const round = !moving();
     if (moving()) settledState = false;
     const stage = findStage(doc.root);
-    const sScreen = stageScreen();
+    // While dragging, the stage follows the preview like any docked node (it makes room too).
+    const stagePreview = stage ? dragger?.layoutTargets()?.get(stage.id) : undefined;
+    const sScreen = stagePreview ? inset(toScreen(stagePreview), pad()) : stageScreen();
     // Stage slots
     if (sScreen) {
       const r = tween.apply(stage!.id, sScreen);
+      // The stage's on-screen rect, for styling around it (e.g. a sharp wallpaper inside, blurred outside).
+      setStyle(root, "--trellis-stage-x", `${r.x}px`);
+      setStyle(root, "--trellis-stage-y", `${r.y}px`);
+      setStyle(root, "--trellis-stage-w", `${r.w}px`);
+      setStyle(root, "--trellis-stage-h", `${r.h}px`);
       place(backdrop, r, round);
       place(stageEmpty, r, round);
       lastRects.set(stage!.id, r);

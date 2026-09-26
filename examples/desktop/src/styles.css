@@ -76,15 +76,35 @@ button {
   overflow: visible;
   transition: box-shadow 200ms;
 }
-/* Once something is docked beside the desktop, outline the desktop so the split reads. */
-.trellis:has([data-trellis-part="panel"][data-region="side"]) [data-trellis-part="backdrop"] {
-  box-shadow:
-    inset 0 0 0 1px #ffffff1f,
-    0 0 0 100vmax #0000002e;
-  clip-path: inset(-100vmax);
-}
-.trellis[data-framed] [data-trellis-part="backdrop"] {
-  box-shadow: none;
+/* The prototype's gap layer: outside the desktop the wallpaper is blurred and dimmed; inside it
+ * stays sharp. The hole follows the stage (including while a drag preview shrinks it), with
+ * feathered 24px edges. */
+.trellis::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(#11111333, #11111333),
+    #19191b var(--wallpaper) center / cover no-repeat;
+  filter: blur(3px);
+  --hole-size: calc(var(--trellis-stage-w, 100%) + 48px) calc(var(--trellis-stage-h, 100%) + 48px);
+  --hole-position: calc(var(--trellis-stage-x, 0px) - 24px) calc(var(--trellis-stage-y, 0px) - 24px);
+  mask-image:
+    linear-gradient(#000, #000),
+    linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent),
+    linear-gradient(to bottom, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+  mask-size:
+    100% 100%,
+    var(--hole-size),
+    var(--hole-size);
+  mask-position:
+    0 0,
+    var(--hole-position),
+    var(--hole-position);
+  mask-repeat: no-repeat;
+  mask-composite: subtract, intersect;
 }
 .desktop {
   position: absolute;
@@ -840,10 +860,10 @@ button {
   }
 }
 
-/* The prototype's drop slot: a blurred pane of the scene where the window will land. */
+/* The prototype's drop slot: a blurred pane revealed as the desktop recedes to make room. */
 .trellis [data-trellis-part="drop-slot"] {
-  background: #ffffff14;
-  backdrop-filter: blur(24px) saturate(1.2);
-  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  background: #ffffff06;
+  -webkit-backdrop-filter: blur(32px);
+  backdrop-filter: blur(32px);
   border-radius: 12px;
 }
