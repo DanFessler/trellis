@@ -575,6 +575,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (!dom) return;
     dom.el.remove();
     dom.tabbar.remove();
+    dom.handles?.remove();
     panelDoms.delete(panelId);
     lastRects.delete(panelId);
   }
@@ -1081,7 +1082,15 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
           clip ? clipInset({ x: r.x, y: r.y, w: r.w, h: tabbarHeight }, sScreen!) : "",
         );
         place(dom.tabbar, { x: r.x, y: r.y, w: r.w, h: tabbarHeight }, round);
-      } else if (dom.tabbar.parentElement !== dom.el) {
+      }
+      if (dom.handles) {
+        setStyle(dom.handles, "zIndex", String(z + 2));
+        setStyle(dom.handles, "display", onscreen && !frameOnly ? "" : "none");
+        setStyle(dom.handles, "opacity", opacity === 1 ? "" : String(opacity));
+        setStyle(dom.handles, "clipPath", clip);
+        place(dom.handles, r, round);
+      }
+      if (mode !== "overlay" && dom.tabbar.parentElement !== dom.el) {
         dom.el.prepend(dom.tabbar);
         setAttr(dom.tabbar, "data-overlay", null);
         for (const key of ["zIndex", "display", "opacity", "clipPath", "transform", "width", "height"])
@@ -2058,13 +2067,15 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
 
   // ---------------------------------------------------------------- floating resize
   function addResizeHandles(dom: PanelDom) {
-    const wrap = h("div", { class: "trellis-handles" });
+    // The handles live beside the panel in its layer, above the content, so their inner half isn't
+    // covered by the content surface (render() keeps them on the panel's rect).
+    const wrap = h("div", { class: "trellis-handles", "data-panel": dom.id });
     for (const dir of ["n", "s", "e", "w", "ne", "nw", "se", "sw"]) {
       const handleEl = h("div", { "data-trellis-part": "resize", "data-dir": dir, "aria-hidden": "true" });
       lifetime.listen(handleEl, "pointerdown", (e: PointerEvent) => beginFloatResize(e, dom.id, dir));
       wrap.append(handleEl);
     }
-    dom.el.append(wrap);
+    layer.append(wrap);
     dom.handles = wrap;
   }
   function beginFloatResize(e: PointerEvent, panelId: string, dir: string) {

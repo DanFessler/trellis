@@ -179,13 +179,14 @@ test.describe("vanilla workspace", () => {
     const moved = (await doc(page)).floating[0].rect;
     expect(moved.x).toBeLessThan(floated.x);
     expect(moved.y).toBeGreaterThan(floated.y);
-    // Resize from the south-east corner.
+    // Resize from the south-east corner, grabbing just inside the panel. The handle must sit above
+    // the content there (it once sat under it, so only its outer few pixels worked).
     const f = await box(panel(page, "right"));
-    await drag(
-      page,
-      { x: f.x + f.width - 2, y: f.y + f.height - 2 },
-      { x: f.x + f.width + 80, y: f.y + f.height + 40 },
-    );
+    const grab = { x: f.x + f.width - 6, y: f.y + f.height - 6 };
+    expect(
+      await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.getAttribute("data-dir"), grab),
+    ).toBe("se");
+    await drag(page, grab, { x: f.x + f.width + 80, y: f.y + f.height + 40 });
     const resized = (await doc(page)).floating[0].rect;
     expect(resized.w).toBeGreaterThan(moved.w);
     // Dock into the files panel's tab bar.

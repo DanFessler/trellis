@@ -498,9 +498,6 @@
   cursor: grab;
 }
 :where(.trellis [data-trellis-part="panel"][data-frame-only] [data-trellis-part="tabbar"]),
-:where(.trellis [data-trellis-part="panel"][data-frame-only] .trellis-handles) {
-  display: none;
-}
 :where(.trellis [data-trellis-part="panel"][data-frame-only] [data-trellis-part="frame-icon"]) {
   position: absolute;
   inset: 0;
@@ -634,7 +631,8 @@
 /* ------------------------------------------------------------------ floating resize */
 :where(.trellis .trellis-handles) {
   position: absolute;
-  inset: 0;
+  left: 0;
+  top: 0;
   pointer-events: none;
 }
 :where(.trellis [data-trellis-part="resize"]) {

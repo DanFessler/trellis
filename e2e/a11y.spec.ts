@@ -20,6 +20,12 @@ test("open panel menu has no axe violations", async ({ page }) => {
   await page.goto("/?scenario=vanilla");
   await page.locator("[data-panel=docs] [data-trellis-part=panel-menu]").click();
   await expect(page.getByRole("menu")).toBeVisible();
+  // The menu fades in; measure contrast once it's fully opaque.
+  await page
+    .getByRole("menu")
+    .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
   const results = await new AxeBuilder({ page }).include(".trellis-menu").analyze();
-  expect(results.violations.map((v) => v.id)).toEqual([]);
+  expect(
+    results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
+  ).toEqual([]);
 });
