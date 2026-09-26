@@ -18,7 +18,7 @@
   --trellis-tab-hover: rgba(15, 17, 25, 0.05);
   --trellis-tab-active: #ffffff;
   --trellis-text: #1c1d22;
-  --trellis-text-muted: #6d707a;
+  --trellis-text-muted: #636670;
   --trellis-border: rgba(15, 17, 25, 0.1);
   --trellis-accent: #3a6ff7;
   --trellis-accent-contrast: #ffffff;
@@ -42,11 +42,11 @@
   --trellis-tab-hover: rgba(255, 255, 255, 0.06);
   --trellis-tab-active: #45454a;
   --trellis-text: #f1f1f3;
-  --trellis-text-muted: #a9a9b0;
+  --trellis-text-muted: #bcbcc3;
   --trellis-border: rgba(0, 0, 0, 0.28);
   --trellis-accent: #4d8bff;
   --trellis-stage: #2a2a2e;
-  --trellis-menu: #4a4a50;
+  --trellis-menu: #3a3a3f;
   --trellis-menu-hover: rgba(255, 255, 255, 0.08);
   --trellis-shadow-float: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px -8px rgba(0, 0, 0, 0.55);
   --trellis-shadow-lifted: 0 2px 6px rgba(0, 0, 0, 0.35), 0 28px 56px -12px rgba(0, 0, 0, 0.7);
@@ -59,7 +59,7 @@
   --trellis-tab-hover: rgba(255, 255, 255, 0.05);
   --trellis-tab-active: #1a1b1f;
   --trellis-text: #e7e8eb;
-  --trellis-text-muted: #8b8e98;
+  --trellis-text-muted: #9699a3;
   --trellis-border: rgba(255, 255, 255, 0.07);
   --trellis-accent: #5b8cff;
   --trellis-stage: #111215;
@@ -76,7 +76,7 @@
   --trellis-tab-hover: rgba(255, 255, 255, 0.045);
   --trellis-tab-active: #111215;
   --trellis-text: #d9dbe0;
-  --trellis-text-muted: #7c808a;
+  --trellis-text-muted: #8a8e98;
   --trellis-border: rgba(255, 255, 255, 0.06);
   --trellis-accent: #5b8cff;
   --trellis-stage: #09090b;
@@ -94,7 +94,7 @@
     --trellis-tab-hover: rgba(255, 255, 255, 0.05);
     --trellis-tab-active: #1a1b1f;
     --trellis-text: #e7e8eb;
-    --trellis-text-muted: #8b8e98;
+    --trellis-text-muted: #9699a3;
     --trellis-border: rgba(255, 255, 255, 0.07);
     --trellis-accent: #5b8cff;
     --trellis-stage: #111215;
