@@ -502,12 +502,13 @@
 /* art: endless zoom into nested panels (drawn per frame in pixels; see ZoomArt) */
 .card-zoom .card-art {
   height: 250px;
-  padding: 0;
+  padding: 24px 24px 0;
 }
 .art-zoom {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  border-radius: 12px;
 }
 .art-zoom svg {
   width: 100%;
@@ -525,7 +526,8 @@
   stroke: var(--accent-line);
 }
 .art-zoom .art-zoom-bar {
-  fill: var(--line);
+  fill: var(--line-strong);
+  fill-rule: evenodd;
 }
 .art-zoom [data-even] .art-zoom-bar {
   fill: var(--accent-line);

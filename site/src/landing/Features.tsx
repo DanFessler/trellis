@@ -24,7 +24,7 @@ const ZOOM_TILES = (() => {
   }
   return tiles;
 })();
-const ZOOM = { period: 6000, gap: 3, radius: 7, bar: 8, stroke: 1 };
+const ZOOM = { period: 6000, gap: 4, radius: 8, bar: 14, dot: 2.5, dotGap: 8 };
 
 function ZoomArt() {
   const host = useRef<HTMLDivElement>(null);
@@ -70,11 +70,19 @@ function ZoomArt() {
         const r = Math.min(ZOOM.radius, size / 4);
         body.style.display = "";
         body.setAttribute("d", rounded(x, y, size, size, r));
-        if (size < ZOOM.bar * 4) {
+        if (size < ZOOM.bar * 3) {
           bar.style.display = "none";
         } else {
+          // Traffic lights: three circles cut out of the bar's left end (even-odd fill).
+          let lights = "";
+          if (size >= ZOOM.bar * 6)
+            for (let k = 0; k < 3; k++) {
+              const dx = x + ZOOM.bar / 2 + 2 + k * ZOOM.dotGap;
+              const dy = y + ZOOM.bar / 2;
+              lights += `M${dx - ZOOM.dot} ${dy}a${ZOOM.dot} ${ZOOM.dot} 0 1 0 ${ZOOM.dot * 2} 0a${ZOOM.dot} ${ZOOM.dot} 0 1 0 ${-ZOOM.dot * 2} 0Z`;
+            }
           bar.style.display = "";
-          bar.setAttribute("d", rounded(x, y, size, ZOOM.bar, r, false));
+          bar.setAttribute("d", rounded(x, y, size, ZOOM.bar, r, false) + lights);
         }
       });
     };
