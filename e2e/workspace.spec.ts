@@ -874,4 +874,41 @@ test.describe("deep zoom performance", () => {
     // At most a couple of distinct layouts (before and after), not one per frame.
     expect(new Set(sizes.slice(1, -1)).size).toBeLessThanOrEqual(2);
   });
+
+  test("the view being zoomed to is laid out at its final size from the first frame", async ({ page }) => {
+    const deepest = await setup(page);
+    await page.waitForTimeout(800);
+    // Content laid out at its old, tiny size and stretched up makes buttons and sliders huge mid-zoom.
+    await page.evaluate((id) => {
+      const w = window as any;
+      const view = w.ws.getDocument();
+      const find = (n: any): any =>
+        n?.kind === "panel"
+          ? n.id === id
+            ? n
+            : null
+          : (n?.children?.map(find).find(Boolean) ?? (n?.child && find(n.child)));
+      const content = document.querySelector<HTMLElement>(
+        `[data-trellis-part=surface][data-view="${find(view.root).selected}"] [data-trellis-part=content]`,
+      )!;
+      w.__zoomSizes = [];
+      w.__zoomContent = content;
+      const sample = () => {
+        w.__zoomSizes.push(`${content.style.width}x${content.style.height}`);
+        if (w.__zoomSizes.length < 60) requestAnimationFrame(sample);
+      };
+      w.ws.navigation.frame([id]);
+      requestAnimationFrame(sample);
+    }, deepest);
+    await page.waitForTimeout(3000);
+    const sizes: string[] = await page.evaluate(() => (window as any).__zoomSizes);
+    // Before its first placement a view has no size yet; once placed, it keeps one size throughout.
+    const placed = sizes.filter((s) => s !== "x");
+    expect(placed.length).toBeGreaterThan(30);
+    const settled = await page.evaluate(() => {
+      const c = (window as any).__zoomContent as HTMLElement;
+      return `${c.style.width}x${c.style.height}`;
+    });
+    expect([...new Set(placed)]).toEqual([settled]);
+  });
 });

@@ -325,6 +325,16 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const e = entries.get(panelId);
     return e ? inset(toScreen(e.rect), pad()) : null;
   }
+  /** Where a panel will be once the camera settles: its target rect under the camera's target. */
+  function restRect(panelId: string): Rect | null {
+    const value = camera.value;
+    camera.value = camera.target;
+    try {
+      return targetRect(panelId);
+    } finally {
+      camera.value = value;
+    }
+  }
   function regionOf(panelId: string): Region {
     if (doc.floating.some((f) => f.panel.id === panelId)) return "floating";
     const stage = findStage(doc.root);
@@ -1245,6 +1255,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       }
       if (!onscreen) continue;
       const body: Rect = { x: r.x, y: r.y + bar, w: r.w, h: Math.max(0, r.h - bar) };
+      // Mid-motion, content is laid out once at the size it will settle at, and scaled from there.
+      const end = moving() && !gesture && !dragActive() && !l && !enter ? restRect(panelId) : null;
+      const restBody = end ? { ...end, h: Math.max(0, end.h - bar) } : undefined;
       for (const viewId of panel.views) {
         const record = records.get(viewId);
         if (!record) continue;
@@ -1259,6 +1272,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
           opacity,
           clip ? clipInset(body, sScreen!) : "",
           frameOnly,
+          restBody,
         );
         setAttr(record.shell, "data-tabbar", mode === "normal" ? null : mode);
         const scale = (record as any).__scale || 1;
@@ -1322,11 +1336,13 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     opacity: number,
     clip: string,
     concealed = false,
+    rest?: Rect,
   ) {
     const { shell, content, controller } = record;
     const min = minSizeOf(controller.id);
-    const scale = min ? Math.min(1, body.w / Math.max(1, min.width), body.h / Math.max(1, min.height)) : 1;
-    const safe = Math.max(scale, 0.05);
+    const scaleAt = (r: Rect) =>
+      Math.max(min ? Math.min(1, r.w / Math.max(1, min.width), r.h / Math.max(1, min.height)) : 1, 0.05);
+    const safe = scaleAt(body);
     place(shell, body, round);
     setStyle(shell, "zIndex", String(z));
     setStyle(shell, "visibility", selected && !concealed ? "" : "hidden");
@@ -1334,18 +1350,29 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     setStyle(shell, "clipPath", clip);
     // Content never lays out larger than twice the window: a bigger panel lays out at that cap
     // and is scaled up, so a deep zoom doesn't lay out neighbours at many times the screen.
-    const cap = Math.max(1, body.w / safe / (2 * viewport.w), body.h / safe / (2 * viewport.h));
-    let width = round ? Math.round(body.w / safe / cap) : body.w / safe / cap;
-    let height = round ? Math.round(body.h / safe / cap) : body.h / safe / cap;
-    let transform = safe * cap < 0.999 || cap > 1 ? `scale(${safe * cap})` : "";
-    // While the camera or layout moves, content keeps the size it had at rest and is stretched to
-    // fit, so nothing reflows per frame.
-    const rest = (record as any).__layout as { w: number; h: number } | undefined;
-    if (moving() && rest) {
-      width = rest.w;
-      height = rest.h;
-      transform = `scale(${body.w / rest.w}, ${body.h / rest.h})`;
-    } else (record as any).__layout = { w: width, h: height };
+    const layoutAt = (r: Rect) => {
+      const s = scaleAt(r);
+      const cap = Math.max(1, r.w / s / (2 * viewport.w), r.h / s / (2 * viewport.h));
+      return { w: Math.round(r.w / s / cap), h: Math.round(r.h / s / cap) };
+    };
+    let width: number, height: number, transform: string;
+    const frozen = (record as any).__layout as { w: number; h: number } | undefined;
+    if (moving() && (rest || frozen)) {
+      // While the camera or layout moves, content is laid out once, at the size it will settle
+      // at (or, when that isn't known, the size it had at rest), and scaled to fit each frame.
+      const target = rest && rest.w > 1 && rest.h > 1 ? layoutAt(rest) : frozen!;
+      width = target.w;
+      height = target.h;
+      transform = `scale(${body.w / width}, ${body.h / height})`;
+      (record as any).__layout = target;
+    } else {
+      const s = safe;
+      const cap = Math.max(1, body.w / s / (2 * viewport.w), body.h / s / (2 * viewport.h));
+      width = round ? Math.round(body.w / s / cap) : body.w / s / cap;
+      height = round ? Math.round(body.h / s / cap) : body.h / s / cap;
+      transform = s * cap < 0.999 || cap > 1 ? `scale(${s * cap})` : "";
+      (record as any).__layout = { w: Math.round(width), h: Math.round(height) };
+    }
     setStyle(content, "width", `${width}px`);
     setStyle(content, "height", `${height}px`);
     setStyle(content, "transform", transform);
