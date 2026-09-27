@@ -45,6 +45,8 @@ Dragging a tab within its strip reorders it. Dragging it out of the strip create
 
 A split arranges children in a weighted row (`axis: "x"`) or column (`axis: "y"`). Weights are relative: `[1, 3]` gives the second child three times the space. Users resize with the dividers between children. Double-clicking a divider evens out the two neighbours.
 
+Every panel keeps at least 80 pixels of width, and room for its tab bar plus a little content, so it can always show a tab and its menu. When the workspace or a group shrinks, panels with room to spare give it up first. If a group's panels can't all fit, the whole group is drawn smaller, like a zoomed-out copy of itself. Zooming to it brings them back to full size. See [Zoomable layouts](./zoomable-layouts.md#small-panels).
+
 Trellis normalizes splits automatically. A split with one child collapses into that child, and a split nested directly inside a split on the same axis is flattened.
 
 ## The stage

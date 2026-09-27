@@ -10,6 +10,7 @@ import type {
   ViewRules,
 } from "../model/types";
 import type { LayoutSpec } from "../model/builder";
+import type { Entry } from "../model/tree";
 
 export type Cleanup = void | (() => void);
 
@@ -304,6 +305,10 @@ export interface WorkspaceHandle {
   };
   run(command: Command): void;
   getDocument(): LayoutDocument;
+  /** Every docked node's rect as it's laid out right now, in world units (0 to 1), with minimum
+   * sizes and scaled groups applied. `scale` is how much a node is scaled down by cramped groups
+   * around it. Use this for minimaps; `layoutRects(root)` alone ignores minimums. */
+  getLayoutRects(): Map<string, Entry>;
   setDocument(document: LayoutDocument, options?: { animate?: boolean }): void;
   reset(): void;
   views(filter?: { type?: string }): ViewInfo[];

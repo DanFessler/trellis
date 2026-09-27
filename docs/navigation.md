@@ -173,18 +173,16 @@ function Framings() {
 
 ## Minimaps
 
-`layoutRects(document.root)` gives every node's rect in world units (0 to 1). The `camera` event reports the visible world rect on every frame the camera moves. Together they're enough to draw a minimap:
+`ws.getLayoutRects()` gives every node's rect in world units (0 to 1), as it's laid out right now. The `camera` event reports the visible world rect on every frame the camera moves. Together they're enough to draw a minimap:
 
 ```ts
-import { layoutRects } from "@danfessler/trellis";
-
 const map = document.querySelector<HTMLCanvasElement>("#minimap")!;
 const ctx = map.getContext("2d")!;
 
 function draw(camera = ws.navigation.camera) {
   const { width: w, height: h } = map;
   ctx.clearRect(0, 0, w, h);
-  for (const { node, rect } of layoutRects(ws.getDocument().root).values()) {
+  for (const { node, rect } of ws.getLayoutRects().values()) {
     if (node.kind !== "panel") continue;
     ctx.fillStyle = "rgba(255,255,255,.15)";
     ctx.fillRect(rect.x * w + 1, rect.y * h + 1, rect.w * w - 2, rect.h * h - 2);

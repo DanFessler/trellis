@@ -26,7 +26,7 @@ import {
   type SpaceEntry,
   type Visit,
 } from "../model/spatial";
-import { findStage, UNIT } from "../model/tree";
+import { findStage, UNIT, type LayoutMetrics } from "../model/tree";
 import type { Framing, LayoutDocument, LayoutNode, Rect } from "../model/types";
 import { uid } from "../model/document";
 import { h } from "./dom";
@@ -41,6 +41,8 @@ export interface NavigationHost {
   mode(): false | "focus" | "free";
   reduced(): boolean;
   viewport(): { w: number; h: number };
+  /** Pixel minimums for laying the tree out, so the camera sees the same geometry as the screen. */
+  layoutMetrics(): LayoutMetrics;
   fromScreen(p: { x: number; y: number }): { x: number; y: number };
   toScreen(world: Rect): Rect;
   panelScreen(world: Rect): Rect;
@@ -77,7 +79,7 @@ export function createNavigator(host: NavigationHost) {
   // ---------------------------------------------------------------- framing
   /** Recompute targets after a layout change; the framing follows its views. */
   function sync() {
-    entries = focusLayout(host.doc().root);
+    entries = focusLayout(host.doc().root, host.layoutMetrics());
     if (framed && !entries.has(framed)) {
       const surviving = framedLeaves.filter((id) => entries.has(id));
       const next = surviving.length ? frameLeaves(host.doc().root, surviving) : null;

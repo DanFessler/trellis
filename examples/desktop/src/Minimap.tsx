@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useWorkspace, useWorkspaceState } from "@danfessler/trellis-react";
 import type { LayoutNode, PanelNode, Rect } from "@danfessler/trellis";
 import { STAGE_ID, appById, pageFor } from "./apps";
-import { worldRects } from "./desktop";
 
 const WIDTH = 232;
 const TINT: Record<string, string> = {
@@ -53,7 +52,7 @@ export function Minimap({ wallpaper }: { wallpaper: string }) {
     return ws.on("camera", draw);
   }, [ws, H]);
   const doc = state.document;
-  const rects = worldRects(doc.root);
+  const rects = new Map([...ws.getLayoutRects()].map(([id, entry]) => [id, entry.rect]));
   const toMap = (r: Rect, pad = 1.5) => ({
     x: r.x * WIDTH + pad,
     y: r.y * H + pad,

@@ -13,33 +13,127 @@ export interface Entry {
   node: LayoutNode;
   rect: Rect;
   parent: string | null;
+  /** How much this node is scaled down on screen by cramped groups around it (1 = not scaled).
+   * Only set when laid out with metrics. */
+  scale?: number;
 }
 
-/** World geometry of every node, as fractions of the whole layout. */
-export function layoutRects(
+/** Pixel sizes for laying out with minimums. `min` is the smallest a node may be along an axis,
+ * in pixels of its parent group's own layout space. A group whose children's minimums don't fit
+ * lays out at its natural size and is scaled down into its slot. */
+export interface LayoutMetrics {
+  width: number;
+  height: number;
+  min(node: LayoutNode, axis: Axis): number;
+}
+
+/** World geometry of every node, as fractions of the whole layout. With metrics, each group keeps
+ * its children at their minimums (in its own layout space) and scales down when they can't fit. */
+export function layoutRects(node: LayoutNode | null, metrics?: LayoutMetrics): Map<string, Entry> {
+  const out = new Map<string, Entry>();
+  if (!metrics) layoutByWeights(node, UNIT, null, out);
+  else layoutWithMinimums(node, UNIT, { w: metrics.width, h: metrics.height }, 1, null, metrics, out);
+  return out;
+}
+
+function layoutByWeights(
   node: LayoutNode | null,
-  rect: Rect = UNIT,
-  parent: string | null = null,
-  out = new Map<string, Entry>(),
-): Map<string, Entry> {
-  if (!node) return out;
+  rect: Rect,
+  parent: string | null,
+  out: Map<string, Entry>,
+) {
+  if (!node) return;
   out.set(node.id, { node, rect, parent });
   if (node.kind === "stage") {
-    if (node.child) layoutRects(node.child, rect, node.id, out);
+    if (node.child) layoutByWeights(node.child, rect, node.id, out);
   } else if (node.kind === "split") {
     const total = sum(node.weights);
     let offset = 0;
     node.children.forEach((child, i) => {
       const share = node.weights[i] / total;
-      const r =
-        node.axis === "x"
-          ? { ...rect, x: rect.x + offset * rect.w, w: rect.w * share }
-          : { ...rect, y: rect.y + offset * rect.h, h: rect.h * share };
-      layoutRects(child, r, node.id, out);
+      layoutByWeights(child, slice(rect, node.axis, offset, share), node.id, out);
       offset += share;
     });
   }
-  return out;
+}
+
+/**
+ * `size` is the node's slot in its own layout pixels, and `scale` how much those pixels are scaled
+ * on screen. A split whose children's minimums don't fit its size lays out at size ÷ s, where s is
+ * the tighter of the two ratios, so the natural layout fills the slot exactly in both directions.
+ */
+function layoutWithMinimums(
+  node: LayoutNode | null,
+  rect: Rect,
+  size: { w: number; h: number },
+  scale: number,
+  parent: string | null,
+  metrics: LayoutMetrics,
+  out: Map<string, Entry>,
+) {
+  if (!node) return;
+  if (node.kind === "stage") {
+    out.set(node.id, { node, rect, parent, scale });
+    if (node.child) layoutWithMinimums(node.child, rect, size, scale, node.id, metrics, out);
+    return;
+  }
+  if (node.kind !== "split") {
+    out.set(node.id, { node, rect, parent, scale });
+    return;
+  }
+  const along = node.axis === "x" ? "w" : "h";
+  const across = node.axis === "x" ? "h" : "w";
+  const crossAxis: Axis = node.axis === "x" ? "y" : "x";
+  const mins = node.children.map((c) => metrics.min(c, node.axis));
+  const needAlong = sum(mins);
+  const needAcross = Math.max(0, ...node.children.map((c) => metrics.min(c, crossAxis)));
+  const s = Math.min(
+    1,
+    needAlong > 0 ? size[along] / needAlong : 1,
+    needAcross > 0 ? size[across] / needAcross : 1,
+  );
+  const natural = { w: size.w / s, h: size.h / s };
+  const extents = distribute(natural[along], node.weights, mins);
+  const fractions = extents.map((e) => e / natural[along]);
+  out.set(node.id, { node: { ...node, weights: fractions }, rect, parent, scale });
+  let offset = 0;
+  node.children.forEach((child, i) => {
+    const childSize = along === "w" ? { w: extents[i], h: natural.h } : { w: natural.w, h: extents[i] };
+    layoutWithMinimums(
+      child,
+      slice(rect, node.axis, offset, fractions[i]),
+      childSize,
+      scale * s,
+      node.id,
+      metrics,
+      out,
+    );
+    offset += fractions[i];
+  });
+}
+
+/** Share `total` by weight, then raise any extent below its minimum, taking the difference from
+ * the others in proportion to their weights. Assumes the minimums fit. */
+export function distribute(total: number, weights: readonly number[], mins: readonly number[]): number[] {
+  const fixed = new Set<number>();
+  let extents = weights.map(() => 0);
+  for (;;) {
+    const free = weights.map((_, i) => i).filter((i) => !fixed.has(i));
+    const left = total - sum([...fixed].map((i) => mins[i]));
+    const weight = sum(free.map((i) => weights[i]));
+    extents = weights.map((w, i) =>
+      fixed.has(i) ? mins[i] : weight > 0 ? (left * w) / weight : left / free.length,
+    );
+    const under = free.filter((i) => extents[i] < mins[i] - 1e-9);
+    if (!under.length) return extents;
+    under.forEach((i) => fixed.add(i));
+  }
+}
+
+function slice(rect: Rect, axis: Axis, offset: number, share: number): Rect {
+  return axis === "x"
+    ? { ...rect, x: rect.x + offset * rect.w, w: rect.w * share }
+    : { ...rect, y: rect.y + offset * rect.h, h: rect.h * share };
 }
 
 export function sum(values: readonly number[]): number {

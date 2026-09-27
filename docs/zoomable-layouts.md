@@ -60,7 +60,7 @@ On Windows and Linux, <kbd>⌘</kbd> is <kbd>Ctrl</kbd> and <kbd>⌥</kbd> is <k
 
 ## Small panels
 
-A panel doesn't have to be usable at every zoom level. Trellis handles small panels in three steps:
+A panel doesn't have to be usable at every zoom level. Panels never get smaller than their minimum within their own group. When a group's panels can't all fit, Trellis lays the group out at the size they need and draws it scaled down into its space. Zooming to the group shows it at full size. On screen, small panels are handled in three steps:
 
 - Below a view type's `minSize`, content keeps laying out at that size and is scaled down to fit. A text editor stays readable at a glance and doesn't reflow into a narrow column. With free navigation, views without a `minSize` use 480 × 320.
 - Below 160 × 64 pixels on screen, a panel shows only its icon. The whole tile becomes a drag handle, so it can still be moved, and double-clicking it zooms to the panel.

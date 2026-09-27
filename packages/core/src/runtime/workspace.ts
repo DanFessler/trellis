@@ -30,6 +30,7 @@ import {
   resizeBoundary,
   UNIT,
   type Entry,
+  type LayoutMetrics,
 } from "../model/tree";
 import type {
   FloatingLayer,
@@ -125,6 +126,8 @@ const escapeHtml = (text: string) =>
 const DEFAULT_FLOAT_SIZE = { w: 560, h: 400 };
 /** Below this size a panel shows only its icon ("frame only"). */
 const FRAME_ONLY = { w: 160, h: 64 };
+/** Every panel keeps at least this much room (plus the gap), for a tab and its menu button. */
+const PANEL_MIN = { w: 80 };
 /** Defaults for the `detail` option: a nested group collapses into one tile when all its parts are
  * smaller than `size` × `size` on screen, too small even for an icon tile. */
 const DETAIL = { size: 48, outline: 2 };
@@ -718,7 +721,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   // ---------------------------------------------------------------- sync
   /** Reconcile DOM with the document. Cheap; runs after every change. */
   function sync() {
-    entries = layoutRects(doc.root);
+    entries = layoutRects(doc.root, layoutMetrics());
     const live = new Set<string>(viewIds(doc));
     for (const v of lifted()?.views ?? []) live.add(v);
     for (const l of leaving.values()) for (const v of l.panel.views) live.add(v);
@@ -1361,7 +1364,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   function renderDividers(round: boolean) {
     const show = !tween.active && !dragActive() && !gesture;
     for (const el of dividerEls.values()) {
-      const split = findNode(doc.root, el.dataset.split!) as SplitNode | null;
+      const split = effectiveSplit(el.dataset.split!);
       const e = split && entries.get(split.id);
       if (!split || !e || !show || hiddenSplits.has(split.id)) {
         setStyle(el, "display", "none");
@@ -2125,23 +2128,38 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   }
 
   // ---------------------------------------------------------------- dividers
-  function minExtent(node: LayoutNode, axis: "x" | "y"): number {
-    if (node.kind === "stage") return node.child ? minExtent(node.child, axis) : 120;
-    if (node.kind === "panel") {
-      const floor = axis === "x" ? 80 : tabbarHeight + 28;
-      return floor;
-    }
-    const mins = node.children.map((c) => minExtent(c, axis));
-    const inner =
-      node.axis === axis ? mins.reduce((a, b) => a + b, 0) + gap * (mins.length - 1) : Math.max(...mins);
-    return inner;
+  /** Pixel minimums for the layout: every panel keeps room for a tab and its menu button, in its
+   * group's own layout space. A group needs a panel's room too; it scales itself if its own
+   * children can't fit. */
+  function layoutMetrics(): LayoutMetrics {
+    // The layout maps into the viewport inside its outer padding (see toScreen).
+    return {
+      width: viewport.w - pad() * 2,
+      height: viewport.h - pad() * 2,
+      min: (node, axis) =>
+        (node.kind === "stage" && !node.child ? 120 : axis === "x" ? PANEL_MIN.w : tabbarHeight + 28) + gap,
+    };
+  }
+  /** A split child's minimum as a fraction of the split's own layout size. */
+  function minFraction(split: SplitNode, index: number): number {
+    const e = entries.get(split.id);
+    const child = split.children[index];
+    const childScale = entries.get(child.id)?.scale ?? 1;
+    const m = layoutMetrics();
+    const extent = e ? (split.axis === "x" ? e.rect.w * m.width : e.rect.h * m.height) : 0;
+    return extent > 0 ? (m.min(child, split.axis) * childScale) / extent : 0;
+  }
+  /** A split with the proportions it actually has on screen (weights with minimums applied). */
+  function effectiveSplit(id: string): SplitNode | null {
+    const node = entries.get(id)?.node;
+    return node?.kind === "split" ? node : null;
   }
   function beginDivider(e: PointerEvent, el: HTMLElement) {
     if (e.button !== 0) return;
     e.preventDefault();
     const splitId = el.dataset.split!;
     const index = Number(el.dataset.index);
-    const split = findNode(doc.root, splitId) as SplitNode | null;
+    const split = effectiveSplit(splitId);
     const entry = entries.get(splitId);
     if (!split || !entry) return;
     const origin = doc;
@@ -2153,18 +2171,13 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const move = (ev: PointerEvent) => {
       const p = localPoint(ev);
       const r = toScreen(entry.rect);
-      const size = split.axis === "x" ? r.w : r.h;
       const position = split.axis === "x" ? (p.x - r.x) / r.w : (p.y - r.y) / r.h;
-      const current = findNode(doc.root, splitId) as SplitNode | null;
+      // Start from what's on screen, so a panel held at its minimum doesn't jump.
+      const current = effectiveSplit(splitId);
       if (!current) return;
-      const resized = resizeBoundary(
-        current,
-        index,
-        position,
-        (i) => minExtent(current.children[i], split.axis) / size,
-      );
+      const resized = resizeBoundary(current, index, position, (i) => minFraction(current, i));
       doc = { ...doc, root: replaceNode(doc.root, splitId, resized) };
-      entries = layoutRects(doc.root);
+      entries = layoutRects(doc.root, layoutMetrics());
       render();
     };
     const up = () => {
@@ -2192,7 +2205,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     commit({ ...doc, root: replaceNode(doc.root, splitId, { ...split, weights }) });
   }
   function dividerKey(e: KeyboardEvent, el: HTMLElement) {
-    const split = findNode(doc.root, el.dataset.split!) as SplitNode | null;
+    const split = effectiveSplit(el.dataset.split!);
     if (!split) return;
     const index = Number(el.dataset.index);
     const decrease = split.axis === "x" ? "ArrowLeft" : "ArrowUp";
@@ -2202,13 +2215,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const total = split.weights.reduce((a, b) => a + b, 0);
     const boundary = split.weights.slice(0, index + 1).reduce((a, b) => a + b, 0) / total;
     const step = e.shiftKey ? 0.1 : 0.02;
-    const entry = entries.get(split.id)!;
-    const size = split.axis === "x" ? toScreen(entry.rect).w : toScreen(entry.rect).h;
-    const resized = resizeBoundary(
-      split,
-      index,
-      boundary + (e.key === increase ? step : -step),
-      (i) => minExtent(split.children[i], split.axis) / size,
+    const resized = resizeBoundary(split, index, boundary + (e.key === increase ? step : -step), (i) =>
+      minFraction(split, i),
     );
     commit({ ...doc, root: replaceNode(doc.root, split.id, resized) }, { animate: false });
   }
@@ -2360,6 +2368,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     floatingLayer,
     panelDom: (id) => panelDoms.get(id),
     frameOnly: (id) => !!panelDoms.get(id)?.el.hasAttribute("data-frame-only"),
+    layoutMetrics,
     collapsedGroupOf: (id) => collapsedOf.get(id) ?? null,
     collapsedSplit: (id) => hiddenSplits.has(id),
     allowed,
@@ -2389,6 +2398,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     root,
     lifetime,
     camera,
+    layoutMetrics,
     doc: () => doc,
     mode: navigationMode,
     reduced,
@@ -2435,6 +2445,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     viewport = { w, h: hh };
     readMetrics();
     tween.stop();
+    // Minimums are in pixels, so a new size can change the layout's proportions and scales.
+    sync();
     render();
     schedule();
   });
@@ -2501,6 +2513,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     },
     run,
     getDocument,
+    getLayoutRects: () => new Map(entries),
     setDocument,
     reset() {
       if (options.persist)

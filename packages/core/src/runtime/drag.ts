@@ -29,7 +29,7 @@ import {
   tileDropTarget,
   type DockTargetSpec,
 } from "../model/spatial";
-import { findNode, findStage, layoutRects, type Entry } from "../model/tree";
+import { findNode, findStage, layoutRects, type Entry, type LayoutMetrics } from "../model/tree";
 import type { Edge, FloatingLayer, LayoutDocument, LayoutNode, PanelNode, Rect } from "../model/types";
 import type { Lifetime } from "./lifetime";
 import type { LayoutTween } from "./motion";
@@ -82,6 +82,8 @@ export interface DragHost {
     id: string,
   ): { tabbar: HTMLElement; tablist: HTMLElement; tabs: Map<string, { el: HTMLElement }> } | undefined;
   frameOnly(panelId: string): boolean;
+  /** Pixel minimums for laying a tree out, matching what's on screen. */
+  layoutMetrics(): LayoutMetrics;
   /** The collapsed group standing in for a panel, if it's too small on screen to show. */
   collapsedGroupOf(panelId: string): string | null;
   /** Whether a split sits inside a collapsed group (or is one). */
@@ -349,7 +351,7 @@ export function createDragController(host: DragHost) {
       host.setDoc(doc);
     }
     d.pdoc = doc;
-    d.dropBase = layoutRects(doc.root);
+    d.dropBase = layoutRects(doc.root, host.layoutMetrics());
     d.base = new Map([...d.dropBase].map(([id, e]) => [id, { ...e.rect }]));
     d.layoutTargets = restingLayout(d);
     d.pickupAt = performance.now();
@@ -617,9 +619,11 @@ export function createDragController(host: DragHost) {
     return rects;
   }
   function collapsedSource(d: DragSession): Rect {
-    const entry = layoutRects(d.origin.root).get(d.lifted.id);
+    const entry = layoutRects(d.origin.root, host.layoutMetrics()).get(d.lifted.id);
     const rect = { ...(d.base.get(d.lifted.id) ?? entry?.rect ?? { x: 0, y: 0, w: 0, h: 0 }) };
-    const parent = entry?.parent ? layoutRects(d.origin.root).get(entry.parent)?.node : null;
+    const parent = entry?.parent
+      ? layoutRects(d.origin.root, host.layoutMetrics()).get(entry.parent)?.node
+      : null;
     if (!parent || parent.kind !== "split") return { ...rect, w: 0 };
     const hasNext = parent.children.findIndex((c) => c.id === d.lifted.id) < parent.children.length - 1;
     if (parent.axis === "x") {
@@ -656,12 +660,12 @@ export function createDragController(host: DragHost) {
   function apply(d: DragSession, next: DropTarget | null) {
     if (sameTarget(next, d.target)) return;
     const previous = new Map(host.lastRects);
-    const parent = layoutRects(d.origin.root).get(d.lifted.id)?.parent;
+    const parent = layoutRects(d.origin.root, host.layoutMetrics()).get(d.lifted.id)?.parent;
     if (next && d.inDoc && !d.fromFloat && !d.collapsed && parent) {
       // Latch removal on the first target; leaving it never reopens the source.
       d.collapsed = true;
       d.pdoc = removePanel(d.pdoc, d.lifted.id);
-      d.dropBase = layoutRects(d.pdoc.root);
+      d.dropBase = layoutRects(d.pdoc.root, host.layoutMetrics());
     }
     d.layoutTargets = restingLayout(d);
     d.dropLabel = "";
@@ -693,7 +697,7 @@ export function createDragController(host: DragHost) {
       const spec = next.spec;
       if (spec.seam || !d.dropBase.get(spec.id)) {
         const previewRoot = applyDockTarget(d.pdoc.root, spec, placeholder, "__trellis-seam-preview");
-        const preview = layoutRects(previewRoot);
+        const preview = layoutRects(previewRoot, host.layoutMetrics());
         for (const [id, entry] of preview) d.layoutTargets.set(id, entry.rect);
         const slot = preview.get(DROP_SLOT)?.rect;
         if (slot) setSlotFrom(seamOrigin(d, preview, slot));
@@ -836,7 +840,7 @@ export function createDragController(host: DragHost) {
         ? { x: 0, y: 0, w: viewport.w, h: viewport.h }
         : (() => {
             const stage = findStage(next.root);
-            const world = stage ? layoutRects(next.root).get(stage.id)?.rect : null;
+            const world = stage ? layoutRects(next.root, host.layoutMetrics()).get(stage.id)?.rect : null;
             return host.toScreen(world ?? { x: 0, y: 0, w: 1, h: 1 });
           })();
     const current = d.fromFloat && !d.tabRollback ? host.lastRects.get(d.lifted.id) : null;

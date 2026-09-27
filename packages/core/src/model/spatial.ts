@@ -5,7 +5,17 @@
  * A stage is a transparent container. It occupies exactly its child's rect, so it never adds a
  * navigation level, and an empty stage acts as a leaf (the desktop).
  */
-import { edgeAxis, edgeBefore, insertBeside, layoutRects, normalize, sum, UNIT, type Entry } from "./tree";
+import {
+  edgeAxis,
+  edgeBefore,
+  insertBeside,
+  layoutRects,
+  normalize,
+  sum,
+  UNIT,
+  type Entry,
+  type LayoutMetrics,
+} from "./tree";
 import type { Axis, Edge, LayoutNode, PanelNode, Rect, SplitNode } from "./types";
 
 // ------------------------------------------------------------------ entries
@@ -24,8 +34,8 @@ export interface SpaceEntry extends Entry {
 }
 
 /** Camera targets: every node, plus contiguous sibling ranges of splits with 3+ children. */
-export function focusLayout(root: LayoutNode | null): Map<string, SpaceEntry> {
-  const entries: Map<string, SpaceEntry> = layoutRects(root);
+export function focusLayout(root: LayoutNode | null, metrics?: LayoutMetrics): Map<string, SpaceEntry> {
+  const entries: Map<string, SpaceEntry> = layoutRects(root, metrics);
   for (const { node } of [...entries.values()]) {
     if (node.kind !== "split" || node.children.length < 3) continue;
     for (let start = 0; start < node.children.length - 1; start++) {

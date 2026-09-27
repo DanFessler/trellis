@@ -149,52 +149,53 @@ test.describe("vanilla workspace", () => {
   });
 
   test("a group whose parts are all too small collapses into one tile", async ({ page }) => {
-    // Nest two panels under the right-hand panel, then squeeze that column to a sliver.
-    await page.evaluate(() => {
+    // Under the right-hand panel, nest a row of three whose last cell is split again. Squeezing the
+    // column makes that row scale down until its parts are too small even for icons.
+    const ids = await page.evaluate(() => {
       const ws = (window as any).ws;
       const x1 = ws.open("files", { placement: { beside: "right", edge: "bottom", share: 0.5 } });
-      ws.open("search", { placement: { beside: x1.panelId, edge: "right", share: 0.5 } });
+      const x2 = ws.open("search", { placement: { beside: x1.panelId, edge: "right" } });
+      const x3 = ws.open("files", { placement: { beside: x2.panelId, edge: "right" } });
+      ws.open("search", { placement: { beside: x3.panelId, edge: "bottom" } });
       const doc = ws.getDocument();
       doc.root.weights = [1, 12, 0.3];
       ws.setDocument(doc);
-      // Opening a view frames it; step back out to see the whole layout.
       ws.navigation.overview();
+      return { x1: x1.panelId };
     });
     const group = page.locator("[data-trellis-part=group]");
     await expect(group).toHaveCount(1);
-    await expect(panel(page, "right")).toBeHidden();
-    // Two levels of lines: the column's split, and the split nested inside it.
-    await expect(group.locator("i")).toHaveCount(2);
+    await expect(panel(page, ids.x1)).toBeHidden();
+    // Two levels of lines: the row's two seams, and the split nested in its last cell.
+    await expect(group.locator("i")).toHaveCount(3);
     // Hidden panels keep their content mounted.
     expect(await page.evaluate(() => (window as any).mounts.outline)).toBe(1);
-    // Double-clicking zooms to the part under the pointer: the top of the tile is the "right" panel.
+    // Double-clicking zooms to the part under the pointer: the left of the tile is x1.
     const tile = await box(group);
-    await page.mouse.dblclick(tile.x + tile.width / 2, tile.y + tile.height * 0.2);
-    await expect(panel(page, "right")).toBeVisible();
+    await page.mouse.dblclick(tile.x + tile.width * 0.1, tile.y + tile.height / 2);
+    await expect(panel(page, ids.x1)).toBeVisible();
     await expect(group).toHaveCount(0);
     // A moderately small nest keeps its icon tiles: collapsing is only for parts too small for icons.
     await page.evaluate(() => {
       const ws = (window as any).ws;
-      ws.navigation.overview();
       const doc = ws.getDocument();
       doc.root.weights = [1, 5, 0.9];
       ws.setDocument(doc);
+      ws.navigation.overview();
     });
     await expect(group).toHaveCount(0);
-    await expect(panel(page, "right")).toHaveAttribute("data-frame-only", "");
+    await expect(panel(page, ids.x1)).toHaveAttribute("data-frame-only", "");
     // detail: false keeps every panel, however small.
     await page.evaluate(() => {
-      const doc = (window as any).ws.getDocument();
-      doc.root.weights = [1, 12, 0.3];
-      (window as any).ws.setDocument(doc);
-    });
-    await page.evaluate(() => {
       const ws = (window as any).ws;
+      const doc = ws.getDocument();
+      doc.root.weights = [1, 12, 0.3];
+      ws.setDocument(doc);
       ws.navigation.overview();
       ws.update({ detail: false });
     });
     await expect(group).toHaveCount(0);
-    await expect(panel(page, "right")).toBeVisible();
+    await expect(panel(page, ids.x1)).toBeVisible();
   });
 
   test("reorders tabs within a tab bar", async ({ page }) => {
@@ -713,5 +714,82 @@ test.describe("navigation requirements", () => {
     expect(await bg()).toBe("rgb(1, 2, 3)");
     await page.evaluate(() => (window as any).ws.update({ tokens: {} }));
     expect(await bg()).not.toBe("rgb(1, 2, 3)");
+  });
+});
+
+test.describe("minimum sizes", () => {
+  // Panels keep at least 80px of width in their group's own layout space. A group whose panels
+  // can't fit is scaled down as a whole, and zooming to it brings them back to full size.
+  const width = async (page: Page, id: string) => (await box(panel(page, id))).width;
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+  });
+
+  test("narrowing the workspace keeps side panels at their minimum", async ({ page }) => {
+    // At 330px, the weights (1:3:1) would give the side panels 66px each.
+    await page.evaluate(() => {
+      (document.querySelector(".trellis")!.parentElement as HTMLElement).style.width = "330px";
+    });
+    await page.waitForTimeout(300);
+    expect(await width(page, "left")).toBeGreaterThanOrEqual(79.5);
+    expect(await width(page, "right")).toBeGreaterThanOrEqual(79.5);
+  });
+
+  test("dragging a divider next to a squeezed panel moves it smoothly, without jumping", async ({ page }) => {
+    // Weights that would make the right panel 27px wide: it's raised to its minimum instead.
+    await page.evaluate(() => {
+      const ws = (window as any).ws;
+      const doc = ws.getDocument();
+      doc.root.weights = [1, 12, 0.3];
+      ws.setDocument(doc);
+    });
+    await page.waitForTimeout(300);
+    const before = await width(page, "right");
+    expect(before).toBeGreaterThanOrEqual(79.5);
+    const divider = page.locator("[data-trellis-part=divider][data-index='1']").first();
+    const d = await box(divider);
+    await page.mouse.move(d.x + d.width / 2, d.y + d.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(d.x + d.width / 2 - 2, d.y + d.height / 2, { steps: 2 });
+    const firstStep = (await width(page, "right")) - before;
+    await page.mouse.move(d.x + d.width / 2 - 20, d.y + d.height / 2, { steps: 4 });
+    const after = (await width(page, "right")) - before;
+    await page.mouse.up();
+    expect(firstStep).toBeGreaterThan(0);
+    expect(firstStep).toBeLessThan(4);
+    expect(after).toBeGreaterThan(17);
+    expect(after).toBeLessThan(23);
+  });
+
+  test("a group whose panels can't fit scales down, and zooming to it restores their minimum", async ({
+    page,
+  }) => {
+    const ids = await page.evaluate(() => {
+      const ws = (window as any).ws;
+      const x1 = ws.open("files", { placement: { beside: "right", edge: "bottom", share: 0.5 } });
+      const x2 = ws.open("search", { placement: { beside: x1.panelId, edge: "right" } });
+      const doc = ws.getDocument();
+      doc.root.weights = [1, 12, 0.3];
+      ws.setDocument(doc);
+      ws.navigation.overview();
+      return { x1: x1.panelId, x2: x2.panelId };
+    });
+    await page.waitForTimeout(300);
+    // The column gets its 80px minimum; the two panels side by side in it need 160, so their row
+    // is drawn at about half size.
+    expect(await width(page, "right")).toBeGreaterThanOrEqual(79.5);
+    const scaled = await width(page, ids.x1);
+    expect(scaled).toBeLessThan(60);
+    expect(scaled).toBeGreaterThan(20);
+    // The handle reports the geometry as drawn, including how much the group is scaled.
+    const scale = await page.evaluate((id) => (window as any).ws.getLayoutRects().get(id).scale, ids.x1);
+    expect(scale).toBeGreaterThan(0.3);
+    expect(scale).toBeLessThan(0.7);
+    await page.evaluate((ids) => (window as any).ws.navigation.frame([ids.x1, ids.x2]), ids);
+    await page.waitForTimeout(600);
+    expect(await width(page, ids.x1)).toBeGreaterThanOrEqual(79.5);
+    expect(await width(page, ids.x2)).toBeGreaterThanOrEqual(79.5);
   });
 });
