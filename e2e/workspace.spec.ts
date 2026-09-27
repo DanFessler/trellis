@@ -919,6 +919,73 @@ test.describe("layout during motion", () => {
     for (const v of offscreen) expect(v.during, v.view).toEqual([v.before]);
   });
 
+  test("a pinch only scales content, uniformly, until it's released", async ({ page }) => {
+    await page.waitForTimeout(300);
+    const result = await page.evaluate(
+      () =>
+        new Promise<{ before: string[]; during: string[]; transforms: string[]; after: string[] }>(
+          (resolve) => {
+            const contents = () =>
+              [...document.querySelectorAll<HTMLElement>("[data-trellis-part=surface]")]
+                .filter((shell) => shell.style.visibility !== "hidden")
+                .map((shell) => shell.querySelector<HTMLElement>(":scope > [data-trellis-part=content]")!);
+            const sizes = () => contents().map((c) => `${c.style.width}x${c.style.height}`);
+            const before = sizes();
+            const during = new Set<string>();
+            const transforms = new Set<string>();
+            const bar = document.querySelector<HTMLElement>(
+              "[data-trellis-part=panel][data-panel=right] [data-trellis-part=tabbar]",
+            )!;
+            const r = bar.getBoundingClientRect();
+            let events = 0;
+            // A trackpad pinch: a stream of ctrl+wheel events, one per frame.
+            const pinch = () => {
+              bar.dispatchEvent(
+                new WheelEvent("wheel", {
+                  deltaY: -8,
+                  ctrlKey: true,
+                  clientX: r.right - 30,
+                  clientY: r.top + r.height / 2,
+                  bubbles: true,
+                  cancelable: true,
+                }),
+              );
+              requestAnimationFrame(() => {
+                for (const size of sizes()) during.add(size);
+                for (const c of contents()) transforms.add(c.style.transform);
+                if (++events < 15) pinch();
+                else {
+                  // Released: record every layout until the snap has settled.
+                  const after = new Set<string>();
+                  const start = performance.now();
+                  const settle = () => {
+                    after.add(sizes().join("|"));
+                    if (performance.now() - start < 1500) requestAnimationFrame(settle);
+                    else
+                      resolve({
+                        before,
+                        during: [...during],
+                        transforms: [...transforms],
+                        after: [...after],
+                      });
+                  };
+                  requestAnimationFrame(settle);
+                }
+              });
+            };
+            pinch();
+          },
+        ),
+    );
+    // Nothing is laid out again while the fingers are down...
+    expect(result.during.every((size) => result.before.includes(size))).toBe(true);
+    // ...and nothing is stretched: every view scales by one factor.
+    for (const t of result.transforms) expect(t).toMatch(/^(scale\([^,)]+\))?$/);
+    expect(result.transforms.some((t) => t)).toBe(true);
+    // Released, it snaps and lays out once, at the snapped size.
+    expect(result.after.length).toBeLessThanOrEqual(2);
+  });
+
   test("the view being zoomed to is laid out at its final size from the first frame", async ({ page }) => {
     const deepest = await setup(page);
     await page.waitForTimeout(800);

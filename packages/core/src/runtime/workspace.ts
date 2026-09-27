@@ -197,6 +197,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   const lifted = (): PanelNode | null => (dragger?.session?.active ? dragger.session.lifted : null);
   const dragActive = () => !!dragger?.active;
   let gesture = false;
+  /** A pinch or wheel zoom is driving the camera: its end isn't known until it's released. */
+  let zooming = false;
   let frame = 0;
   let lastTime = 0;
   let snapshot: WorkspaceSnapshot | null = null;
@@ -1334,10 +1336,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
    *   beyond twice the window, so it's cheap and nothing is stretched.
    * - a rect: once, at the size it will settle at, while the camera moves, for panels that end in
    *   view. A zoom can change every panel's size by many times, so they aren't laid out per frame.
-   * - "keep": at the size it already has. Panels that end the camera move out of view, and panels
-   *   flying to or from the tray. */
+   * - "keep": at the size it already has. During a pinch or wheel zoom, whose end isn't known
+   *   until it's released; panels that end a camera move out of view; and panels flying to or
+   *   from the tray. */
   function reflowOf(panelId: string, flying: boolean, bar: number): "live" | "keep" | Rect {
-    if (flying) return "keep";
+    if (flying || zooming) return "keep";
     if (!camera.moving || gesture) return "live";
     const end = restRect(panelId);
     return end && inView(end) ? { ...end, y: end.y + bar, h: Math.max(0, end.h - bar) } : "keep";
@@ -1375,11 +1378,12 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const settleAt = typeof reflow === "object" && reflow.w > 1 && reflow.h > 1 ? reflow : null;
     if (settleAt || (reflow !== "live" && frozen)) {
       // Moving: laid out once, at the size it will settle at or the size it already has, and
-      // scaled to fit each frame.
+      // scaled to cover the surface each frame. One factor, so nothing is ever stretched: the
+      // fixed-height tab bar changes the body's proportions slightly, and the surface crops that.
       const target = settleAt ? layoutAt(settleAt) : frozen!;
       width = target.w;
       height = target.h;
-      transform = `scale(${body.w / width}, ${body.h / height})`;
+      transform = `scale(${Math.max(body.w / width, body.h / height)})`;
       (record as any).__layout = target;
     } else {
       const s = safe;
@@ -2463,6 +2467,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     panelScreen: (world) => inset(toScreen(world), pad()),
     setGesture(active) {
       gesture = active;
+      zooming = active;
       if (active) {
         tween.stop();
         settledState = false;
