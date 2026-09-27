@@ -544,6 +544,10 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       if (target.closest("button:not([data-trellis-part=tab]), [data-trellis-part=accessory]")) return;
       if (navigationMode()) toggleFrame(d.id);
     });
+    // An icon-only tile has no tab bar; double-clicking anywhere on it zooms to the panel.
+    lifetime.listen(el, "dblclick", () => {
+      if (el.hasAttribute("data-frame-only") && navigationMode()) toggleFrame(d.id);
+    });
     lifetime.listen(menuButton, "click", (e: MouseEvent) => {
       e.stopPropagation();
       openPanelMenu(d.id, menuButton);

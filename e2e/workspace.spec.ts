@@ -142,6 +142,10 @@ test.describe("vanilla workspace", () => {
     await expect(tiny).toHaveAttribute("data-frame-only", "");
     await expect(tiny.locator("[data-trellis-part=tabbar]")).toBeHidden();
     await expect(tiny.locator("[data-trellis-part=frame-icon]")).toBeVisible();
+    // Double-clicking the tile zooms to the panel, which then shows its tabs.
+    await tiny.dblclick();
+    await expect(tiny).not.toHaveAttribute("data-frame-only", "");
+    await expect(tiny.locator("[data-trellis-part=tabbar]")).toBeVisible();
   });
 
   test("a group whose parts are all too small collapses into one tile", async ({ page }) => {
