@@ -125,9 +125,9 @@ const escapeHtml = (text: string) =>
 const DEFAULT_FLOAT_SIZE = { w: 560, h: 400 };
 /** Below this size a panel shows only its icon ("frame only"). */
 const FRAME_ONLY = { w: 160, h: 64 };
-/** Defaults for the `detail` option: a group collapses when all its parts are smaller than this
- * on screen (the same size at which a lone panel drops to its icon). */
-const DETAIL = { width: FRAME_ONLY.w, height: FRAME_ONLY.h, outline: 2 };
+/** Defaults for the `detail` option: a nested group collapses into one tile when all its parts are
+ * smaller than `size` × `size` on screen, too small even for an icon tile. */
+const DETAIL = { size: 48, outline: 2 };
 
 /** Create a workspace inside `host`. Returns an imperative handle. */
 export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOptions): WorkspaceHandle {
@@ -997,16 +997,17 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   const collapsedGroups = new Set<string>();
   const hiddenSplits = new Set<string>();
   const groupEls = new Map<string, HTMLElement>();
-  /** The outermost nested split groups whose parts are all too small on screen to show as panels.
-   * A flat row or column of small panels keeps its icon tiles; only nesting collapses. */
+  /** The outermost nested split groups whose parts are all too small on screen even for an icon.
+   * A flat row or column of small panels keeps its icon tiles; only nesting collapses. The group
+   * the camera is framing never collapses, so zooming in always reveals something. */
   function computeCollapsed() {
     collapsedOf.clear();
     collapsedGroups.clear();
     hiddenSplits.clear();
     const detail = options.detail;
     if (detail === false || !navigationMode()) return;
-    const minW = detail?.width ?? DETAIL.width;
-    const minH = detail?.height ?? DETAIL.height;
+    const size = detail?.size ?? DETAIL.size;
+    const framedId = nav.framed;
     const hide = (node: LayoutNode) => {
       if (node.kind === "split") {
         hiddenSplits.add(node.id);
@@ -1021,12 +1022,12 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         const e = entries.get(id);
         if (!e) return false;
         const r = toScreen(e.rect);
-        return r.w < minW || r.h < minH;
+        return r.w < size || r.h < size;
       };
       const nested = node.children.some(
         (c) => c.kind === "split" || (c.kind === "stage" && c.child?.kind === "split"),
       );
-      if (nested && (small(node.id) || node.children.every((c) => small(c.id)))) {
+      if (node.id !== framedId && nested && (small(node.id) || node.children.every((c) => small(c.id)))) {
         collapsedGroups.add(node.id);
         hide(node);
         for (const id of leafIds(node)) collapsedOf.set(id, node.id);
@@ -1061,6 +1062,26 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     walk(node, 0);
     return html;
   }
+  /** The part of a collapsed group under a point, as deep as its outline shows. Zooming there always
+   * makes progress, even when the whole group is too small to open at this screen size. */
+  function groupSegmentAt(groupId: string, point: { x: number; y: number }): string {
+    const p = fromScreen(point);
+    const outline = (options.detail || undefined)?.outline ?? DETAIL.outline;
+    let node = entries.get(groupId)?.node;
+    let target = groupId;
+    for (let level = 0; node && level < Math.max(1, outline); level++) {
+      if (node.kind === "stage") node = node.child ?? undefined;
+      if (!node || node.kind !== "split") break;
+      const child: LayoutNode | undefined = node.children.find((c) => {
+        const r = entries.get(c.id)?.rect;
+        return r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+      });
+      if (!child) break;
+      target = child.id;
+      node = child;
+    }
+    return target;
+  }
   function renderGroups(round: boolean) {
     for (const [id, el] of groupEls)
       if (!collapsedGroups.has(id)) {
@@ -1075,7 +1096,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       if (!el) {
         el = h("div", { "data-trellis-part": "group", "data-group": id, role: "img" });
         const groupId = id;
-        lifetime.listen(el, "dblclick", () => nav.focus(groupId));
+        lifetime.listen(el, "dblclick", (ev: MouseEvent) =>
+          nav.focus(groupSegmentAt(groupId, localPoint(ev))),
+        );
         layer.append(el);
         groupEls.set(id, el);
       }

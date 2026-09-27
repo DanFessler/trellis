@@ -64,14 +64,14 @@ A panel doesn't have to be usable at every zoom level. Trellis handles small pan
 
 - Below a view type's `minSize`, content keeps laying out at that size and is scaled down to fit. A text editor stays readable at a glance and doesn't reflow into a narrow column. With free navigation, views without a `minSize` use 480 × 320.
 - Below 160 × 64 pixels on screen, a panel shows only its icon. The whole tile becomes a drag handle, so it can still be moved, and double-clicking it zooms to the panel.
-- When every part of a nested group is that small, the whole group becomes one tile, with lines showing how it's divided two levels deep. Double-click the tile to zoom to the group. Its panels stay mounted the whole time, and focusing one of their views from code or the keyboard zooms to it. Views can dock beside a collapsed group, not into it. A flat row or column of small panels keeps its individual icons.
+- When every part of a nested group is smaller than 48 × 48, too small even for an icon, the group becomes one tile. Lines on the tile show how it's divided, two levels deep. Double-click a part of the tile to zoom to it. Its panels stay mounted the whole time, and focusing one of their views from code or the keyboard zooms to it. Views can dock beside a collapsed group, not into it. A flat row or column of small panels keeps its individual icons, and the group you've zoomed to never collapses.
 
 To use a small panel, zoom in until it's large enough, or drag it somewhere with more room. Scaled content ignores pointer input until it's back at full size.
 
-The `detail` option sets when groups collapse. `width` and `height` are the on-screen size below which a part counts as too small, and `outline` is how many levels of lines a collapsed tile shows. `detail: false` keeps every panel, however small. Groups only collapse while navigation is on, because without zooming there'd be no way to open them:
+The `detail` option sets when groups collapse. `size` is the on-screen width and height below which a part counts as too small, and `outline` is how many levels of lines a collapsed tile shows. `detail: false` keeps every panel, however small. Groups only collapse while navigation is on, because without zooming there'd be no way to open them:
 
 ```tsx
-<Workspace navigation="free" detail={{ width: 200, height: 120, outline: 3 }}>
+<Workspace navigation="free" detail={{ size: 64, outline: 3 }}>
   {/* … */}
 </Workspace>
 ```

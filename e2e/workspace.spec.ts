@@ -167,11 +167,27 @@ test.describe("vanilla workspace", () => {
     await expect(group.locator("i")).toHaveCount(2);
     // Hidden panels keep their content mounted.
     expect(await page.evaluate(() => (window as any).mounts.outline)).toBe(1);
-    // Double-clicking the tile zooms to the group, which is then big enough to show its panels.
-    await group.dblclick();
+    // Double-clicking zooms to the part under the pointer: the top of the tile is the "right" panel.
+    const tile = await box(group);
+    await page.mouse.dblclick(tile.x + tile.width / 2, tile.y + tile.height * 0.2);
     await expect(panel(page, "right")).toBeVisible();
     await expect(group).toHaveCount(0);
+    // A moderately small nest keeps its icon tiles: collapsing is only for parts too small for icons.
+    await page.evaluate(() => {
+      const ws = (window as any).ws;
+      ws.navigation.overview();
+      const doc = ws.getDocument();
+      doc.root.weights = [1, 5, 0.9];
+      ws.setDocument(doc);
+    });
+    await expect(group).toHaveCount(0);
+    await expect(panel(page, "right")).toHaveAttribute("data-frame-only", "");
     // detail: false keeps every panel, however small.
+    await page.evaluate(() => {
+      const doc = (window as any).ws.getDocument();
+      doc.root.weights = [1, 12, 0.3];
+      (window as any).ws.setDocument(doc);
+    });
     await page.evaluate(() => {
       const ws = (window as any).ws;
       ws.navigation.overview();

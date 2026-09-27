@@ -220,12 +220,11 @@ export interface WorkspaceOptions {
    * Return an empty list for no menu. */
   panelMenu?: boolean | ((entries: MenuEntry[], context: PanelMenuContext) => MenuEntry[]);
   /** How much detail small parts of the layout show while navigating. A nested split group whose
-   * parts are all smaller than `width` × `height` pixels on screen collapses into a single tile, with
-   * lines for its first `outline` levels of splits; double-clicking the tile zooms to it. Its
-   * panels stay mounted. Defaults: `{ width: 160, height: 64, outline: 2 }`, the size at which a
-   * lone panel shows only its icon. `false` turns collapsing off. Only applies when navigation
-   * is on. */
-  detail?: false | { width?: number; height?: number; outline?: number };
+   * parts are all smaller than `size` × `size` pixels on screen (too small even for an icon tile)
+   * collapses into one tile, with lines for its first `outline` levels of splits. Double-clicking
+   * the tile zooms to the part under the pointer. Its panels stay mounted. Defaults:
+   * `{ size: 48, outline: 2 }`. `false` turns collapsing off. Only applies while navigation is on. */
+  detail?: false | { size?: number; outline?: number };
   /** Show panel menus with your own component instead of the built-in one. */
   renderMenu?(request: MenuRequest): void;
   /** Where the built-in "Hide" animates to, e.g. your dock or tray button. */

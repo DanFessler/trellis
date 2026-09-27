@@ -376,7 +376,7 @@ export interface WorkspaceProps {
    * receives the full menu and returns the entries to show. Always calls the latest function. */
   panelMenu?: boolean | ((entries: MenuEntry[], context: PanelMenuContext) => MenuEntry[]);
   /** Small groups collapse into one tile while navigating. See the core `detail` option. */
-  detail?: false | { width?: number; height?: number; outline?: number };
+  detail?: false | { size?: number; outline?: number };
   /** Show panel menus with your own component. Always calls the latest function. */
   renderMenu?(request: MenuRequest): void;
   /** Tab layout: `fill` makes tabs share the tab row; `inset` (px) is the space around them. */
