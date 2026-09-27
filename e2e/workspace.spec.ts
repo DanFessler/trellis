@@ -127,6 +127,23 @@ test.describe("vanilla workspace", () => {
     }
   });
 
+  test("a panel too small to use shows only its icon, with no tab bar", async ({ page }) => {
+    // Squeeze the right-hand panel to a sliver so it drops to its icon-only form.
+    await page.evaluate(() => {
+      const ws = (window as any).ws;
+      const doc = ws.getDocument();
+      const root = doc.root;
+      root.weights = root.children.map((_: unknown, i: number) =>
+        i === root.children.length - 1 ? 0.02 : 1,
+      );
+      ws.setDocument(doc);
+    });
+    const tiny = panel(page, "right");
+    await expect(tiny).toHaveAttribute("data-frame-only", "");
+    await expect(tiny.locator("[data-trellis-part=tabbar]")).toBeHidden();
+    await expect(tiny.locator("[data-trellis-part=frame-icon]")).toBeVisible();
+  });
+
   test("reorders tabs within a tab bar", async ({ page }) => {
     const a = await box(tab(page, "a"));
     const b = await box(tab(page, "b"));
