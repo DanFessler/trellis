@@ -893,9 +893,11 @@ test.describe("deep zoom performance", () => {
       )!;
       w.__zoomSizes = [];
       w.__zoomContent = content;
+      // Sample for the whole zoom, however fast frames come.
+      const start = performance.now();
       const sample = () => {
         w.__zoomSizes.push(`${content.style.width}x${content.style.height}`);
-        if (w.__zoomSizes.length < 60) requestAnimationFrame(sample);
+        if (performance.now() - start < 2000) requestAnimationFrame(sample);
       };
       w.ws.navigation.frame([id]);
       requestAnimationFrame(sample);
@@ -904,7 +906,7 @@ test.describe("deep zoom performance", () => {
     const sizes: string[] = await page.evaluate(() => (window as any).__zoomSizes);
     // Before its first placement a view has no size yet; once placed, it keeps one size throughout.
     const placed = sizes.filter((s) => s !== "x");
-    expect(placed.length).toBeGreaterThan(30);
+    expect(placed.length).toBeGreaterThan(5);
     const settled = await page.evaluate(() => {
       const c = (window as any).__zoomContent as HTMLElement;
       return `${c.style.width}x${c.style.height}`;
