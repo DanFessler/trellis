@@ -1,4 +1,5 @@
 import { createDocument, type LayoutSpec } from "../model/builder";
+import { leafIds } from "../model/spatial";
 import {
   clampFloat,
   closeView as closeViewInDoc,
@@ -124,6 +125,9 @@ const escapeHtml = (text: string) =>
 const DEFAULT_FLOAT_SIZE = { w: 560, h: 400 };
 /** Below this size a panel shows only its icon ("frame only"). */
 const FRAME_ONLY = { w: 160, h: 64 };
+/** Defaults for the `detail` option: a group collapses when all its parts are smaller than this
+ * on screen (the same size at which a lone panel drops to its icon). */
+const DETAIL = { width: FRAME_ONLY.w, height: FRAME_ONLY.h, outline: 2 };
 
 /** Create a workspace inside `host`. Returns an imperative handle. */
 export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOptions): WorkspaceHandle {
@@ -982,8 +986,114 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   const moving = () =>
     camera.moving || tween.active || !!dragActive() || gesture || leaving.size > 0 || entering.size > 0;
 
+  // ---------------------------------------------------------------- collapsed groups
+  /** Panel id → the collapsed group hiding it. */
+  const collapsedOf = new Map<string, string>();
+  /** Collapsed groups, and every split inside one (their dividers hide). */
+  const collapsedGroups = new Set<string>();
+  const hiddenSplits = new Set<string>();
+  const groupEls = new Map<string, HTMLElement>();
+  /** The outermost nested split groups whose parts are all too small on screen to show as panels.
+   * A flat row or column of small panels keeps its icon tiles; only nesting collapses. */
+  function computeCollapsed() {
+    collapsedOf.clear();
+    collapsedGroups.clear();
+    hiddenSplits.clear();
+    const detail = options.detail;
+    if (detail === false || !navigationMode()) return;
+    const minW = detail?.width ?? DETAIL.width;
+    const minH = detail?.height ?? DETAIL.height;
+    const hide = (node: LayoutNode) => {
+      if (node.kind === "split") {
+        hiddenSplits.add(node.id);
+        node.children.forEach(hide);
+      } else if (node.kind === "stage" && node.child) hide(node.child);
+    };
+    const visit = (node: LayoutNode | null | undefined) => {
+      if (!node) return;
+      if (node.kind === "stage") return visit(node.child);
+      if (node.kind !== "split") return;
+      const small = (id: string) => {
+        const e = entries.get(id);
+        if (!e) return false;
+        const r = toScreen(e.rect);
+        return r.w < minW || r.h < minH;
+      };
+      const nested = node.children.some(
+        (c) => c.kind === "split" || (c.kind === "stage" && c.child?.kind === "split"),
+      );
+      if (nested && (small(node.id) || node.children.every((c) => small(c.id)))) {
+        collapsedGroups.add(node.id);
+        hide(node);
+        for (const id of leafIds(node)) collapsedOf.set(id, node.id);
+        return;
+      }
+      node.children.forEach(visit);
+    };
+    visit(doc.root);
+  }
+  /** Lines for a collapsed group's splits, `outline` levels deep, as percentages of the group. */
+  function groupOutline(node: SplitNode, bounds: Rect, depth: number): string {
+    let html = "";
+    const walk = (n: LayoutNode, level: number): void => {
+      if (n.kind === "stage") {
+        if (n.child) walk(n.child, level);
+        return;
+      }
+      if (n.kind !== "split" || level >= depth) return;
+      const r = entries.get(n.id)?.rect;
+      if (!r) return;
+      const pct = (v: number, from: number, size: number) => `${(((v - from) / size) * 100).toFixed(3)}%`;
+      for (const child of n.children.slice(1)) {
+        const c = entries.get(child.id)?.rect;
+        if (!c) continue;
+        html +=
+          n.axis === "x"
+            ? `<i data-axis="x" style="left:${pct(c.x, bounds.x, bounds.w)};top:${pct(r.y, bounds.y, bounds.h)};height:${pct(r.y + r.h, r.y, bounds.h)}"></i>`
+            : `<i data-axis="y" style="top:${pct(c.y, bounds.y, bounds.h)};left:${pct(r.x, bounds.x, bounds.w)};width:${pct(r.x + r.w, r.x, bounds.w)}"></i>`;
+      }
+      n.children.forEach((c) => walk(c, level + 1));
+    };
+    walk(node, 0);
+    return html;
+  }
+  function renderGroups(round: boolean) {
+    for (const [id, el] of groupEls)
+      if (!collapsedGroups.has(id)) {
+        el.remove();
+        groupEls.delete(id);
+      }
+    const outline = (options.detail || undefined)?.outline ?? DETAIL.outline;
+    for (const id of collapsedGroups) {
+      const e = entries.get(id);
+      if (!e || e.node.kind !== "split") continue;
+      let el = groupEls.get(id);
+      if (!el) {
+        el = h("div", { "data-trellis-part": "group", "data-group": id, role: "img" });
+        const groupId = id;
+        lifetime.listen(el, "dblclick", () => nav.focus(groupId));
+        layer.append(el);
+        groupEls.set(id, el);
+      }
+      const lines = groupOutline(e.node, e.rect, outline);
+      if (el.dataset.lines !== lines) {
+        el.innerHTML = lines;
+        el.dataset.lines = lines;
+      }
+      const count = leafIds(e.node).length;
+      setAttr(el, "aria-label", `${count} panels. Double-click to zoom in.`);
+      setAttr(el, "title", "Double-click to zoom in");
+      const r = inset(toScreen(e.rect), pad());
+      const onscreen = r.x < viewport.w && r.y < viewport.h && r.x + r.w > 0 && r.y + r.h > 0;
+      setStyle(el, "display", onscreen ? "" : "none");
+      setStyle(el, "zIndex", "10");
+      place(el, r, round);
+    }
+  }
+
   function render(time = performance.now()) {
     if (lifetime.disposed) return;
+    computeCollapsed();
     const round = !moving();
     if (moving()) settledState = false;
     const stage = findStage(doc.root);
@@ -1046,6 +1156,13 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         r = lifted()?.id === panelId ? dragger.liftedRect() : tween.apply(panelId, target);
       }
       lastRects.set(panelId, r);
+      // Inside a collapsed group: the group's tile stands in for it. Its views stay mounted.
+      if (collapsedOf.has(panelId) && !leaving.has(panelId)) {
+        setStyle(dom.el, "display", "none");
+        if (dom.tabbar.parentElement !== dom.el) setStyle(dom.tabbar, "display", "none");
+        if (dom.handles) setStyle(dom.handles, "display", "none");
+        continue;
+      }
       const onscreen =
         r.x < viewport.w && r.y < viewport.h && r.x + r.w > 0 && r.y + r.h > 0 && r.w > 2 && r.h > 2;
       setStyle(dom.el, "display", onscreen ? "" : "none");
@@ -1143,6 +1260,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       });
     }
     renderDividers(round);
+    renderGroups(round);
     renderSlots(round);
   }
   function clipInset(r: Rect, bounds: Rect): string {
@@ -1218,7 +1336,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     for (const el of dividerEls.values()) {
       const split = findNode(doc.root, el.dataset.split!) as SplitNode | null;
       const e = split && entries.get(split.id);
-      if (!split || !e || !show) {
+      if (!split || !e || !show || hiddenSplits.has(split.id)) {
         setStyle(el, "display", "none");
         continue;
       }
@@ -1279,6 +1397,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (!doc.views[viewId]) return;
     setFocus(viewId);
     raiseIfFloating(viewId);
+    // A view inside a collapsed group can't be seen: zoom to it.
+    const panel = panelOfView(doc, viewId);
+    if (panel && collapsedOf.has(panel.id) && !dragActive()) nav.focus(panel.id);
     // Adapters render content asynchronously; move DOM focus once it has had a frame to mount.
     if (moveDom) lifetime.frame(() => moveFocusInto(viewId));
   }
@@ -2212,6 +2333,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     floatingLayer,
     panelDom: (id) => panelDoms.get(id),
     frameOnly: (id) => !!panelDoms.get(id)?.el.hasAttribute("data-frame-only"),
+    collapsedGroupOf: (id) => collapsedOf.get(id) ?? null,
+    collapsedSplit: (id) => hiddenSplits.has(id),
     allowed,
     framedNode: () => nav.framedNode,
     minSize(viewIds) {

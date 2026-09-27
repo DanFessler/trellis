@@ -375,6 +375,8 @@ export interface WorkspaceProps {
   /** `true` adds the built-in items, `false` leaves only each type's `menu`, and a function
    * receives the full menu and returns the entries to show. Always calls the latest function. */
   panelMenu?: boolean | ((entries: MenuEntry[], context: PanelMenuContext) => MenuEntry[]);
+  /** Small groups collapse into one tile while navigating. See the core `detail` option. */
+  detail?: false | { width?: number; height?: number; outline?: number };
   /** Show panel menus with your own component. Always calls the latest function. */
   renderMenu?(request: MenuRequest): void;
   /** Tab layout: `fill` makes tabs share the tab row; `inset` (px) is the space around them. */
@@ -486,6 +488,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       keymap: p.keymap,
       panelMenu: panelMenuOption(p.panelMenu),
       renderMenu: p.renderMenu ? renderMenuOption : undefined,
+      detail: p.detail,
       tabs: p.tabs,
       label: p.label,
       document: p.document,
@@ -538,6 +541,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       keymap: props.keymap,
       panelMenu: panelMenuOption(props.panelMenu),
       renderMenu: props.renderMenu ? renderMenuOption : undefined,
+      detail: props.detail,
       label: props.label,
       tabs: props.tabs,
     });
@@ -552,6 +556,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
     keymapKey,
     typeof props.panelMenu === "function" ? "function" : props.panelMenu,
     !!props.renderMenu,
+    JSON.stringify(props.detail ?? null),
     props.label,
     props.tabs?.fill,
     props.tabs?.inset,

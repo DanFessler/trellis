@@ -60,12 +60,21 @@ On Windows and Linux, <kbd>⌘</kbd> is <kbd>Ctrl</kbd> and <kbd>⌥</kbd> is <k
 
 ## Small panels
 
-A panel doesn't have to be usable at every zoom level. Trellis handles small panels in two steps:
+A panel doesn't have to be usable at every zoom level. Trellis handles small panels in three steps:
 
 - Below a view type's `minSize`, content keeps laying out at that size and is scaled down to fit. A text editor stays readable at a glance and doesn't reflow into a narrow column. With free navigation, views without a `minSize` use 480 × 320.
 - Below 160 × 64 pixels on screen, a panel shows only its icon. The whole tile becomes a drag handle, so it can still be moved.
+- When every part of a nested group is that small, the whole group becomes one tile, with lines showing how it's divided two levels deep. Double-click the tile to zoom to the group. Its panels stay mounted the whole time, and focusing one of their views from code or the keyboard zooms to it. Views can dock beside a collapsed group, not into it. A flat row or column of small panels keeps its individual icons.
 
 To use a small panel, zoom in until it's large enough, or drag it somewhere with more room. Scaled content ignores pointer input until it's back at full size.
+
+The `detail` option sets when groups collapse. `width` and `height` are the on-screen size below which a part counts as too small, and `outline` is how many levels of lines a collapsed tile shows. `detail: false` keeps every panel, however small. Groups only collapse while navigation is on, because without zooming there'd be no way to open them:
+
+```tsx
+<Workspace navigation="free" detail={{ width: 200, height: 120, outline: 3 }}>
+  {/* … */}
+</Workspace>
+```
 
 Set `minSize` on each view type to the smallest size its content works at:
 

@@ -117,6 +117,7 @@ Every element Trellis renders has a `data-trellis-part` attribute:
 | `drop-slot`                                       | While dragging, the slot the layout opens where the view will land. `data-visible` while shown; `data-kind="tab"` for tab drops.                        |
 | `drop-label`                                      | The drop slot's label ("Add as tab").                                                                                                                   |
 | `source-slot`                                     | While dragging, where the view came from.                                                                                                               |
+| `group`                                           | A nested group too small to show its panels, drawn as one tile. Has `data-group="<split id>"`. Its lines are `<i>` elements with `data-axis`.           |
 | `frame-icon`                                      | The centred icon of a frame-only panel. Sized by `--trellis-frame-icon-size`.                                                                           |
 | `marquee`, `marquee-target`                       | The <kbd>Shift</kbd>+drag marquee and the target it would frame. Unstyled; see [Navigation](./navigation.md#free-navigation-gestures).                  |
 | `menu`                                            | A popup menu: the panel menu or one of its submenus. See [Menus](#menus).                                                                               |

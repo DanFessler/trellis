@@ -144,6 +144,39 @@ test.describe("vanilla workspace", () => {
     await expect(tiny.locator("[data-trellis-part=frame-icon]")).toBeVisible();
   });
 
+  test("a group whose parts are all too small collapses into one tile", async ({ page }) => {
+    // Nest two panels under the right-hand panel, then squeeze that column to a sliver.
+    await page.evaluate(() => {
+      const ws = (window as any).ws;
+      const x1 = ws.open("files", { placement: { beside: "right", edge: "bottom", share: 0.5 } });
+      ws.open("search", { placement: { beside: x1.panelId, edge: "right", share: 0.5 } });
+      const doc = ws.getDocument();
+      doc.root.weights = [1, 12, 0.3];
+      ws.setDocument(doc);
+      // Opening a view frames it; step back out to see the whole layout.
+      ws.navigation.overview();
+    });
+    const group = page.locator("[data-trellis-part=group]");
+    await expect(group).toHaveCount(1);
+    await expect(panel(page, "right")).toBeHidden();
+    // Two levels of lines: the column's split, and the split nested inside it.
+    await expect(group.locator("i")).toHaveCount(2);
+    // Hidden panels keep their content mounted.
+    expect(await page.evaluate(() => (window as any).mounts.outline)).toBe(1);
+    // Double-clicking the tile zooms to the group, which is then big enough to show its panels.
+    await group.dblclick();
+    await expect(panel(page, "right")).toBeVisible();
+    await expect(group).toHaveCount(0);
+    // detail: false keeps every panel, however small.
+    await page.evaluate(() => {
+      const ws = (window as any).ws;
+      ws.navigation.overview();
+      ws.update({ detail: false });
+    });
+    await expect(group).toHaveCount(0);
+    await expect(panel(page, "right")).toBeVisible();
+  });
+
   test("reorders tabs within a tab bar", async ({ page }) => {
     const a = await box(tab(page, "a"));
     const b = await box(tab(page, "b"));

@@ -514,6 +514,32 @@
   display: grid;
   place-items: center;
 }
+/* A split group too small on screen to show its panels (see the `detail` option): one tile with
+   lines for its first levels of splits. Double-click zooms to it. */
+:where(.trellis [data-trellis-part="group"]) {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  pointer-events: auto;
+  background: var(--trellis-panel);
+  border-radius: var(--trellis-radius);
+  box-shadow: 0 0 0 1px var(--trellis-border);
+  cursor: zoom-in;
+  will-change: transform;
+}
+:where(.trellis [data-trellis-part="group"] > i) {
+  position: absolute;
+  background: var(--trellis-border);
+}
+:where(.trellis [data-trellis-part="group"] > i[data-axis="x"]) {
+  width: 1px;
+  margin-left: -0.5px;
+}
+:where(.trellis [data-trellis-part="group"] > i[data-axis="y"]) {
+  height: 1px;
+  margin-top: -0.5px;
+}
 /* An overlaid bar floats over content that draws its own title bar underneath. */
 :where(.trellis [data-trellis-part="tabbar"][data-overlay]) {
   inset: auto;

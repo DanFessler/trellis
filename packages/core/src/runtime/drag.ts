@@ -82,6 +82,10 @@ export interface DragHost {
     id: string,
   ): { tabbar: HTMLElement; tablist: HTMLElement; tabs: Map<string, { el: HTMLElement }> } | undefined;
   frameOnly(panelId: string): boolean;
+  /** The collapsed group standing in for a panel, if it's too small on screen to show. */
+  collapsedGroupOf(panelId: string): string | null;
+  /** Whether a split sits inside a collapsed group (or is one). */
+  collapsedSplit(splitId: string): boolean;
   allowed(viewIds: string[], region: Region): boolean;
   /** The framed node (possibly a virtual sibling range), for the frame band. */
   framedNode(): LayoutNode | null;
@@ -409,7 +413,13 @@ export function createDragController(host: DragHost) {
         }
       }
     const hoveredNode = hovered ? findNode(doc.root, hovered) : null;
-    if (hovered && hoveredNode?.kind === "panel") {
+    // A collapsed group is one tile: views can dock beside it, not into it.
+    const collapsed = hovered ? host.collapsedGroupOf(hovered) : null;
+    if (collapsed) {
+      const rect = d.dropBase.get(collapsed)?.rect;
+      const edge = rect ? dropEdge(point, rect) : null;
+      next = edge ? { kind: "dock", spec: tileDropTarget(d.dropBase, collapsed, edge) } : null;
+    } else if (hovered && hoveredNode?.kind === "panel") {
       const screen = host.panelScreen(d.dropBase.get(hovered)!.rect);
       const bar = tabTarget(hoveredNode, p, screen);
       if (bar) next = bar;
@@ -429,7 +439,7 @@ export function createDragController(host: DragHost) {
     if (within)
       for (const [id, entry] of d.dropBase) {
         const node = entry.node;
-        if (node.kind !== "split") continue;
+        if (node.kind !== "split" || host.collapsedSplit(node.id)) continue;
         const group = host.toScreen(entry.rect);
         if (!inside(p, group)) continue;
         node.children.slice(1).forEach((child, index) => {
