@@ -793,3 +793,85 @@ test.describe("minimum sizes", () => {
     expect(await width(page, ids.x2)).toBeGreaterThanOrEqual(79.5);
   });
 });
+
+test.describe("deep zoom performance", () => {
+  // Zooming far into a scaled view makes its neighbours many times larger than the window. Content
+  // must not be laid out at those sizes, or relaid out on every frame of the animation.
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/?scenario=vanilla&navigation=free");
+    await expect(tab(page, "a")).toBeVisible();
+  });
+
+  const setup = (page: Page) =>
+    page.evaluate(() => {
+      const ws = (window as any).ws;
+      ws.update({ motion: "full", detail: false });
+      let at = "right";
+      for (let i = 0; i < 10; i++)
+        at = ws.open(i % 2 ? "search" : "files", {
+          placement: { beside: at, edge: i % 2 ? "bottom" : "right" },
+        }).panelId;
+      const doc = ws.getDocument();
+      doc.root.weights = [1, 12, 0.3];
+      ws.setDocument(doc);
+      ws.navigation.overview();
+      return at as string;
+    });
+  const contentSizes = (page: Page) =>
+    page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>("[data-trellis-part=content]")]
+        .filter((el) => el.closest<HTMLElement>("[data-trellis-part=surface]")!.style.visibility !== "hidden")
+        .map((el) => ({ w: el.offsetWidth, h: el.offsetHeight })),
+    );
+
+  test("content is never laid out much larger than the window, even mid-zoom", async ({ page }) => {
+    const deepest = await setup(page);
+    await page.waitForTimeout(800);
+    // Record the largest visible content layout on every frame of the zoom.
+    await page.evaluate((id) => {
+      const w = window as any;
+      w.__largest = { w: 0, h: 0 };
+      let frames = 0;
+      const sample = () => {
+        for (const c of document.querySelectorAll<HTMLElement>("[data-trellis-part=content]")) {
+          const surface = c.closest<HTMLElement>("[data-trellis-part=surface]")!;
+          if (surface.style.visibility === "hidden" || surface.style.display === "none") continue;
+          w.__largest.w = Math.max(w.__largest.w, c.offsetWidth);
+          w.__largest.h = Math.max(w.__largest.h, c.offsetHeight);
+        }
+        if (++frames < 90) requestAnimationFrame(sample);
+      };
+      w.ws.navigation.frame([id]);
+      requestAnimationFrame(sample);
+    }, deepest);
+    await page.waitForTimeout(2500);
+    const largest = await page.evaluate(() => (window as any).__largest);
+    const { w, h } = await page.evaluate(() => ({ w: innerWidth, h: innerHeight }));
+    expect(largest.w).toBeLessThanOrEqual(w * 2 + 1);
+    expect(largest.h).toBeLessThanOrEqual(h * 2 + 1);
+  });
+
+  test("content isn't resized on every frame while the camera moves", async ({ page }) => {
+    const deepest = await setup(page);
+    await page.waitForTimeout(800);
+    // Sample content sizes on each animation frame during the zoom.
+    await page.evaluate((id) => {
+      const w = window as any;
+      w.__sizes = [];
+      const sample = () => {
+        w.__sizes.push(
+          [...document.querySelectorAll<HTMLElement>("[data-trellis-part=content]")]
+            .map((c) => `${c.style.width}x${c.style.height}`)
+            .join("|"),
+        );
+        if (w.__sizes.length < 40) requestAnimationFrame(sample);
+      };
+      w.ws.navigation.frame([id]);
+      requestAnimationFrame(sample);
+    }, deepest);
+    await page.waitForTimeout(1500);
+    const sizes: string[] = await page.evaluate(() => (window as any).__sizes);
+    // At most a couple of distinct layouts (before and after), not one per frame.
+    expect(new Set(sizes.slice(1, -1)).size).toBeLessThanOrEqual(2);
+  });
+});

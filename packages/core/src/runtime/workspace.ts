@@ -1332,11 +1332,23 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     setStyle(shell, "visibility", selected && !concealed ? "" : "hidden");
     setStyle(shell, "opacity", opacity === 1 ? "" : String(opacity));
     setStyle(shell, "clipPath", clip);
-    const width = round ? Math.round(body.w / safe) : body.w / safe;
-    const height = round ? Math.round(body.h / safe) : body.h / safe;
+    // Content never lays out larger than twice the window: a bigger panel lays out at that cap
+    // and is scaled up, so a deep zoom doesn't lay out neighbours at many times the screen.
+    const cap = Math.max(1, body.w / safe / (2 * viewport.w), body.h / safe / (2 * viewport.h));
+    let width = round ? Math.round(body.w / safe / cap) : body.w / safe / cap;
+    let height = round ? Math.round(body.h / safe / cap) : body.h / safe / cap;
+    let transform = safe * cap < 0.999 || cap > 1 ? `scale(${safe * cap})` : "";
+    // While the camera or layout moves, content keeps the size it had at rest and is stretched to
+    // fit, so nothing reflows per frame.
+    const rest = (record as any).__layout as { w: number; h: number } | undefined;
+    if (moving() && rest) {
+      width = rest.w;
+      height = rest.h;
+      transform = `scale(${body.w / rest.w}, ${body.h / rest.h})`;
+    } else (record as any).__layout = { w: width, h: height };
     setStyle(content, "width", `${width}px`);
     setStyle(content, "height", `${height}px`);
-    setStyle(content, "transform", safe < 0.999 ? `scale(${safe})` : "");
+    setStyle(content, "transform", transform);
     setAttr(shell, "data-scaled", safe < 0.999 ? "" : null);
     setAttr(shell, "inert", selected && !concealed ? null : "");
     (record as any).__size = { width: Math.round(width), height: Math.round(height) };
