@@ -1203,8 +1203,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         if (dom.handles) setStyle(dom.handles, "display", "none");
         continue;
       }
-      const onscreen =
-        r.x < viewport.w && r.y < viewport.h && r.x + r.w > 0 && r.y + r.h > 0 && r.w > 2 && r.h > 2;
+      const onscreen = inView(r) && r.w > 2 && r.h > 2;
       setStyle(dom.el, "display", onscreen ? "" : "none");
       setStyle(dom.el, "opacity", opacity === 1 ? "" : String(opacity));
       const z = zOf.get(panelId) ?? 10;
@@ -1255,9 +1254,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       }
       if (!onscreen) continue;
       const body: Rect = { x: r.x, y: r.y + bar, w: r.w, h: Math.max(0, r.h - bar) };
-      // Mid-motion, content is laid out once at the size it will settle at, and scaled from there.
-      const end = moving() && !gesture && !dragActive() && !l && !enter ? restRect(panelId) : null;
-      const restBody = end ? { ...end, h: Math.max(0, end.h - bar) } : undefined;
+      const reflow = reflowOf(panelId, !!(l || enter), bar);
       for (const viewId of panel.views) {
         const record = records.get(viewId);
         if (!record) continue;
@@ -1272,7 +1269,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
           opacity,
           clip ? clipInset(body, sScreen!) : "",
           frameOnly,
-          restBody,
+          reflow,
         );
         setAttr(record.shell, "data-tabbar", mode === "normal" ? null : mode);
         const scale = (record as any).__scale || 1;
@@ -1327,6 +1324,24 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const r = regionOf(panel.id);
     return r === "floating" ? "floating" : r === "stage" ? "stage" : "docked";
   }
+  /** Whether any whole pixel of a screen rect is in view: a rect ending exactly at an edge isn't. */
+  function inView(r: Rect) {
+    return r.x < viewport.w - 1 && r.y < viewport.h - 1 && r.x + r.w > 1 && r.y + r.h > 1;
+  }
+  /** How content is laid out this frame (see placeSurface):
+   * - "live": at its current size. Whenever the camera is still: at rest, dragging a divider,
+   *   resizing a window, and layout animations. Only the panels that change are laid out, and none
+   *   beyond twice the window, so it's cheap and nothing is stretched.
+   * - a rect: once, at the size it will settle at, while the camera moves, for panels that end in
+   *   view. A zoom can change every panel's size by many times, so they aren't laid out per frame.
+   * - "keep": at the size it already has. Panels that end the camera move out of view, and panels
+   *   flying to or from the tray. */
+  function reflowOf(panelId: string, flying: boolean, bar: number): "live" | "keep" | Rect {
+    if (flying) return "keep";
+    if (!camera.moving || gesture) return "live";
+    const end = restRect(panelId);
+    return end && inView(end) ? { ...end, y: end.y + bar, h: Math.max(0, end.h - bar) } : "keep";
+  }
   function placeSurface(
     record: SurfaceRecord,
     body: Rect,
@@ -1336,7 +1351,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     opacity: number,
     clip: string,
     concealed = false,
-    rest?: Rect,
+    reflow: "live" | "keep" | Rect = "live",
   ) {
     const { shell, content, controller } = record;
     const min = minSizeOf(controller.id);
@@ -1357,10 +1372,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     };
     let width: number, height: number, transform: string;
     const frozen = (record as any).__layout as { w: number; h: number } | undefined;
-    if (moving() && (rest || frozen)) {
-      // While the camera or layout moves, content is laid out once, at the size it will settle
-      // at (or, when that isn't known, the size it had at rest), and scaled to fit each frame.
-      const target = rest && rest.w > 1 && rest.h > 1 ? layoutAt(rest) : frozen!;
+    const settleAt = typeof reflow === "object" && reflow.w > 1 && reflow.h > 1 ? reflow : null;
+    if (settleAt || (reflow !== "live" && frozen)) {
+      // Moving: laid out once, at the size it will settle at or the size it already has, and
+      // scaled to fit each frame.
+      const target = settleAt ? layoutAt(settleAt) : frozen!;
       width = target.w;
       height = target.h;
       transform = `scale(${body.w / width}, ${body.h / height})`;
@@ -1371,7 +1387,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       width = round ? Math.round(body.w / s / cap) : body.w / s / cap;
       height = round ? Math.round(body.h / s / cap) : body.h / s / cap;
       transform = s * cap < 0.999 || cap > 1 ? `scale(${s * cap})` : "";
-      (record as any).__layout = { w: Math.round(width), h: Math.round(height) };
+      (record as any).__layout = { w: width, h: height };
     }
     setStyle(content, "width", `${width}px`);
     setStyle(content, "height", `${height}px`);
@@ -1382,7 +1398,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     (record as any).__scale = Math.round(safe * 1000) / 1000;
     const panel =
       panelOfView(doc, controller.id) ?? (lifted()?.views.includes(controller.id) ? lifted() : null);
-    const onscreen = body.x < viewport.w && body.y < viewport.h && body.x + body.w > 0 && body.y + body.h > 0;
+    const onscreen = inView(body);
     const busy = !!dragActive() || gesture;
     controller.update({
       visible: selected && !concealed && onscreen && body.w > 1 && body.h > 1,

@@ -794,7 +794,7 @@ test.describe("minimum sizes", () => {
   });
 });
 
-test.describe("deep zoom performance", () => {
+test.describe("layout during motion", () => {
   // Zooming far into a scaled view makes its neighbours many times larger than the window. Content
   // must not be laid out at those sizes, or relaid out on every frame of the animation.
   test.beforeEach(async ({ page }) => {
@@ -875,6 +875,50 @@ test.describe("deep zoom performance", () => {
     expect(new Set(sizes.slice(1, -1)).size).toBeLessThanOrEqual(2);
   });
 
+  test("views that end the zoom out of view are never laid out again", async ({ page }) => {
+    const deepest = await setup(page);
+    await page.waitForTimeout(800);
+    await page.evaluate((id) => {
+      const w = window as any;
+      const size = (c: HTMLElement) => `${c.style.width}x${c.style.height}`;
+      const contents = () => [
+        ...document.querySelectorAll<HTMLElement>(
+          "[data-trellis-part=surface] > [data-trellis-part=content]",
+        ),
+      ];
+      // Each view's layout before the zoom, and every layout it gets during it.
+      w.__before = new Map(contents().map((c) => [c, size(c)]));
+      w.__during = new Map(contents().map((c) => [c, new Set<string>()]));
+      const start = performance.now();
+      const sample = () => {
+        for (const c of contents()) w.__during.get(c)?.add(size(c));
+        if (performance.now() - start < 2000) requestAnimationFrame(sample);
+      };
+      w.ws.navigation.frame([id]);
+      requestAnimationFrame(sample);
+    }, deepest);
+    await page.waitForTimeout(3000);
+    const offscreen = await page.evaluate(() => {
+      const w = window as any;
+      const results: { view: string; before: string; during: string[] }[] = [];
+      for (const [c, during] of w.__during as Map<HTMLElement, Set<string>>) {
+        const shell = c.parentElement!;
+        const r = shell.getBoundingClientRect();
+        const inView =
+          shell.style.visibility !== "hidden" &&
+          r.right > 0 &&
+          r.bottom > 0 &&
+          r.left < innerWidth &&
+          r.top < innerHeight;
+        if (inView || w.__before.get(c) === "x") continue;
+        results.push({ view: shell.dataset.view!, before: w.__before.get(c), during: [...during] });
+      }
+      return results;
+    });
+    expect(offscreen.length).toBeGreaterThan(3);
+    for (const v of offscreen) expect(v.during, v.view).toEqual([v.before]);
+  });
+
   test("the view being zoomed to is laid out at its final size from the first frame", async ({ page }) => {
     const deepest = await setup(page);
     await page.waitForTimeout(800);
@@ -912,5 +956,62 @@ test.describe("deep zoom performance", () => {
       return `${c.style.width}x${c.style.height}`;
     });
     expect([...new Set(placed)]).toEqual([settled]);
+  });
+});
+
+test.describe("live reflow", () => {
+  // While the camera is still, views are laid out at their size every frame: every visible view
+  // fills its surface at one uniform scale, never stretched from another size.
+  const stretched = () =>
+    [...document.querySelectorAll<HTMLElement>("[data-trellis-part=surface]")]
+      .filter((shell) => shell.style.visibility !== "hidden")
+      .flatMap((shell) => {
+        const c = shell.querySelector<HTMLElement>(":scope > [data-trellis-part=content]")!;
+        const m = /^scale\(([^,)]+)\)$/.exec(c.style.transform);
+        if (c.style.transform && !m) return [`${shell.dataset.view}: ${c.style.transform}`];
+        const k = m ? Number(m[1]) : 1;
+        const off = Math.max(
+          Math.abs(c.offsetWidth * k - shell.clientWidth),
+          Math.abs(c.offsetHeight * k - shell.clientHeight),
+        );
+        return off > 1.5 ? [`${shell.dataset.view}: off by ${off}px`] : [];
+      });
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+  });
+
+  test("dragging a divider reflows the panels beside it live, without stretching them", async ({ page }) => {
+    const d = await box(page.locator("[data-trellis-part=divider]").first());
+    await page.mouse.move(d.x + d.width / 2, d.y + d.height / 2);
+    await page.mouse.down();
+    for (let i = 1; i <= 6; i++) {
+      await page.mouse.move(d.x + d.width / 2 + i * 15, d.y + d.height / 2);
+      await page.evaluate(() => new Promise(requestAnimationFrame));
+      expect(await page.evaluate(stretched)).toEqual([]);
+    }
+    await page.mouse.up();
+  });
+
+  test("layout animations reflow the panels they move live, without stretching them", async ({ page }) => {
+    const found = await page.evaluate(
+      (check) =>
+        new Promise<string[]>((resolve) => {
+          const w = window as any;
+          w.ws.update({ motion: "full" });
+          const stretched = new Function(`return (${check})()`) as () => string[];
+          const seen = new Set<string>();
+          let frames = 0;
+          const sample = () => {
+            for (const s of stretched()) seen.add(s);
+            if (++frames < 30) requestAnimationFrame(sample);
+            else resolve([...seen]);
+          };
+          w.ws.close("outline");
+          requestAnimationFrame(sample);
+        }),
+      stretched.toString(),
+    );
+    expect(found).toEqual([]);
   });
 });
