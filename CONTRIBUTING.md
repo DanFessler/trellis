@@ -29,21 +29,48 @@ npm run check   # typecheck, unit tests, build, browser tests
 
 Docs live in `docs/` and change on `main` alongside the code. The website serves every released version of them:
 
-- `/docs/<page>` is the newest release, read from its git tag.
-- `/docs/<version>/<page>` is any release (the newest patch of each minor version), such as `/docs/0.2/navigation`.
+- `/docs/<page>` is the newest release.
+- `/docs/<version>/<page>` is any release, such as `/docs/0.2/navigation`.
 - `/docs/next/<page>` is `main`, marked as unreleased. `npm run dev -w trellis-site` serves your working copy there.
 
-The site deploys from the `release` branch, which always points at the newest release tag, so the live site never
-describes unreleased behaviour.
+### Where old docs come from
 
-To release:
+Nothing stores old docs separately: release tags do. Each site build lists the `v*.*.*` tags, takes the newest patch of
+each minor version, and reads that tag's `docs/*.md` from git into `site/.docs-cache` (ignored, rebuilt every time).
+`site/plugins/versions.ts` does this.
+
+- Never delete or move a release tag. Its version's docs would change or disappear from the site.
+- Patch releases share their minor version's docs: once `v0.3.1` exists, `/docs/0.3/` shows its docs.
+- A tag's contents never change, so fixing an old version's docs takes a patch release of that version, such as
+  `v0.2.1`.
+
+### Branches and deploys
+
+| Ref           | What it is                            | Moves when                    |
+| ------------- | ------------------------------------- | ----------------------------- |
+| `main`        | Where all work happens, docs included | Every commit                  |
+| `vX.Y.Z` tags | A fixed snapshot of each release      | Never                         |
+| `release`     | Points at the newest release tag      | A newer release tag is pushed |
+
+Netlify's production branch is `release`, so the home page, demos and default docs always match what's on npm.
+
+- `.github/workflows/release-site.yml` moves `release` when a tag is pushed. A tag that isn't the newest, such as a
+  patch to an older minor, leaves it alone, so the site never goes backwards. It can also be run by hand from the
+  Actions tab.
+- `.github/workflows/docs-next.yml` keeps `/docs/next` current: when `docs/` changes on `main`, it calls a Netlify
+  build hook for the `release` branch. The build rebuilds the same release and reads `main`'s docs for
+  `/docs/next` only. The hook's URL is the `NETLIFY_BUILD_HOOK` repository secret (Settings → Secrets and variables →
+  Actions). Without it, `/docs/next` updates with each release.
+
+### Releasing
 
 1. Bump the three packages' versions (and their dependency on `@danfessler/trellis`), then `npm install`.
 2. Add the version to `CHANGELOG.md`.
 3. `npm run verify:pack`, commit as "Release x.y.z" and push. Wait for CI.
 4. Publish: `npm publish -w @danfessler/trellis -w @danfessler/trellis-react -w @danfessler/trellis-element`.
-5. Tag and push: `git tag -a vx.y.z -m x.y.z && git push origin vx.y.z`. The Release site workflow moves `release`
-   to the tag, and Netlify deploys it.
+5. Tag the published commit and push the tag: `git tag -a vx.y.z -m x.y.z && git push origin vx.y.z`. The Release site
+   workflow moves `release` to it, and Netlify deploys it. The new version becomes the default docs, and the previous
+   one moves to `/docs/<its version>/`.
 
 ## Licensing of contributions
 
