@@ -96,8 +96,8 @@ export function Landing() {
                 <kbd>Esc</kbd> steps back out one level
               </li>
               <li>
-                <span className="hint-key">Free zoom</span> then <kbd>Shift</kbd>+scroll to move through
-                levels
+                <span className="hint-key">Free zoom</span> then pinch, or hold <kbd>⌘</kbd>
+                <kbd>⌥</kbd> and scroll, to move through levels
               </li>
               <li>
                 <span className="hint-key">Drag</span> a tab onto a panel edge to dock it

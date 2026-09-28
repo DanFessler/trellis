@@ -27,8 +27,9 @@ Workspace shortcuts are active while focus is inside the workspace. They act on 
 | `view.close`          | <kbd>Mod</kbd>+<kbd>Alt</kbd>+<kbd>W</kbd>       | Close the focused view (if closable).         |
 | `panel.float`         | None                                             | Float the focused panel (`float()`).          |
 | `panel.hide`          | None                                             | Hide the focused panel.                       |
+| `navigation.stepOut`  | <kbd>Esc</kbd>                                   | Step out one level while zoomed in.           |
 
-`Mod` is <kbd>⌘</kbd> on macOS and <kbd>Ctrl</kbd> on other platforms. While the camera frames something, <kbd>Esc</kbd> steps out one level. It doesn't when focus is inside view content, so your content can use <kbd>Esc</kbd> itself. During a drag, <kbd>Esc</kbd> cancels it.
+`Mod` is <kbd>⌘</kbd> on macOS and <kbd>Ctrl</kbd> on other platforms. `navigation.stepOut` only acts while the camera frames something, and never when focus is inside view content, so your content can use <kbd>Esc</kbd> itself. During a drag, <kbd>Esc</kbd> cancels it. The keys held for free-navigation gestures are set separately, with [`gestureKeys`](./navigation.md#gesture-keys).
 
 ### Remapping
 

@@ -119,7 +119,6 @@ Every element Trellis renders has a `data-trellis-part` attribute:
 | `source-slot`                                     | While dragging, where the view came from.                                                                                                               |
 | `group`                                           | A nested group too small to show its panels, drawn as one tile. Has `data-group="<split id>"`. Its lines are `<i>` elements with `data-axis`.           |
 | `frame-icon`                                      | The centred icon of a frame-only panel. Sized by `--trellis-frame-icon-size`.                                                                           |
-| `marquee`, `marquee-target`                       | The <kbd>Shift</kbd>+drag marquee and the target it would frame. Unstyled; see [Navigation](./navigation.md#free-navigation-gestures).                  |
 | `menu`                                            | A popup menu: the panel menu or one of its submenus. See [Menus](#menus).                                                                               |
 
 ### Menus
@@ -151,17 +150,17 @@ You can style Trellis's menus through classes as well as the `menu` part. Menus 
 
 On the **root** (`.trellis`):
 
-| Attribute                                          | When                                                                        |
-| -------------------------------------------------- | --------------------------------------------------------------------------- |
-| `data-theme`                                       | Always: the active theme name.                                              |
-| `data-navigation`                                  | Always: `focus`, `free` or `false`.                                         |
-| `data-dragging`                                    | A drag is in progress.                                                      |
-| `data-drop`                                        | During a drag: `dock`, `tab`, `stage`, `float` or `none`.                   |
-| `data-marquee`, `data-drag-zoom`                   | A <kbd>Shift</kbd>+drag marquee or <kbd>Alt</kbd>+drag zoom is in progress. |
-| `data-resizing`                                    | Resizing: `x`, `y` (dividers) or `float`.                                   |
-| `data-framed`                                      | The camera is zoomed in on something.                                       |
-| `data-busy`                                        | A drag or gesture is in progress; content is non-interactive.               |
-| `data-has-stage`, `data-stage-empty`, `data-empty` | Layout shape.                                                               |
+| Attribute                                          | When                                                                                 |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `data-theme`                                       | Always: the active theme name.                                                       |
+| `data-navigation`                                  | Always: `focus`, `free` or `false`.                                                  |
+| `data-dragging`                                    | A drag is in progress.                                                               |
+| `data-drop`                                        | During a drag: `dock`, `tab`, `stage`, `float` or `none`.                            |
+| `data-gesture-key`, `data-gesture`                 | The gesture keys are held (`pan` or `scale`), or a pan or scale drag is in progress. |
+| `data-resizing`                                    | Resizing: `x`, `y` (dividers) or `float`.                                            |
+| `data-framed`                                      | The camera is zoomed in on something.                                                |
+| `data-busy`                                        | A drag or gesture is in progress; content is non-interactive.                        |
+| `data-has-stage`, `data-stage-empty`, `data-empty` | Layout shape.                                                                        |
 
 On **panels**:
 

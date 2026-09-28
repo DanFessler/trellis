@@ -72,12 +72,11 @@ The camera frames nodes and contiguous sibling ranges. It doesn't frame floating
 
 In `navigation: "free"`:
 
-- A plain wheel over chrome zooms.
+- A pinch zooms from anywhere except content that keeps its own (`gestures: "exclusive"`).
+- Holding the gesture keys (<kbd>⌘</kbd><kbd>⌥</kbd>, or <kbd>Ctrl</kbd><kbd>Alt</kbd>) and dragging pans. Adding <kbd>Z</kbd> scales. Scrolling steps the hierarchy.
+- A plain scroll never moves the camera.
 - Zoom is rubber-banded, up to 1.35× the layout with a 30% edge overshoot.
-- 180 ms after the gesture stops, the camera springs to the best fit.
-- <kbd>Shift</kbd>+wheel steps the hierarchy.
-- <kbd>Shift</kbd>+drag draws a marquee.
-- <kbd>Alt</kbd>+drag zooms.
+- 180 ms after a pinch stops, or when a drag is released, the camera springs to the best fit.
 
 See [Navigation and maximize](./navigation.md).
 
@@ -85,11 +84,11 @@ See [Navigation and maximize](./navigation.md).
 
 Trellis's tests check these requirements against its layout model. Each test name includes the requirement's ID:
 
-| IDs                    | Covers                                                                                                                                                                                      |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| LAYOUT-01 to LAYOUT-04 | Splitting halves a view's space. Resizing a seam changes only its neighbours. Closing a view gives its space to the next neighbour.                                                         |
-| DOCK-01 to DOCK-06     | Docking on each side, equal-space previews, agreement between seams and shared edges, seams between nested groups, the outer frame band, and self-drops.                                    |
-| NAV-01 to NAV-12       | Hierarchy steps, aligned splits adding no level, snap targets, sibling ranges, the marquee, maximize and its restore, saved framings, history, and floating windows not being snap targets. |
-| NAV-13                 | The overview toggles back to the previous framing. This one is a browser test.                                                                                                              |
+| IDs                    | Covers                                                                                                                                                                         |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| LAYOUT-01 to LAYOUT-04 | Splitting halves a view's space. Resizing a seam changes only its neighbours. Closing a view gives its space to the next neighbour.                                            |
+| DOCK-01 to DOCK-06     | Docking on each side, equal-space previews, agreement between seams and shared edges, seams between nested groups, the outer frame band, and self-drops.                       |
+| NAV-01 to NAV-12       | Hierarchy steps, aligned splits adding no level, snap targets, sibling ranges, maximize and its restore, saved framings, history, and floating windows not being snap targets. |
+| NAV-13                 | The overview toggles back to the previous framing. This one is a browser test.                                                                                                 |
 
 Pointer feel is checked by hand. That covers trackpad and touch gestures, and pickup and settle timing.

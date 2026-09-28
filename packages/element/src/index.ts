@@ -31,7 +31,7 @@ function typeFromTemplate(template: HTMLTemplateElement): [string, ViewTypeDefin
     allow: Object.keys(allow).length ? allow : undefined,
     singleton: d.singleton !== undefined ? d.singleton !== "false" : undefined,
     closable: d.closable !== undefined ? d.closable !== "false" : undefined,
-    gestures: d.gestures === "workspace" ? "workspace" : undefined,
+    gestures: d.gestures === "workspace" || d.gestures === "exclusive" ? d.gestures : undefined,
     tabbar: d.tabbar === "auto" || d.tabbar === "never" || d.tabbar === "overlay" ? d.tabbar : undefined,
     scaling: d.scaling === "inert" ? "inert" : d.scaling === "false" ? false : undefined,
     className: d.class,

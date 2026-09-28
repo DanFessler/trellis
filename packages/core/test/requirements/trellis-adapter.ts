@@ -12,7 +12,6 @@ import {
   leafIds,
   maximizeTransition,
   recordVisit,
-  rectangleCamera,
   savedFrameDestination,
   seamTarget,
   tileDropTarget,
@@ -141,7 +140,6 @@ export function desktopWithFloatingApp(relative: Bounds) {
   };
 }
 
-export const marquee = rectangleCamera;
 export const edgeAt = dropEdge;
 export const dropPreview = (rect: Bounds, side: Side) => {
   const { slot, remaining } = dropRects(rect, side);

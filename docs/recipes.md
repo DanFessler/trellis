@@ -169,7 +169,7 @@ Trellis recreates the iframe only when the computed options change, so other par
 
 ### Zoom gestures over iframes
 
-Wheel and pinch events inside an iframe go to the iframe's document and don't reach the workspace. In `navigation="free"`, users can't zoom while the pointer is over an iframe, even with <kbd>Alt</kbd> held or with `gestures: "workspace"`. To support it, forward the events yourself by dispatching a new `WheelEvent` on `ws.element`. For a same-origin frame:
+Wheel and pinch events inside an iframe go to the iframe's document and don't reach the workspace. In `navigation="free"`, a pinch over an iframe zooms the iframe's page, not the workspace. Holding the gesture keys still works, as long as keyboard focus isn't inside the iframe. To make a pinch zoom the workspace, forward the events yourself by dispatching a new `WheelEvent` on `ws.element`. For a same-origin frame:
 
 ```ts
 function forwardZoomGestures(ws: WorkspaceHandle, frame: HTMLIFrameElement) {
@@ -214,7 +214,7 @@ In an art program the canvas is the document and the tools are palettes. Documen
     title={(v) => v.params.file}
     placement="stage"
     allow={{ side: false, floating: false }}
-    gestures="content"
+    gestures="exclusive"
     render={(view) => <CanvasView file={view.params.file} />}
   />
   <ViewType id="tools" title="Tools" singleton allow={{ stage: false }} tabbar="auto" closable={false}>
@@ -256,7 +256,7 @@ Notes:
 
 - Keep app state (the image, the selected tool, the current color) in a store _above_ `<Workspace>`. View content keeps React context, so every palette reads the same store no matter where it's docked.
 - `tabbar="auto"` hides the tool strip's tab bar while it's alone in its panel, like classic tool palettes.
-- The canvas uses its own wheel/pinch for zooming the image. `navigation="focus"` has no workspace gestures, so they all go to the canvas. Under `navigation="free"`, the default `gestures="content"` still leaves plain wheels over content alone, but <kbd>Ctrl</kbd>+wheel (pinch) and <kbd>Alt</kbd>+wheel zoom the workspace.
+- The canvas uses its own wheel and pinch for zooming the image. `navigation="focus"` has no workspace gestures, so they all go to the canvas. Under `navigation="free"`, a pinch zooms the workspace from over most content, so `gestures="exclusive"` keeps it for the canvas. The gesture keys still navigate from over the canvas.
 - `minSize` on dense palettes keeps them legible. Below that size they scale down instead of reflowing.
 - Explicit ids on palettes mean `reset()` animates them back rather than recreating them.
 

@@ -171,7 +171,7 @@ export function buildCommands(): Command[] {
       id: "view.toggleNavigation",
       title: "Toggle Free Navigation",
       category: "View",
-      keywords: "zoom pinch scroll marquee focus navigation mode",
+      keywords: "zoom pinch pan scale scroll focus navigation mode",
       run: () => ide.setNavigation(ide.get().navigation === "free" ? "focus" : "free"),
     },
     {

@@ -118,6 +118,8 @@ export function AppFrame({ app }: { app: AppDefinition }) {
           deltaMode: e.deltaMode,
           ctrlKey: e.ctrlKey,
           metaKey: e.metaKey,
+          altKey: e.altKey,
+          shiftKey: e.shiftKey,
           bubbles: true,
           cancelable: true,
         });

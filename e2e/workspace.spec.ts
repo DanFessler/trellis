@@ -664,45 +664,6 @@ test.describe("navigation requirements", () => {
     expect(await page.evaluate(() => (window as any).ws.navigation.framed)).toBe("right");
   });
 
-  test("a plain wheel over chrome zooms and snaps; over content it scrolls the content", async ({ page }) => {
-    await page.goto("/?scenario=vanilla&navigation=free");
-    await expect(tab(page, "a")).toBeVisible();
-    const content = await box(surface(page, "outline"));
-    await page.mouse.move(content.x + content.width / 2, content.y + content.height / 2);
-    await page.mouse.wheel(0, -200);
-    await page.waitForTimeout(300);
-    expect(await page.evaluate(() => (window as any).ws.navigation.framed)).toBeNull();
-    const bar = await box(panel(page, "right").locator("[data-trellis-part=tabbar]"));
-    await page.mouse.move(bar.x + bar.width - 30, bar.y + bar.height / 2);
-    for (let i = 0; i < 8; i++) await page.mouse.wheel(0, -120);
-    await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).not.toBeNull();
-  });
-
-  test("Shift+wheel steps the hierarchy toward the pointer (NAV-01)", async ({ page }) => {
-    await page.goto("/?scenario=vanilla&navigation=free");
-    await expect(tab(page, "a")).toBeVisible();
-    const left = await box(panel(page, "left"));
-    await page.mouse.move(left.x + left.width / 2, left.y + left.height / 2);
-    await page.keyboard.down("Shift");
-    await page.mouse.wheel(0, -40);
-    await page.keyboard.up("Shift");
-    await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).toBe("left");
-  });
-
-  test("Shift+drag draws a marquee that frames the best fit (NAV-05)", async ({ page }) => {
-    await page.goto("/?scenario=vanilla&navigation=free");
-    await expect(tab(page, "a")).toBeVisible();
-    const right = await box(panel(page, "right"));
-    await page.keyboard.down("Shift");
-    await page.mouse.move(right.x + 4, right.y + 4);
-    await page.mouse.down();
-    await page.mouse.move(right.x + right.width - 4, right.y + right.height - 4, { steps: 6 });
-    await expect(page.locator("[data-trellis-part=marquee-target]")).toHaveAttribute("data-visible", "");
-    await page.mouse.up();
-    await page.keyboard.up("Shift");
-    await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).toBe("right");
-  });
-
   test("tokens removed from options are cleared", async ({ page }) => {
     await page.goto("/?scenario=vanilla");
     await page.evaluate(() => (window as any).ws.update({ tokens: { "--trellis-panel": "rgb(1, 2, 3)" } }));
@@ -1225,5 +1186,204 @@ test.describe("pushing dividers", () => {
     for (let i = 0; i < 12; i++) await page.keyboard.press("Shift+ArrowRight");
     expect(await width(page, "docs")).toBeLessThan(100);
     expect(await width(page, "right")).toBeLessThan(right - 50);
+  });
+});
+
+test.describe("free navigation gestures", () => {
+  const framed = (page: Page) => page.evaluate(() => (window as any).ws.navigation.framed);
+  const camera = (page: Page) => page.evaluate(() => ({ ...(window as any).ws.navigation.camera }));
+  const open = async (page: Page, extra = "") => {
+    await page.goto(`/?scenario=vanilla&navigation=free${extra}`);
+    await expect(tab(page, "a")).toBeVisible();
+  };
+  /** Wheel events as a trackpad pinch (small deltas) or a mouse wheel (notches) produce them. */
+  const wheel = (
+    page: Page,
+    at: { x: number; y: number },
+    deltas: number[],
+    mods: { ctrlKey?: boolean; shiftKey?: boolean } = {},
+  ) =>
+    page.evaluate(
+      ({ at, deltas, mods }) =>
+        new Promise<void>((resolve) => {
+          const target = document.elementFromPoint(at.x, at.y)!;
+          let i = 0;
+          const next = () => {
+            if (i >= deltas.length) return resolve();
+            const e = new WheelEvent("wheel", {
+              deltaY: deltas[i++],
+              clientX: at.x,
+              clientY: at.y,
+              bubbles: true,
+              cancelable: true,
+              ...mods,
+            });
+            target.dispatchEvent(e);
+            requestAnimationFrame(next);
+          };
+          next();
+        }),
+      { at, deltas, mods },
+    );
+  const inside = async (locator: Locator) => center(await box(locator));
+  /** Hold the workspace key (⌘⌥ on macOS, Ctrl+Alt elsewhere), plus any extra keys. */
+  const hold = async (page: Page, ...extra: string[]) => {
+    for (const key of ["ControlOrMeta", "Alt", ...extra]) await page.keyboard.down(key);
+  };
+  const release = async (page: Page, ...extra: string[]) => {
+    for (const key of [...extra, "Alt", "ControlOrMeta"]) await page.keyboard.up(key);
+  };
+
+  test("a pinch zooms the workspace, even over a text field", async ({ page }) => {
+    await open(page);
+    const field = await inside(surface(page, "outline").locator("[data-test=input]"));
+    await wheel(page, field, Array(14).fill(-6.5), { ctrlKey: true });
+    await expect.poll(() => framed(page)).not.toBeNull();
+  });
+
+  test("a mouse wheel with Ctrl steps a level toward the pointer instead of zooming continuously", async ({
+    page,
+  }) => {
+    await open(page);
+    await wheel(page, await inside(surface(page, "files")), [-100], { ctrlKey: true });
+    await expect.poll(() => framed(page)).toBe("left");
+  });
+
+  test("plain and Shift scrolling never move the camera, over chrome or content", async ({ page }) => {
+    await open(page);
+    const before = await camera(page);
+    for (const at of [
+      await inside(panel(page, "right").locator("[data-trellis-part=tabbar]")),
+      await inside(surface(page, "outline")),
+    ]) {
+      await wheel(page, at, [-120, -120, -120]);
+      await wheel(page, at, [-120, -120, -120], { shiftKey: true });
+    }
+    await page.waitForTimeout(400);
+    expect(await framed(page)).toBeNull();
+    expect(await camera(page)).toEqual(before);
+  });
+
+  test("Shift-click and Alt-click inside content reach the content", async ({ page }) => {
+    await open(page);
+    const input = surface(page, "outline").locator("[data-test=input]");
+    await input.fill("hello workspace");
+    const b = await box(input);
+    await page.mouse.click(b.x + 8, b.y + b.height / 2);
+    await page.keyboard.down("Shift");
+    await page.mouse.click(b.x + b.width - 8, b.y + b.height / 2);
+    await page.keyboard.up("Shift");
+    const selected = await input.evaluate((el: HTMLInputElement) => el.selectionEnd! - el.selectionStart!);
+    expect(selected).toBeGreaterThan(5);
+    await input.evaluate((el) => el.addEventListener("click", (e) => ((window as any).__alt = e.altKey)));
+    await page.keyboard.down("Alt");
+    await page.mouse.click(b.x + 20, b.y + b.height / 2);
+    await page.keyboard.up("Alt");
+    expect(await page.evaluate(() => (window as any).__alt)).toBe(true);
+    expect(await framed(page)).toBeNull();
+  });
+
+  test("holding the workspace key and dragging pans, even over content", async ({ page }) => {
+    await open(page);
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__downs = 0;
+      document
+        .querySelector("[data-trellis-part=surface][data-view=outline] [data-trellis-part=content]")!
+        .addEventListener("pointerdown", () => w.__downs++);
+    });
+    const start = await inside(surface(page, "outline"));
+    await hold(page);
+    await expect(page.locator(".trellis")).toHaveAttribute("data-gesture-key", "pan");
+    const before = await camera(page);
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(start.x - 150, start.y + 60, { steps: 6 });
+    const during = await camera(page);
+    await page.mouse.up();
+    await release(page);
+    await expect(page.locator(".trellis")).not.toHaveAttribute("data-gesture-key");
+    // Dragging left and down moves the view right and up: the camera moves the other way.
+    expect(during.x).toBeGreaterThan(before.x + 0.01);
+    expect(during.y).toBeLessThan(before.y - 0.01);
+    expect(during.w).toBeCloseTo(before.w, 6);
+    expect(await page.evaluate(() => (window as any).__downs)).toBe(0);
+  });
+
+  test("holding the workspace key and Z and dragging scales", async ({ page }) => {
+    await open(page);
+    const start = await inside(surface(page, "a"));
+    await hold(page, "z");
+    await expect(page.locator(".trellis")).toHaveAttribute("data-gesture-key", "scale");
+    const before = await camera(page);
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(start.x + 40, start.y - 120, { steps: 6 });
+    const during = await camera(page);
+    await page.mouse.up();
+    await release(page, "z");
+    // Dragging up or right zooms in: the camera covers less of the layout.
+    expect(during.w).toBeLessThan(before.w * 0.9);
+    await expect.poll(() => framed(page)).not.toBeNull();
+  });
+
+  test("holding the workspace key and scrolling steps a level toward the pointer", async ({ page }) => {
+    await open(page);
+    const at = await inside(surface(page, "files"));
+    await page.mouse.move(at.x, at.y);
+    await hold(page);
+    await page.mouse.wheel(0, -100);
+    await release(page);
+    await expect.poll(() => framed(page)).toBe("left");
+  });
+
+  test('content with gestures: "exclusive" keeps pinch; the workspace key still navigates over it', async ({
+    page,
+  }) => {
+    await open(page, "&gestures=outline:exclusive");
+    const at = await inside(surface(page, "outline"));
+    await wheel(page, at, Array(14).fill(-6.5), { ctrlKey: true });
+    await page.waitForTimeout(400);
+    expect(await framed(page)).toBeNull();
+    await page.mouse.move(at.x, at.y);
+    await hold(page);
+    await page.mouse.wheel(0, -100);
+    await release(page);
+    await expect.poll(() => framed(page)).toBe("right");
+  });
+
+  test('content with gestures: "workspace" steps on a plain scroll', async ({ page }) => {
+    await open(page, "&gestures=outline:workspace");
+    await wheel(page, await inside(surface(page, "outline")), [-100]);
+    await expect.poll(() => framed(page)).toBe("right");
+  });
+
+  test("gesture keys can be changed or turned off", async ({ page }) => {
+    await open(page);
+    await page.evaluate(() => (window as any).ws.update({ gestureKeys: { pan: null, step: "Shift" } }));
+    await hold(page);
+    await expect(page.locator(".trellis")).not.toHaveAttribute("data-gesture-key");
+    await release(page);
+    const at = await inside(surface(page, "files"));
+    await page.mouse.move(at.x, at.y);
+    await page.keyboard.down("Shift");
+    await page.mouse.wheel(0, -100);
+    await page.keyboard.up("Shift");
+    await expect.poll(() => framed(page)).toBe("left");
+  });
+
+  test("stepping out with Escape is a keymap command, and can be turned off", async ({ page }) => {
+    await open(page);
+    await page.evaluate(() => (window as any).ws.navigation.frame("left"));
+    await page.evaluate(() => (window as any).ws.update({ keymap: { "navigation.stepOut": null } }));
+    await tab(page, "files").focus();
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
+    expect(await framed(page)).toBe("left");
+    await page.evaluate(() =>
+      (window as any).ws.update({ keymap: { "navigation.stepOut": "Mod+Alt+ArrowDown" } }),
+    );
+    await page.keyboard.press("ControlOrMeta+Alt+ArrowDown");
+    await expect.poll(() => framed(page)).toBeNull();
   });
 });

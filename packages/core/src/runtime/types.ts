@@ -1,3 +1,4 @@
+import type { GestureKeys } from "./gestures";
 import type { Command, Keymap } from "./keymap";
 import type {
   Edge,
@@ -75,8 +76,11 @@ export interface ViewTypeDefinition<P extends object = Params> extends ViewRules
   iframe?: string | IframeOptions | ((view: ViewHandle<P>) => string | IframeOptions);
   /** Items at the top of the panel menu while this view is selected. */
   menu?: MenuEntry[] | ((view: ViewHandle<P>) => MenuEntry[]);
-  /** "workspace" lets navigation gestures start over this view's content. */
-  gestures?: "content" | "workspace";
+  /** Who gets gestures over this view's content under free navigation. "content" (default): the
+   * content, except a pinch, which zooms the workspace. "exclusive": the content keeps its pinch
+   * too, for maps and canvases. "workspace": a plain scroll over it steps the workspace, for
+   * content that doesn't scroll itself. The gesture keys navigate over any content. */
+  gestures?: "content" | "workspace" | "exclusive";
   /** Extra CSS class for the view's surface, e.g. for per-type theming. */
   className?: string;
 }
@@ -205,6 +209,10 @@ export interface WorkspaceOptions {
   /** CSS custom properties applied to the workspace, e.g. { "--trellis-accent": "#f60" }. */
   tokens?: Record<string, string>;
   keymap?: Keymap;
+  /** Keys held with the pointer for free-navigation gestures: `pan` (drag), `scale` (drag) and
+   * `step` (scroll). Defaults: `{ pan: "Mod+Alt", scale: "Mod+Alt+Z", step: "Mod+Alt" }`. `null`
+   * turns one off. */
+  gestureKeys?: Partial<GestureKeys>;
   /** Initial layout when nothing is persisted or controlled. */
   defaultLayout?: LayoutDocument | LayoutSpec | null;
   /** Start from this document (e.g. controlled state). Overrides persistence. */

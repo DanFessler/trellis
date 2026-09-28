@@ -764,7 +764,7 @@
 }
 
 /* ------------------------------------------------------------------ navigation feedback */
-:where(.trellis [data-trellis-part="snap-preview"], .trellis [data-trellis-part="marquee-target"]) {
+:where(.trellis [data-trellis-part="snap-preview"]) {
   position: absolute;
   left: 0;
   top: 0;
@@ -775,13 +775,10 @@
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.13);
   border-radius: calc(var(--trellis-radius) + 3px);
 }
-:where(
-  .trellis [data-trellis-part="snap-preview"][data-visible],
-  .trellis [data-trellis-part="marquee-target"][data-visible]
-) {
+:where(.trellis [data-trellis-part="snap-preview"][data-visible]) {
   display: block;
 }
-:where(.trellis [data-trellis-part="snap-preview"] span, .trellis [data-trellis-part="marquee-target"] span) {
+:where(.trellis [data-trellis-part="snap-preview"] span) {
   position: absolute;
   left: 50%;
   top: 12px;
@@ -795,27 +792,30 @@
   letter-spacing: 0.2px;
   white-space: nowrap;
 }
-:where(.trellis [data-trellis-part="marquee"]) {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 3400;
-  display: none;
+/* Gesture keys held: the whole workspace is a handle. Content (iframes included) ignores the
+   pointer, so a drag anywhere reaches the workspace, and the cursor says what a drag will do. */
+:where(
+  .trellis[data-gesture-key] [data-trellis-part="content"],
+  .trellis[data-gesture] [data-trellis-part="content"]
+) {
   pointer-events: none;
-  border: 1px solid var(--trellis-accent);
-  background: color-mix(in srgb, var(--trellis-accent) 12%, transparent);
-  border-radius: 4px;
 }
-:where(.trellis[data-marquee] [data-trellis-part="marquee"]) {
-  display: block;
-}
-:where(.trellis[data-marquee]) {
-  cursor: crosshair;
+:where(.trellis[data-gesture-key], .trellis[data-gesture]) {
   user-select: none;
 }
-:where(.trellis[data-drag-zoom]) {
-  cursor: zoom-in;
-  user-select: none;
+.trellis[data-gesture-key="pan"],
+.trellis[data-gesture-key="pan"] * {
+  cursor: grab !important;
+}
+.trellis[data-gesture="pan"],
+.trellis[data-gesture="pan"] * {
+  cursor: grabbing !important;
+}
+.trellis[data-gesture-key="scale"],
+.trellis[data-gesture-key="scale"] *,
+.trellis[data-gesture="scale"],
+.trellis[data-gesture="scale"] * {
+  cursor: zoom-in !important;
 }
 
 /* ------------------------------------------------------------------ menu */

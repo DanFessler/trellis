@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { desktopWithFloatingApp, history, marquee, workspace } from "./trellis-adapter";
+import { desktopWithFloatingApp, history, workspace } from "./trellis-adapter";
 const nested = () =>
   workspace({
     name: "workspace",
@@ -49,26 +49,6 @@ test("NAV-04: contiguous views can be framed together without changing their lay
   assert.deepEqual(w.framedViews(frame), ["b", "c"]);
   assert.equal(w.snap(w.bounds(frame)), frame);
   assert.deepEqual(w.views().map(w.bounds), before);
-});
-test("NAV-05: marquee selection works in either direction through a zoomed viewport", () => {
-  const w = nested();
-  const viewport = { x: 20, y: 100, w: 1000, h: 500 };
-  const camera = w.bounds("writing");
-  const a = { x: 20, y: 350 },
-    b = { x: 1020, y: 600 };
-  const selection = marquee(a, b, viewport, camera);
-  assert.deepEqual(selection, w.bounds("mail"));
-  assert.deepEqual(marquee(b, a, viewport, camera), selection);
-  assert.equal(w.snap(selection), "mail");
-});
-test("NAV-06: marquee selection clips at the workspace boundary without forcing its aspect ratio", () => {
-  const rect = marquee(
-    { x: -100, y: 0 },
-    { x: 500, y: 300 },
-    { x: 0, y: 0, w: 1000, h: 500 },
-    { x: 0, y: 0, w: 1, h: 1 },
-  );
-  assert.deepEqual(rect, { x: 0, y: 0, w: 0.5, h: 0.6 });
 });
 test("NAV-07: maximize restores the exact prior framing even after skipping hierarchy levels", () => {
   const w = nested();

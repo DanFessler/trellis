@@ -83,7 +83,7 @@ These attributes on a `<template>` map to [`ViewTypeDefinition`](./core-api.md#v
 | `data-allow-stage`, `data-allow-side`, `data-allow-floating` | `allow`     | The regions users may drop this view into. Every region is allowed by default.                           |
 | `data-min-width`, `data-min-height`                          | `minSize`   | The smallest size content lays out at. Below it, content scales down.                                    |
 | `data-scaling`                                               | `scaling`   | Below the minimum size: `inert` scales content but ignores input; `false` never scales it.               |
-| `data-gestures="workspace"`                                  | `gestures`  | Lets a plain wheel over the content zoom the workspace.                                                  |
+| `data-gestures`                                              | `gestures`  | `exclusive` keeps pinch for the content; `workspace` lets a plain scroll step the workspace.             |
 | `data-tabbar`                                                | `tabbar`    | When the tab bar shows: `auto`, `never` or `overlay`. See [Tab bar modes](./core-api.md#tab-bar-modes).  |
 | `data-class`                                                 | `className` | An extra class on the view's surface.                                                                    |
 | `data-iframe`                                                | `iframe`    | Renders an iframe of this URL instead of the template. `{param}` placeholders become URL-encoded params. |

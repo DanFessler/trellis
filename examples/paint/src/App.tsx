@@ -135,6 +135,7 @@ function Shell() {
             icon={<ImageIcon size={14} />}
             placement="stage"
             allow={{ side: false }}
+            gestures="exclusive"
             accessory={(v) => <ZoomAccessory id={v.id} />}
             menu={documentMenu(() => wsRef.current)}
           >

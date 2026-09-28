@@ -7,5 +7,7 @@ export { layoutRects } from "./model/tree";
 export type { Entry as LayoutEntry, LayoutMetrics } from "./model/tree";
 export { formatCombo, DEFAULT_KEYMAP } from "./runtime/keymap";
 export type { Command, Keymap } from "./runtime/keymap";
+export { DEFAULT_GESTURE_KEYS } from "./runtime/gestures";
+export type { GestureKeys } from "./runtime/gestures";
 export type * from "./model/types";
 export type * from "./runtime/types";

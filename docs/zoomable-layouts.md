@@ -47,16 +47,16 @@ Two splits in the same direction count as one level. A column inside a column ad
 
 People move between levels in a few ways:
 
-| To                       | Do this                                                                                                           |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| Zoom to a panel          | Double-click its tab bar, or its icon when it's too small for one. Or press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>↩</kbd>. |
-| Step out one level       | Press <kbd>Esc</kbd>.                                                                                             |
-| Step in or out one level | <kbd>Shift</kbd>+scroll over the layout. Needs free navigation.                                                   |
-| Zoom to any region       | <kbd>Shift</kbd>+drag a rectangle around it. Needs free navigation.                                               |
-| Zoom continuously        | Scroll over panel chrome, or pinch. Releasing snaps to the closest fit. Needs free navigation.                    |
-| See everything           | Press <kbd>⌘</kbd><kbd>⌥</kbd><kbd>↑</kbd>. Press it again to go back.                                            |
+| To                       | Do this                                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| Zoom to a panel          | Double-click its tab bar, or its icon when it's too small for one. Or press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>↩</kbd>.        |
+| Step out one level       | Press <kbd>Esc</kbd>.                                                                                                    |
+| Step in or out one level | Hold <kbd>⌘</kbd><kbd>⌥</kbd> and scroll. Needs free navigation.                                                         |
+| Pan                      | Hold <kbd>⌘</kbd><kbd>⌥</kbd> and drag. Needs free navigation.                                                           |
+| Zoom continuously        | Pinch, or hold <kbd>⌘</kbd><kbd>⌥</kbd><kbd>Z</kbd> and drag. Releasing snaps to the closest fit. Needs free navigation. |
+| See everything           | Press <kbd>⌘</kbd><kbd>⌥</kbd><kbd>↑</kbd>. Press it again to go back.                                                   |
 
-On Windows and Linux, <kbd>⌘</kbd> is <kbd>Ctrl</kbd> and <kbd>⌥</kbd> is <kbd>Alt</kbd>. All shortcuts can be remapped with the [keymap](./keyboard-accessibility.md).
+On Windows and Linux, <kbd>⌘</kbd> is <kbd>Ctrl</kbd> and <kbd>⌥</kbd> is <kbd>Alt</kbd>. Shortcuts can be remapped with the [keymap](./keyboard-accessibility.md), and the keys held for gestures with [`gestureKeys`](./navigation.md#gesture-keys).
 
 ## Small panels
 
@@ -107,7 +107,7 @@ Maximize remembers the level it zoomed from. Toggling it again returns there, ev
 
 ## Turn it on
 
-Zooming to panels, stepping out and history work in the default `"focus"` mode. Scroll, pinch and marquee gestures need `"free"`:
+Zooming to panels, stepping out and history work in the default `"focus"` mode. Pinch, pan, scale and step gestures need `"free"`:
 
 ```tsx
 <Workspace navigation="free">{/* … */}</Workspace>
@@ -117,6 +117,6 @@ Zooming to panels, stepping out and history work in the default `"focus"` mode. 
 createWorkspace(el, { types, navigation: "free" });
 ```
 
-With free navigation, a plain scroll over panel chrome zooms the layout, and scrolling over content scrolls the content. If the workspace sits inside a scrolling page, consider starting in `"focus"` and offering free navigation as a setting, as the home page demo does.
+With free navigation, a pinch zooms from anywhere, and holding <kbd>⌘</kbd><kbd>⌥</kbd> turns the whole layout into a handle. Everything else goes to your content, so text fields and lists work as usual. If the workspace sits inside a scrolling page, a pinch over it zooms the workspace, not the page. Consider starting in `"focus"` and offering free navigation as a setting, as the home page demo does.
 
 [Navigation and maximize](./navigation.md) is the full reference: what the camera frames, gesture ownership over iframes, saved framings and the API.

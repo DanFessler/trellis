@@ -13,16 +13,16 @@ A Trellis workspace is built from view types, views, panels and splits, with an 
 
 A view type is a registered kind of content, such as `"layers"` or `"terminal"`. You register types when you create the workspace (`types` in the core, `<ViewType>` in React). A type says how to render its content and carries these rules:
 
-| Rule        | Meaning                                                                                                                                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `placement` | Where `open()` puts a new view of this type unless the caller says otherwise.                                                                                                                            |
-| `allow`     | `{ stage?, side?, floating? }`: the regions users may drop it into. All are allowed by default. A disallowed region offers no drop targets.                                                              |
-| `singleton` | At most one instance. `open()` focuses the existing one.                                                                                                                                                 |
-| `closable`  | `false` hides the close button and ignores close shortcuts.                                                                                                                                              |
-| `minSize`   | `{ width, height }`. Content lays out at no less than this size and is scaled down below it. Defaults to 480 × 320 under `navigation: "free"`, and to none otherwise.                                    |
-| `scaling`   | Below `minSize`: `"interactive"` (default) keeps scaled content usable, `"inert"` ignores input until it's full size, and `false` never scales it, so content reflows to fit.                            |
-| `tabbar`    | `"always"` (default), `"auto"`, `"never"` or `"overlay"`. `"auto"` hides the tab bar while the view is alone in its panel. `"overlay"` floats it over a lone view whose content draws its own title bar. |
-| `gestures`  | `"workspace"` lets a plain wheel over this view's content zoom the workspace. See [Navigation](./navigation.md#gesture-ownership).                                                                       |
+| Rule        | Meaning                                                                                                                                                                                                                                                  |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `placement` | Where `open()` puts a new view of this type unless the caller says otherwise.                                                                                                                                                                            |
+| `allow`     | `{ stage?, side?, floating? }`: the regions users may drop it into. All are allowed by default. A disallowed region offers no drop targets.                                                                                                              |
+| `singleton` | At most one instance. `open()` focuses the existing one.                                                                                                                                                                                                 |
+| `closable`  | `false` hides the close button and ignores close shortcuts.                                                                                                                                                                                              |
+| `minSize`   | `{ width, height }`. Content lays out at no less than this size and is scaled down below it. Defaults to 480 × 320 under `navigation: "free"`, and to none otherwise.                                                                                    |
+| `scaling`   | Below `minSize`: `"interactive"` (default) keeps scaled content usable, `"inert"` ignores input until it's full size, and `false` never scales it, so content reflows to fit.                                                                            |
+| `tabbar`    | `"always"` (default), `"auto"`, `"never"` or `"overlay"`. `"auto"` hides the tab bar while the view is alone in its panel. `"overlay"` floats it over a lone view whose content draws its own title bar.                                                 |
+| `gestures`  | Who gets gestures over this view's content under free navigation: `"content"` (default: everything but a pinch), `"exclusive"` (a pinch too) or `"workspace"` (a plain scroll steps the workspace). See [Navigation](./navigation.md#gesture-ownership). |
 
 A type renders content in one of three ways. The core takes a `mount(element, view)` function or an `iframe`, which is a URL or options such as `srcdoc` and `sandbox`. An adapter adds framework components, such as `children` or `render` in React.
 
@@ -92,7 +92,7 @@ Floating panels aren't camera targets. See [Floating panels](./floating.md).
 Navigation animates the workspace's camera to frame part of the layout. The `navigation` option has three modes:
 
 - `"focus"` (default): double-click a tab bar, choose _Maximize_ from the panel's menu, or press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>↩</kbd> to zoom one panel to fill the workspace. Doing it again restores the previous framing, and <kbd>Esc</kbd> steps out one level.
-- `"free"`: focus mode plus gestures. A wheel over the chrome, a pinch or <kbd>Ctrl</kbd>+wheel zooms. <kbd>Shift</kbd>+wheel steps through the hierarchy, and <kbd>Shift</kbd>+drag draws a marquee. When a gesture ends, the camera snaps to the best-fitting panel, split or range of siblings.
+- `"free"`: focus mode plus gestures. A pinch zooms from anywhere. Holding <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>), a drag pans, a drag with <kbd>Z</kbd> also held scales, and a scroll steps through the hierarchy. When a gesture ends, the camera snaps to the best-fitting panel, split or range of siblings.
 - `false`: no navigation.
 
 The camera frames nodes and contiguous sibling ranges. Navigation has back and forward history, an overview that toggles back, and saved framings, which remember views rather than nodes. See [Navigation and maximize](./navigation.md).

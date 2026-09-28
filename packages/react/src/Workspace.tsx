@@ -26,6 +26,7 @@ import {
   type FloatSpec,
   type Edge,
   type FloatingLayer,
+  type GestureKeys,
   type Keymap,
   type LayoutDocument,
   type LayoutSpec,
@@ -199,7 +200,8 @@ export interface ViewTypeProps<P extends object = Params> extends ViewRules {
   iframe?: ViewTypeDefinition<P>["iframe"];
   mount?: ViewTypeDefinition<P>["mount"];
   menu?: MenuEntry[] | ((view: ViewHandle<P>) => MenuEntry[]);
-  gestures?: "content" | "workspace";
+  /** Who gets gestures over the content under free navigation. See the core `gestures` option. */
+  gestures?: ViewTypeDefinition<P>["gestures"];
   className?: string;
 }
 /** Register a kind of view. Renders nothing itself. */
@@ -380,6 +382,8 @@ export interface WorkspaceProps {
   /** Whether panels pushed by a divider stay pushed when it's dragged back. See the core
    * `keepPushed` option. */
   keepPushed?: boolean;
+  /** Keys held for free-navigation gestures. See the core `gestureKeys` option. */
+  gestureKeys?: Partial<GestureKeys>;
   /** Show panel menus with your own component. Always calls the latest function. */
   renderMenu?(request: MenuRequest): void;
   /** Tab layout: `fill` makes tabs share the tab row; `inset` (px) is the space around them. */
@@ -495,6 +499,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       renderMenu: p.renderMenu ? renderMenuOption : undefined,
       detail: p.detail,
       keepPushed: p.keepPushed,
+      gestureKeys: p.gestureKeys,
       tabs: p.tabs,
       label: p.label,
       document: p.document,
@@ -549,6 +554,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       renderMenu: props.renderMenu ? renderMenuOption : undefined,
       detail: props.detail,
       keepPushed: props.keepPushed,
+      gestureKeys: props.gestureKeys,
       label: props.label,
       tabs: props.tabs,
     });
@@ -565,6 +571,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
     !!props.renderMenu,
     JSON.stringify(props.detail ?? null),
     props.keepPushed,
+    JSON.stringify(props.gestureKeys ?? null),
     props.label,
     props.tabs?.fill,
     props.tabs?.inset,

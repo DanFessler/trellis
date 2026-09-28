@@ -72,6 +72,10 @@ if (scenario === "vanilla") {
     ),
   };
   if (scaling !== undefined) for (const t of Object.values(options.types)) t.scaling = scaling;
+  // ?gestures=outline:exclusive sets a type's gesture ownership.
+  const [gestureType, gestureValue] = (params.get("gestures") ?? "").split(":");
+  if (gestureType && options.types[gestureType])
+    options.types[gestureType].gestures = gestureValue as "content" | "workspace";
   const ws = createWorkspace(app, options);
   for (const e of ["open", "close", "focus", "navigate", "change"] as const)
     ws.on(e, (d: any) => w.events.push(`${e}:${typeof d === "object" && d ? (d.id ?? "doc") : d}`));

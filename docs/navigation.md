@@ -19,7 +19,7 @@ Set `navigation` on the workspace:
 | Mode                  | What users can do                                                                                                                                                                                                                                                            |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `"focus"` _(default)_ | Maximize and restore panels: double-click a tab bar, choose **Maximize** in the panel menu, or press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>↩</kbd> (<kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Enter</kbd>). <kbd>Esc</kbd> steps out one level. History and the overview work. No gestures. |
-| `"free"`              | Everything in focus mode, plus [gestures](#free-navigation-gestures): wheel and pinch zoom, hierarchy steps and marquee framing. Content gets a default [minimum size](#content-minimum) of 480 × 320.                                                                       |
+| `"free"`              | Everything in focus mode, plus [gestures](#free-navigation-gestures): pinch to zoom, and pan, scale and step with the gesture keys. Content gets a default [minimum size](#content-minimum) of 480 × 320.                                                                    |
 | `false`               | No navigation. Double-click does nothing and _Maximize_ isn't in the menu.                                                                                                                                                                                                   |
 
 ```tsx
@@ -44,61 +44,54 @@ When a view is opened or focused while the camera frames something that doesn't 
 
 ## Free navigation gestures
 
-In `"free"` mode:
+In `"free"` mode, a pinch zooms from anywhere, and holding the _gesture keys_ turns the whole workspace into a handle. Everything else over a view's content belongs to the content, so text fields, lists and editors work as usual.
 
-| Gesture                                     | Does                                                                                                                         |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Wheel over chrome, gaps or the stage        | Zooms around the pointer.                                                                                                    |
-| Pinch on a trackpad (<kbd>Ctrl</kbd>+wheel) | Zooms around the pointer, three times faster.                                                                                |
-| <kbd>Shift</kbd>+wheel                      | Steps the hierarchy one level at a time. Scrolling up steps in, toward the node under the pointer. Scrolling down steps out. |
-| <kbd>Shift</kbd>+drag                       | Draws a marquee, in either direction. Release frames the node or sibling range that best fits it.                            |
-| <kbd>Alt</kbd>+drag                         | Zooms around the press point as the pointer moves up or down. It works like a pinch for mice.                                |
-| Two-finger touch pinch                      | Zooms and pans. Safari's trackpad `gesture*` events are supported too.                                                       |
+| Gesture                                                                                        | Does                                                                                                                         |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Pinch on a trackpad                                                                            | Zooms around the pointer, from anywhere, content included.                                                                   |
+| Hold <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>) and drag                         | Pans.                                                                                                                        |
+| Hold <kbd>⌘</kbd><kbd>⌥</kbd><kbd>Z</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>Z</kbd>) and drag | Scales around the press point. Dragging up or right zooms in.                                                                |
+| Hold <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>) and scroll                       | Steps the hierarchy one level at a time. Scrolling up steps in, toward the node under the pointer. Scrolling down steps out. |
+| <kbd>Ctrl</kbd>+scroll with a mouse wheel                                                      | Steps too. Browsers report a trackpad pinch as <kbd>Ctrl</kbd>+scroll, so Trellis tells them apart by their deltas.          |
+| Two-finger touch pinch                                                                         | Zooms and pans. Safari's trackpad `gesture*` events are supported too.                                                       |
+
+The gesture keys work over content too. While they're held, content ignores the pointer, the root has `data-gesture-key` (`pan` or `scale`) and the cursor shows what a drag will do. During the drag, the root has `data-gesture`. <kbd>Esc</kbd> cancels a drag and returns to the previous framing.
+
+A plain scroll never moves the camera, over content or chrome, so a tab strip whose tabs overflow always scrolls its tabs. Double-clicking a tab bar still zooms to its panel.
 
 Zooming is rubber-banded. The camera can zoom out to 1.35× the layout and overshoot its edges by 30%. When the gesture stops, the camera springs to the node or sibling range that best fits your view. That becomes the framing. [Interaction model](./interaction.md#navigation) has the exact timing.
 
-There's no wheel panning. To move across the layout, zoom out and then back in toward the pointer.
+### Gesture keys
 
-While marquee-selecting, the root has `data-marquee`. Two elements show the selection: `[data-trellis-part="marquee"]` and `[data-trellis-part="marquee-target"]`. The target outlines what release would frame, with a text label, and carries `data-visible` while there is one. Alt-dragging sets `data-drag-zoom` on the root.
+`gestureKeys` sets the keys for each gesture. Each is a set of modifiers and, optionally, keys held with them. `null` turns a gesture off:
 
-Trellis sets only these elements' transform and size, and the stylesheet doesn't style them. Give them a look in your own CSS:
-
-```css
-.trellis [data-trellis-part="marquee"],
-.trellis [data-trellis-part="marquee-target"] {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 4000;
-  pointer-events: none;
-}
-.trellis:not([data-marquee]) [data-trellis-part="marquee"],
-.trellis [data-trellis-part="marquee-target"]:not([data-visible]) {
-  display: none;
-}
-.trellis [data-trellis-part="marquee"] {
-  border: 1px dashed var(--trellis-accent);
-}
-.trellis [data-trellis-part="marquee-target"] {
-  border-radius: var(--trellis-radius);
-  box-shadow: inset 0 0 0 2px var(--trellis-accent);
-}
+```ts
+createWorkspace(el, {
+  types,
+  navigation: "free",
+  gestureKeys: { pan: "Mod+Alt", scale: "Mod+Alt+Z", step: "Mod+Alt" }, // the defaults
+});
 ```
 
-> **Note** In `"free"` mode, <kbd>Shift</kbd> and <kbd>Alt</kbd> are reserved for navigation. A <kbd>Shift</kbd>- or <kbd>Alt</kbd>-press anywhere in the workspace, content included, starts a marquee or a zoom. <kbd>Shift</kbd>+wheel always steps the hierarchy, and <kbd>Alt</kbd>-clicks are swallowed. In every mode, a press with a modifier held doesn't start a drag.
+`Mod` is <kbd>⌘</kbd> on macOS and <kbd>Ctrl</kbd> elsewhere. Pick combinations your content doesn't use with the pointer. <kbd>Shift</kbd>, <kbd>Alt</kbd>, <kbd>⌘</kbd> and <kbd>Ctrl</kbd> on their own all have meanings in text and lists. Some combinations never reach the page: on macOS, <kbd>⌘</kbd><kbd>Space</kbd> and <kbd>⌘</kbd><kbd>⌥</kbd><kbd>Space</kbd> open Spotlight and Finder search unless you turn those shortcuts off.
 
 ### Gesture ownership
 
-A plain wheel over a view's content belongs to the content, so scrolling a document or zooming a canvas works as usual. There are two ways to change that:
+A view type's `gestures` option decides what reaches its content:
 
-- Hold <kbd>Ctrl</kbd> or <kbd>Alt</kbd> while scrolling over content to zoom the workspace instead. Trackpad pinches arrive with <kbd>Ctrl</kbd> held.
-- Give the type `gestures: "workspace"` to let every wheel over its content zoom the workspace. Use it for content that doesn't scroll or zoom itself, such as a static preview.
+| Value                   | Over the content                                                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `"content"` _(default)_ | Everything goes to the content except a pinch, which zooms the workspace.                                                 |
+| `"exclusive"`           | The content keeps its pinch too. Use it for maps, canvases and image viewers that zoom themselves.                        |
+| `"workspace"`           | A plain scroll steps the workspace. Use it for content that doesn't scroll itself, such as a static preview or thumbnail. |
+
+The gesture keys navigate over every kind of content.
 
 ```tsx
-<ViewType id="thumbnail" title="Thumbnail" gestures="workspace" />
+<ViewType id="map" title="Map" gestures="exclusive" />
 ```
 
-A tab strip whose tabs overflow keeps a plain wheel for scrolling its tabs sideways. Wheel events inside an iframe don't reach the workspace. See [Zoom gestures over iframes](./recipes.md#zoom-gestures-over-iframes).
+Events inside an iframe don't reach the workspace, so a pinch over one goes to the iframe. While the gesture keys are held, iframes ignore the pointer like any other content, so drags and scrolls reach the workspace, as long as keyboard focus isn't inside the iframe. See [Zoom gestures over iframes](./recipes.md#zoom-gestures-over-iframes).
 
 ### Content minimum
 
@@ -214,7 +207,7 @@ The snapshot has `framed`, `canGoBack` and `canGoForward`. While zoomed in, the 
 | `navigation.back`     | <kbd>Mod</kbd>+<kbd>Alt</kbd>+<kbd>←</kbd>       | Previous framing.                                                    |
 | `navigation.forward`  | <kbd>Mod</kbd>+<kbd>Alt</kbd>+<kbd>→</kbd>       | Next framing.                                                        |
 | `navigation.overview` | <kbd>Mod</kbd>+<kbd>Alt</kbd>+<kbd>↑</kbd>       | Toggle between the overview and the previous framing.                |
-| _(none)_              | <kbd>Esc</kbd>                                   | Step out one level, when framed and focus isn't inside view content. |
+| `navigation.stepOut`  | <kbd>Esc</kbd>                                   | Step out one level, when framed and focus isn't inside view content. |
 
 `Mod` is <kbd>⌘</kbd> on macOS and <kbd>Ctrl</kbd> elsewhere. To toggle the overview with a bare <kbd>0</kbd>, opt in:
 

@@ -19,7 +19,7 @@ Each view renders once, into a container that stays put in the DOM. Docking, tab
 
 Picking up a panel, dropping it, maximizing and hiding are all animated. While you drag, the layout opens a slot where the panel will land. Views learn their new size after motion settles, not on every frame, so expensive content doesn't re-layout sixty times a second.
 
-A workspace can have a _stage_, the primary region where documents open. Panels can float over the stage or over the whole app. In _free_ navigation, users move around the workspace like a canvas by scrolling, pinching and marquee-selecting, and the camera snaps to whatever fits best.
+A workspace can have a _stage_, the primary region where documents open. Panels can float over the stage or over the whole app. In _free_ navigation, users move around the workspace like a canvas by pinching, panning and stepping through levels, and the camera snaps to whatever fits best.
 
 View types declare rules in place of callbacks. A type says where it may be docked (`allow`), where it opens (`placement`), whether only one may exist (`singleton`), whether it can be closed, and its minimum layout size. Trellis enforces these rules during drags and in `open()`.
 

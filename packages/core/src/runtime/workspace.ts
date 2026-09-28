@@ -44,6 +44,7 @@ import type {
 } from "../model/types";
 import { h, icons, place, setAttr, setStyle } from "./dom";
 import { DEFAULT_KEYMAP, formatCombo, matches, type Command } from "./keymap";
+import { DEFAULT_GESTURE_KEYS } from "./gestures";
 import { Emitter, Lifetime } from "./lifetime";
 import { Menu, tidyMenu } from "./menu";
 import { DOCK_EASE, DOCK_MS, lerpRect, LayoutTween, MOTION, RectSpring, sameRect } from "./motion";
@@ -2093,22 +2094,16 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const typing = (e.target as HTMLElement).matches?.(
       "input, textarea, select, [contenteditable=''], [contenteditable=true]",
     );
+    const inContent = !!(e.target as HTMLElement).closest?.("[data-trellis-part=content]");
     for (const [command, combo] of Object.entries(keymap) as [Command, string | null][]) {
       if (typing && combo && !e.ctrlKey && !e.metaKey && !e.altKey) continue;
+      // Stepping out only applies while framed, and leaves content its own Escape.
+      if (command === "navigation.stepOut" && (!framed() || inContent)) continue;
       if (combo && matches(e, combo)) {
         e.preventDefault();
         run(command);
         return;
       }
-    }
-    // Escape outside content steps out one level.
-    if (
-      e.key === "Escape" &&
-      framed() &&
-      !(e.target as HTMLElement).closest?.("[data-trellis-part=content]")
-    ) {
-      e.preventDefault();
-      nav.stepOut();
     }
   });
   function run(command: Command) {
@@ -2124,6 +2119,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         return nav.forward();
       case "navigation.overview":
         return nav.toggleOverview();
+      case "navigation.stepOut":
+        return nav.stepOut();
       case "panel.next":
       case "panel.previous": {
         const order = [...panelsOf(doc.root), ...doc.floating.map((f) => f.panel)];
@@ -2473,11 +2470,12 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       schedule();
     },
     busy: () => dragActive(),
-    contentOwnsWheel(target) {
+    gestureOwner(target) {
       const surface = target.closest?.("[data-trellis-part=surface]") as HTMLElement | null;
-      if (!surface) return false;
-      return typeOf(surface.dataset.view!).gestures !== "workspace";
+      if (!surface) return "chrome";
+      return typeOf(surface.dataset.view!).gestures ?? "content";
     },
+    gestureKeys: () => ({ ...DEFAULT_GESTURE_KEYS, ...options.gestureKeys }),
     titleOf: (node) =>
       node.kind === "panel" ? titleOf(node.selected) : node.kind === "stage" ? "the stage" : "this group",
     schedule,

@@ -2,10 +2,14 @@
  * Camera navigation.
  *
  * Frames any node or contiguous sibling range. Supports rubber-banded zoom (up to 1.35× the
- * layout, 30% edge overshoot) that springs to the best fit 180 ms after the gesture;
- * Shift+wheel hierarchy steps; Shift+drag marquee; Alt+drag zoom; touch pinch; Safari gesture
- * events; maximize that restores the exact prior framing; overview that toggles back; history
- * of visits by their views; saved framings that follow surviving views.
+ * layout, 30% edge overshoot) that springs to the best fit after the gesture; maximize that
+ * restores the exact prior framing; overview that toggles back; history of visits by their
+ * views; saved framings that follow surviving views.
+ *
+ * Gestures: a pinch (and touch pinch, and Safari gesture events) zooms from anywhere except
+ * content that keeps its own pinch. Holding the gesture keys (⌘⌥ or Ctrl+Alt by default) turns
+ * the whole workspace into a handle: drag to pan, hold Z too and drag to scale, scroll to step a
+ * level. Everything else over content belongs to the content.
  *
  * Gestures run only with `navigation: "free"`; `"focus"` keeps maximize, Escape and
  * history. Floating windows are never camera targets (NAV-12).
@@ -20,7 +24,6 @@ import {
   navNode,
   navParent,
   recordVisit,
-  rectangleCamera,
   savedFrameDestination,
   type MaximizeSession,
   type SpaceEntry,
@@ -30,6 +33,7 @@ import { findStage, UNIT, type LayoutMetrics } from "../model/tree";
 import type { Framing, LayoutDocument, LayoutNode, Rect } from "../model/types";
 import { uid } from "../model/document";
 import { h } from "./dom";
+import { isNotchedWheel, matchesChord, parseChord, type GestureKeys } from "./gestures";
 import type { Lifetime } from "./lifetime";
 import { sameRect, type RectSpring } from "./motion";
 
@@ -49,8 +53,11 @@ export interface NavigationHost {
   /** Pause per-frame content updates while a gesture drives the camera. */
   setGesture(active: boolean): void;
   busy(): boolean;
-  /** Whether a wheel over this element should stay with the content. */
-  contentOwnsWheel(target: Element, e: WheelEvent): boolean;
+  /** Who gestures over this element belong to: the workspace's chrome, or content of a type
+   * that keeps ordinary gestures ("content"), keeps its pinch too ("exclusive"), or lets a plain
+   * scroll step the workspace ("workspace"). */
+  gestureOwner(target: Element): "chrome" | "content" | "exclusive" | "workspace";
+  gestureKeys(): GestureKeys;
   titleOf(node: LayoutNode): string;
   schedule(): void;
   render(): void;
@@ -216,7 +223,7 @@ export function createNavigator(host: NavigationHost) {
   // ---------------------------------------------------------------- gestures
   const bounds = () => host.root.getBoundingClientRect();
   function zoom(factor: number, clientX: number, clientY: number, panX = 0, panY = 0) {
-    if (marquee || !entries.size) return;
+    if (!entries.size) return;
     if (!gesture) {
       gesture = true;
       host.setGesture(true);
@@ -250,87 +257,123 @@ export function createNavigator(host: NavigationHost) {
     focus(bestFit(host.camera.value, entries));
   }
 
-  // Wheel: Shift steps the hierarchy; otherwise zoom (content keeps plain wheels).
-  let hierarchyWheel = { last: -Infinity, total: 0, steppedAt: -Infinity, direction: 0 };
-  const resetHierarchyWheel = () =>
-    (hierarchyWheel = { last: -Infinity, total: 0, steppedAt: -Infinity, direction: 0 });
-  function handleHierarchyWheel(e: WheelEvent): boolean {
-    if (!e.shiftKey) {
-      resetHierarchyWheel();
-      return false;
-    }
+  // Stepping: wheel deltas add up until they're worth a step, whatever the device reports.
+  let stepWheel = { last: -Infinity, total: 0, steppedAt: -Infinity, direction: 0 };
+  const resetStepWheel = () =>
+    (stepWheel = { last: -Infinity, total: 0, steppedAt: -Infinity, direction: 0 });
+  function step(e: WheelEvent) {
     e.preventDefault();
-    if (host.busy() || dragZoom || marquee) return true;
+    if (host.busy() || drag) return;
     const now = performance.now();
-    // Some browsers convert Shift+wheel into horizontal deltas.
+    // Some browsers turn a wheel with Shift held into horizontal deltas.
     const raw = e.deltaY || e.deltaX;
     const direction = Math.sign(raw);
-    if (!direction) return true;
-    if (now - hierarchyWheel.last > 260 || direction !== hierarchyWheel.direction) resetHierarchyWheel();
-    hierarchyWheel.last = now;
-    hierarchyWheel.direction = direction;
-    hierarchyWheel.total += raw * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? host.viewport().h : 1);
-    if (now - hierarchyWheel.steppedAt >= 140 && Math.abs(hierarchyWheel.total) >= 12) {
-      hierarchyWheel.steppedAt = now;
+    if (!direction) return;
+    if (now - stepWheel.last > 260 || direction !== stepWheel.direction) resetStepWheel();
+    stepWheel.last = now;
+    stepWheel.direction = direction;
+    stepWheel.total += raw * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? host.viewport().h : 1);
+    if (now - stepWheel.steppedAt >= 140 && Math.abs(stepWheel.total) >= 12) {
+      stepWheel.steppedAt = now;
       const b = bounds();
       const point = host.fromScreen({ x: e.clientX - b.left, y: e.clientY - b.top });
-      const next = hierarchyStep(entries, framed ?? rootId(), hierarchyWheel.total > 0 ? "out" : "in", point);
-      hierarchyWheel.total = 0;
+      const next = hierarchyStep(entries, framed ?? rootId(), stepWheel.total > 0 ? "out" : "in", point);
+      stepWheel.total = 0;
       focus(next);
     }
-    return true;
   }
   host.lifetime.listen(
     host.root,
     "wheel",
     (e: WheelEvent) => {
       if (!free()) return;
-      if (handleHierarchyWheel(e)) return;
       const target = e.target as Element;
-      if (!e.ctrlKey && !e.altKey && host.contentOwnsWheel(target, e)) return;
-      if (target.closest?.("[data-trellis-part=tabs]") && !e.ctrlKey) {
-        const list = target.closest("[data-trellis-part=tabs]") as HTMLElement;
-        if (list.scrollWidth > list.clientWidth) return;
-      }
       if (target.closest?.(".trellis-menu")) return;
-      e.preventDefault();
-      if (host.busy() || dragZoom || marquee) return;
-      const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? host.viewport().h : 1);
-      zoom(
-        Math.exp(Math.max(-0.3, Math.min(0.3, delta * (e.ctrlKey ? 0.009 : 0.003)))),
-        e.clientX,
-        e.clientY,
-      );
-      host.lifetime.clearTimeout(wheelTimer);
-      wheelTimer = host.lifetime.timeout(finishGesture, 180);
+      // The step keys step from anywhere, content included.
+      if (matchesChord(e, host.gestureKeys().step, held)) return step(e);
+      const owner = host.gestureOwner(target);
+      if (e.ctrlKey) {
+        // A pinch (or Ctrl+wheel) zooms, unless the content keeps its own. A notched mouse
+        // wheel steps instead: continuous zoom from a wheel is too coarse to control.
+        if (owner === "exclusive") return;
+        if (isNotchedWheel(e)) return step(e);
+        e.preventDefault();
+        if (host.busy() || drag) return;
+        const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? host.viewport().h : 1);
+        zoom(Math.exp(Math.max(-0.3, Math.min(0.3, delta * 0.009))), e.clientX, e.clientY);
+        host.lifetime.clearTimeout(wheelTimer);
+        wheelTimer = host.lifetime.timeout(finishGesture, 180);
+        return;
+      }
+      // Content that doesn't scroll itself can let a plain scroll step the workspace.
+      if (owner === "workspace" && !e.shiftKey && !e.altKey && !e.metaKey) step(e);
     },
     { passive: false },
   );
-  host.lifetime.listen(host.root, "keyup", (e: KeyboardEvent) => {
-    if (e.key === "Shift") resetHierarchyWheel();
-  });
-  // Escape cancels a marquee or drag-zoom before anything else sees it.
+
+  // Gesture keys: while they're held, the root says so (for the cursor), content ignores the
+  // pointer, and a drag anywhere pans or scales.
+  const held = new Set<string>();
+  let heldMode: "pan" | "scale" | null = null;
+  function syncHeld(e: KeyboardEvent | PointerEvent | null) {
+    const keys = host.gestureKeys();
+    const mode =
+      e && free() && !host.busy()
+        ? matchesChord(e, keys.scale, held)
+          ? "scale"
+          : matchesChord(e, keys.pan, held)
+            ? "pan"
+            : null
+        : null;
+    if (mode === heldMode) return;
+    heldMode = mode;
+    if (mode) host.root.setAttribute("data-gesture-key", mode);
+    else host.root.removeAttribute("data-gesture-key");
+  }
   host.lifetime.listen(
     window,
     "keydown",
     (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || (!marquee && !dragZoom)) return;
-      e.preventDefault();
-      e.stopPropagation();
-      finishMarquee(false);
-      finishDragZoom();
+      if (e.key === "Escape" && drag) {
+        e.preventDefault();
+        e.stopPropagation();
+        finishDrag(false);
+        return;
+      }
+      held.add(e.code);
+      syncHeld(e);
+      // A key that's part of a held gesture chord (Z for scale) doesn't also type or trigger
+      // shortcuts in the content.
+      if (heldMode && isChordKey(e)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
     },
     { capture: true },
   );
+  host.lifetime.listen(
+    window,
+    "keyup",
+    (e: KeyboardEvent) => {
+      held.delete(e.code);
+      // macOS sends no keyup for keys released while ⌘ is down: forget them with ⌘.
+      if (e.key === "Meta") held.clear();
+      resetStepWheel();
+      syncHeld(e);
+    },
+    { capture: true },
+  );
+  const isChordKey = (e: KeyboardEvent) => {
+    const { pan, scale } = host.gestureKeys();
+    return [pan, scale].some((combo) => !!combo && parseChord(combo).keys.includes(e.code));
+  };
   host.lifetime.listen(window, "blur", () => {
-    resetHierarchyWheel();
-    finishDragZoom();
-    finishMarquee(false);
+    held.clear();
+    syncHeld(null);
+    resetStepWheel();
+    finishDrag(true);
   });
 
-  // Shift+drag: marquee framing. Alt+drag: zoom around the press point (mouse pinch proxy).
-  const marqueeEl = h("div", { "data-trellis-part": "marquee", "aria-hidden": "true" });
-  // While a gesture drives the camera, outline what releasing will frame (the snap preview).
   const snapEl = h(
     "div",
     { "data-trellis-part": "snap-preview", "aria-hidden": "true" },
@@ -338,97 +381,53 @@ export function createNavigator(host: NavigationHost) {
   );
   host.root.append(snapEl);
   host.lifetime.add(() => snapEl.remove());
-  const candidateEl = h("div", { "data-trellis-part": "marquee-target", "aria-hidden": "true" }, h("span"));
-  host.root.append(marqueeEl, candidateEl);
-  host.lifetime.add(() => {
-    marqueeEl.remove();
-    candidateEl.remove();
-  });
-  let marquee: {
-    pointerId: number;
-    start: { x: number; y: number };
-    view: Rect;
-    viewport: Rect;
-    candidate: string | null;
-  } | null = null;
-  let dragZoom: { pointerId: number; x: number; y: number; lastY: number } | null = null;
   const place = (el: HTMLElement, r: Rect) => {
     el.style.transform = `translate(${r.x}px, ${r.y}px)`;
     el.style.width = `${Math.max(0, r.w)}px`;
     el.style.height = `${Math.max(0, r.h)}px`;
   };
-  function moveMarquee(e: PointerEvent) {
-    if (!marquee || marquee.pointerId !== e.pointerId) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const m = marquee;
-    const world = rectangleCamera(m.start, { x: e.clientX, y: e.clientY }, m.viewport, m.view);
-    const screen = host.toScreen(world);
-    place(marqueeEl, screen);
-    m.candidate = screen.w >= 8 && screen.h >= 8 ? bestFit(world, entries) : null;
-    candidateEl.toggleAttribute("data-visible", !!m.candidate);
-    if (m.candidate) {
-      const entry = entries.get(m.candidate)!;
-      place(candidateEl, host.panelScreen(entry.rect));
-      candidateEl.querySelector("span")!.textContent =
-        `Release to focus ${host.titleOf(entry.node)} · Esc to cancel`;
-    }
-  }
-  function finishMarquee(commit: boolean) {
-    if (!marquee) return;
-    const m = marquee;
-    marquee = null;
+
+  // Dragging with the gesture keys held: pan, or scale around the press point.
+  let drag: {
+    mode: "pan" | "scale";
+    pointerId: number;
+    x: number;
+    y: number;
+    lastX: number;
+    lastY: number;
+  } | null = null;
+  function finishDrag(commit: boolean) {
+    if (!drag) return;
+    const { pointerId } = drag;
+    drag = null;
     suppressClickUntil = performance.now() + 350;
-    host.root.removeAttribute("data-marquee");
-    candidateEl.removeAttribute("data-visible");
-    try {
-      if (host.root.hasPointerCapture(m.pointerId)) host.root.releasePointerCapture(m.pointerId);
-    } catch {
-      /* ignore */
-    }
-    focus(commit && m.candidate ? m.candidate : framed);
-  }
-  function finishDragZoom() {
-    if (!dragZoom) return;
-    const { pointerId } = dragZoom;
-    dragZoom = null;
-    suppressClickUntil = performance.now() + 350;
-    host.root.removeAttribute("data-drag-zoom");
+    host.root.removeAttribute("data-gesture");
     try {
       if (host.root.hasPointerCapture(pointerId)) host.root.releasePointerCapture(pointerId);
     } catch {
       /* ignore */
     }
-    finishGesture();
+    if (commit) finishGesture();
+    else focus(framed);
   }
   host.lifetime.listen(
     host.root,
     "pointerdown",
     (e: PointerEvent) => {
-      if (!free() || host.busy() || e.button !== 0 || e.pointerType === "touch") return;
-      if (e.shiftKey && !dragZoom) {
-        e.preventDefault();
-        e.stopPropagation();
-        endGesture();
-        const r = bounds();
-        marquee = {
-          pointerId: e.pointerId,
-          start: { x: e.clientX, y: e.clientY },
-          view: { ...host.camera.value },
-          viewport: { x: r.left, y: r.top, w: r.width, h: r.height },
-          candidate: null,
-        };
-        host.root.setPointerCapture(e.pointerId);
-        host.root.setAttribute("data-marquee", "");
-        moveMarquee(e);
-      } else if (e.altKey && !marquee) {
-        e.preventDefault();
-        e.stopPropagation();
-        dragZoom = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, lastY: e.clientY };
-        host.root.setPointerCapture(e.pointerId);
-        host.root.setAttribute("data-drag-zoom", "");
-        zoom(1, e.clientX, e.clientY);
-      }
+      if (!free() || host.busy() || drag || e.button !== 0 || e.pointerType === "touch") return;
+      const keys = host.gestureKeys();
+      const mode = matchesChord(e, keys.scale, held)
+        ? "scale"
+        : matchesChord(e, keys.pan, held)
+          ? "pan"
+          : null;
+      if (!mode) return;
+      e.preventDefault();
+      e.stopPropagation();
+      drag = { mode, pointerId: e.pointerId, x: e.clientX, y: e.clientY, lastX: e.clientX, lastY: e.clientY };
+      host.root.setPointerCapture(e.pointerId);
+      host.root.setAttribute("data-gesture", mode);
+      zoom(1, e.clientX, e.clientY);
     },
     { capture: true },
   );
@@ -436,13 +435,16 @@ export function createNavigator(host: NavigationHost) {
     host.root,
     "pointermove",
     (e: PointerEvent) => {
-      if (marquee) moveMarquee(e);
-      else if (dragZoom && e.pointerId === dragZoom.pointerId) {
-        e.preventDefault();
-        e.stopPropagation();
-        zoom(Math.exp((e.clientY - dragZoom.lastY) * 0.006), dragZoom.x, dragZoom.y);
-        dragZoom.lastY = e.clientY;
-      }
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const dx = e.clientX - drag.lastX;
+      const dy = e.clientY - drag.lastY;
+      drag.lastX = e.clientX;
+      drag.lastY = e.clientY;
+      // Scale: dragging up or right zooms in.
+      if (drag.mode === "pan") zoom(1, e.clientX, e.clientY, dx, dy);
+      else zoom(Math.exp((dy - dx) * 0.006), drag.x, drag.y);
     },
     { capture: true },
   );
@@ -451,14 +453,9 @@ export function createNavigator(host: NavigationHost) {
       host.root,
       type,
       (e: PointerEvent) => {
-        if (marquee?.pointerId === e.pointerId) {
-          e.stopPropagation();
-          if (type === "pointerup") moveMarquee(e);
-          finishMarquee(type === "pointerup");
-        } else if (dragZoom?.pointerId === e.pointerId) {
-          e.stopPropagation();
-          finishDragZoom();
-        }
+        if (drag?.pointerId !== e.pointerId) return;
+        e.stopPropagation();
+        finishDrag(true);
       },
       { capture: true },
     );
@@ -467,7 +464,7 @@ export function createNavigator(host: NavigationHost) {
       host.root,
       type,
       (e: MouseEvent) => {
-        if ((free() && e.altKey) || performance.now() < suppressClickUntil) {
+        if (performance.now() < suppressClickUntil) {
           e.preventDefault();
           e.stopPropagation();
         }
@@ -482,8 +479,9 @@ export function createNavigator(host: NavigationHost) {
     const [a, b] = [...pointers.values()];
     return { distance: Math.hypot(a.x - b.x, a.y - b.y), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   };
+  const ownsPinch = (e: Event) => host.gestureOwner(e.target as Element) === "exclusive";
   host.lifetime.listen(host.root, "pointerdown", (e: PointerEvent) => {
-    if (!free() || host.busy() || e.pointerType !== "touch") return;
+    if (!free() || host.busy() || e.pointerType !== "touch" || ownsPinch(e)) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 2) lastPinch = pinchState();
   });
@@ -505,20 +503,23 @@ export function createNavigator(host: NavigationHost) {
       }
     });
   let safariScale = 1;
+  let safariPinch = false;
   host.lifetime.listen(host.root, "gesturestart", (e: Event) => {
-    if (!free()) return;
+    safariPinch = free() && !ownsPinch(e);
+    if (!safariPinch) return;
     e.preventDefault();
     safariScale = 1;
   });
   host.lifetime.listen(host.root, "gesturechange", (e: Event) => {
-    if (!free()) return;
+    if (!safariPinch) return;
     e.preventDefault();
     const g = e as Event & { scale: number; clientX: number; clientY: number };
     zoom(safariScale / g.scale, g.clientX, g.clientY);
     safariScale = g.scale;
   });
   host.lifetime.listen(host.root, "gestureend", (e: Event) => {
-    if (!free()) return;
+    if (!safariPinch) return;
+    safariPinch = false;
     e.preventDefault();
     finishGesture();
   });
@@ -567,8 +568,7 @@ export function createNavigator(host: NavigationHost) {
     serialize,
     restore,
     cancelGestures() {
-      finishMarquee(false);
-      finishDragZoom();
+      finishDrag(true);
       endGesture();
     },
     get entries() {

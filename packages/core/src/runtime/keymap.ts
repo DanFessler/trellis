@@ -3,6 +3,7 @@ export type Command =
   | "navigation.back"
   | "navigation.forward"
   | "navigation.overview"
+  | "navigation.stepOut"
   | "panel.next"
   | "panel.previous"
   | "tab.next"
@@ -18,6 +19,7 @@ export const DEFAULT_KEYMAP: Record<Command, string | null> = {
   "navigation.back": "Mod+Alt+ArrowLeft",
   "navigation.forward": "Mod+Alt+ArrowRight",
   "navigation.overview": "Mod+Alt+ArrowUp",
+  "navigation.stepOut": "Escape",
   "panel.next": "F6",
   "panel.previous": "Shift+F6",
   "tab.next": "Mod+Alt+]",
@@ -27,7 +29,7 @@ export const DEFAULT_KEYMAP: Record<Command, string | null> = {
   "panel.hide": null,
 };
 
-const isMac = () =>
+export const isMac = () =>
   typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 const CODES: Record<string, string> = {

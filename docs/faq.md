@@ -59,11 +59,11 @@ Yes. While a drag, resize or navigation gesture is in progress, content is made 
 
 ### Can users zoom with a trackpad?
 
-Yes. In `navigation="free"`, scrolling over the workspace's chrome, gaps or stage zooms it. Pinching, which browsers report as <kbd>Ctrl</kbd>+wheel, zooms faster. When the gesture ends, the camera springs to the best fit. There's no wheel panning.
+Yes. In `navigation="free"`, pinching zooms the workspace from anywhere, including over your content. When the gesture ends, the camera springs to the best fit. With a mouse, hold <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>) and drag to pan, add <kbd>Z</kbd> and drag to scale, or scroll to step a level. Touch pinches work too.
 
-Over your content, a plain scroll stays with the content unless the type sets `gestures: "workspace"`. Holding <kbd>Ctrl</kbd> (a pinch) or <kbd>Alt</kbd> zooms the workspace from anywhere. Touch pinches work too.
+A plain scroll never zooms, so scrolling your content, or a crowded tab strip, works as usual. A type can keep pinch for itself with `gestures: "exclusive"`.
 
-Wheel and pinch events inside an iframe don't reach the workspace at all. See [Zoom gestures over iframes](./recipes.md#zoom-gestures-over-iframes).
+Pinch events inside an iframe don't reach the workspace. See [Zoom gestures over iframes](./recipes.md#zoom-gestures-over-iframes).
 
 ### How big is it?
 
