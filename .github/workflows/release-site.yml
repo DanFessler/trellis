@@ -1,0 +1,26 @@
+# The website deploys from the `release` branch, so it always matches the newest release on npm.
+# Pushing a release tag moves the branch there; Netlify then builds and deploys it.
+name: Release site
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Point the release branch at the newest release tag
+        run: |
+          newest=$(git tag -l 'v*.*.*' --sort=-v:refname | head -1)
+          # A patch to an older minor version doesn't move the site backwards.
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "$newest" ]; then
+            echo "$GITHUB_REF_NAME isn't the newest release ($newest); leaving the release branch alone."
+            exit 0
+          fi
+          git push --force origin "$newest^{commit}:refs/heads/release"
+          echo "release now points at $newest"

@@ -8,6 +8,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Every release tag, so the site builds every version of the docs.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22

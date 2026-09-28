@@ -1,0 +1,18 @@
+# The site shows unreleased docs from `main` at /docs/next. The site deploys from the `release`
+# branch, so rebuild it when `main` changes: set the NETLIFY_BUILD_HOOK secret to a Netlify
+# build hook for the release branch. Without the secret, /docs/next updates on each release.
+name: Refresh next docs
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**"]
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger a site build
+        env:
+          HOOK: ${{ secrets.NETLIFY_BUILD_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then echo "No NETLIFY_BUILD_HOOK secret; skipping."; exit 0; fi
+          curl -fsS -X POST -d '{}' "$HOOK?trigger_title=docs+changed+on+main"

@@ -39,7 +39,11 @@ function devExamples(): Plugin {
 
 export default defineConfig({
   base: "/",
-  plugins: [markdown({ docsDir: path.join(here, "../docs") }), react(), devExamples()],
+  plugins: [
+    markdown({ repo: path.join(here, ".."), cacheDir: path.join(here, ".docs-cache") }),
+    react(),
+    devExamples(),
+  ],
   resolve: { alias: trellisAliases, dedupe: ["react", "react-dom"] },
   server: { port: 5320, strictPort: true, fs: { allow: [path.join(here, "..")] } },
   preview: { port: 5320 },

@@ -3,13 +3,16 @@
  *
  * - `import page from "./x.md"` → `{ title, description, headings, html }`, rendered with
  *   `marked` and highlighted with `shiki` in Node. No Markdown or highlighter code ships to the browser.
- * - `import { docs, loaders } from "virtual:docs"` → the docs index (from front matter) and lazy loaders.
+ * - `import { latest, versions, indexes, loaders } from "virtual:docs"` → every version of the
+ *   docs (see versions.ts), each with its index (from front matter) and lazy page loaders.
+ * - `import { release } from "virtual:trellis-release"` → the latest released version number.
  */
 import fs from "node:fs";
 import path from "node:path";
 import { Marked, type Tokens } from "marked";
 import { createHighlighter, type Highlighter } from "shiki";
 import type { Plugin } from "vite";
+import { collectDocSets, type DocSet } from "./versions";
 
 export interface DocHeading {
   depth: number;
@@ -99,7 +102,8 @@ export async function renderCode(code: string, lang: string, meta = ""): Promise
   );
 }
 
-export async function renderMarkdown(source: string) {
+/** `docsBase` is where this version's pages live, so links between pages stay in the version. */
+export async function renderMarkdown(source: string, docsBase = "/docs") {
   const { data, body } = parseFrontMatter(source);
   const headings: DocHeading[] = [];
   const used = new Map<string, number>();
@@ -134,7 +138,7 @@ export async function renderMarkdown(source: string) {
         const inner = this.parser.parseInline(token.tokens);
         // ./page.md#hash → /docs/page#hash
         const md = /^(?:\.\/)?([\w-]+)\.md(#.*)?$/.exec(href);
-        if (md) href = `/docs/${md[1]}${md[2] ?? ""}`;
+        if (md) href = `${docsBase}/${md[1]}${md[2] ?? ""}`;
         const external = /^https?:\/\//.test(href);
         return `<a href="${escapeHtml(href)}"${external ? ' target="_blank" rel="noreferrer"' : ""}>${inner}</a>`;
       },
@@ -162,56 +166,102 @@ export async function renderMarkdown(source: string) {
 
 const VIRTUAL = "virtual:docs";
 const RESOLVED = "\0" + VIRTUAL;
+const RELEASE = "virtual:trellis-release";
+const RESOLVED_RELEASE = "\0" + RELEASE;
 
-export function markdown(options: { docsDir: string }): Plugin {
-  const docsDir = path.resolve(options.docsDir);
-  const readIndex = (): DocMeta[] =>
-    fs
-      .readdirSync(docsDir)
-      .filter((f) => f.endsWith(".md"))
-      .map((file) => {
-        const { data, body } = parseFrontMatter(fs.readFileSync(path.join(docsDir, file), "utf8"));
-        return {
-          slug: file.replace(/\.md$/, ""),
-          title: data.title ?? /^#\s+(.+)$/m.exec(body)?.[1] ?? file,
-          description: data.description ?? "",
-          section: data.section ?? "Guides",
-          order: Number(data.order ?? 999),
-          nav: data.nav,
-        };
-      })
-      .filter((d) => !d.slug.startsWith("_"))
-      .sort((a, b) => a.order - b.order);
+function readIndex(dir: string): DocMeta[] {
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".md"))
+    .map((file) => {
+      const { data, body } = parseFrontMatter(fs.readFileSync(path.join(dir, file), "utf8"));
+      return {
+        slug: file.replace(/\.md$/, ""),
+        title: data.title ?? /^#\s+(.+)$/m.exec(body)?.[1] ?? file,
+        description: data.description ?? "",
+        section: data.section ?? "Guides",
+        order: Number(data.order ?? 999),
+        nav: data.nav,
+      };
+    })
+    .filter((d) => !d.slug.startsWith("_"))
+    .sort((a, b) => a.order - b.order);
+}
+
+export function markdown(options: { repo: string; cacheDir: string }): Plugin {
+  const repo = path.resolve(options.repo);
+  const cacheDir = path.resolve(options.cacheDir);
+  const workingDocs = path.join(repo, "docs");
+  let sets: DocSet[] = [];
+  let latest = "next";
+  /** The latest release first, then next, then older releases. */
+  const ordered = () => [
+    ...sets.filter((s) => s.key === latest),
+    ...sets.filter((s) => s.kind === "next" && s.key !== latest),
+    ...sets.filter((s) => s.kind === "release" && s.key !== latest),
+  ];
+  const baseOf = (set: DocSet) => (set.key === latest ? "/docs" : `/docs/${set.key}`);
   return {
     name: "trellis-markdown",
     enforce: "pre",
+    configResolved(config) {
+      ({ sets, latest } = collectDocSets({ repo, cacheDir, dev: config.command === "serve" }));
+      // For the postbuild step, which writes an HTML shell for every page of every version.
+      fs.mkdirSync(cacheDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(cacheDir, "manifest.json"),
+        JSON.stringify({ latest, sets: ordered().map((s) => ({ ...s, pages: readIndex(s.dir) })) }, null, 2),
+      );
+      console.log(
+        `docs: ${ordered()
+          .map((s) => s.key + (s.key === latest ? " (latest)" : ""))
+          .join(", ")}`,
+      );
+    },
     resolveId(id) {
       if (id === VIRTUAL) return RESOLVED;
+      if (id === RELEASE) return RESOLVED_RELEASE;
     },
     load(id) {
+      if (id === RESOLVED_RELEASE) {
+        const release = sets.find((s) => s.key === latest)?.version ?? null;
+        return `export const release = ${JSON.stringify(release)};\n`;
+      }
       if (id !== RESOLVED) return;
-      const docs = readIndex();
-      for (const d of docs) this.addWatchFile(path.join(docsDir, `${d.slug}.md`));
-      const loaders = docs
-        .map(
-          (d) =>
-            `  ${JSON.stringify(d.slug)}: () => import(${JSON.stringify(path.join(docsDir, `${d.slug}.md`))}),`,
-        )
-        .join("\n");
-      return `export const docs = ${JSON.stringify(docs)};\nexport const loaders = {\n${loaders}\n};\n`;
+      const versions = ordered().map(({ key, version, kind, ref }) => ({ key, version, kind, ref }));
+      const indexes: Record<string, DocMeta[]> = {};
+      const loaders: string[] = [];
+      for (const set of ordered()) {
+        const docs = (indexes[set.key] = readIndex(set.dir));
+        for (const d of docs) this.addWatchFile(path.join(set.dir, `${d.slug}.md`));
+        const entries = docs
+          .map(
+            (d) =>
+              `    ${JSON.stringify(d.slug)}: () => import(${JSON.stringify(path.join(set.dir, `${d.slug}.md`))}),`,
+          )
+          .join("\n");
+        loaders.push(`  ${JSON.stringify(set.key)}: {\n${entries}\n  },`);
+      }
+      return (
+        `export const latest = ${JSON.stringify(latest)};\n` +
+        `export const versions = ${JSON.stringify(versions)};\n` +
+        `export const indexes = ${JSON.stringify(indexes)};\n` +
+        `export const loaders = {\n${loaders.join("\n")}\n};\n`
+      );
     },
     async transform(src, id) {
       if (!id.endsWith(".md")) return;
-      const page = await renderMarkdown(src);
+      const set = sets.find((s) => path.dirname(id) === s.dir);
+      const page = await renderMarkdown(src, set ? baseOf(set) : "/docs");
       return {
         code: `export default ${JSON.stringify({ title: page.title, description: page.description, headings: page.headings, html: page.html })};`,
         map: null,
       };
     },
     configureServer(server) {
-      server.watcher.add(docsDir);
+      server.watcher.add(workingDocs);
       const reindex = (file: string) => {
-        if (!file.startsWith(docsDir) || !file.endsWith(".md")) return;
+        if (!file.startsWith(workingDocs) || !file.endsWith(".md")) return;
         const mod = server.moduleGraph.getModuleById(RESOLVED);
         if (mod) server.moduleGraph.invalidateModule(mod);
         server.ws.send({ type: "full-reload" });

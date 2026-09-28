@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { release } from "virtual:trellis-release";
 import { Footer } from "../components/Footer";
 import { Arrow, Copy } from "../components/icons";
 import { Nav } from "../components/Nav";
@@ -47,7 +48,10 @@ export function Landing() {
           <div className="container hero-copy">
             <Link className="pill" href="/docs/migrating-from-react-dockable">
               <span className="pill-tag">Preview</span>
-              <span className="pill-long">Trellis 0.1, the successor to react-dockable</span>
+              <span className="pill-long">
+                {release ? `Trellis ${release.split(".").slice(0, 2).join(".")}` : "Trellis"}, the successor
+                to react-dockable
+              </span>
               <span className="pill-short">The successor to react-dockable</span>
               <Arrow />
             </Link>
