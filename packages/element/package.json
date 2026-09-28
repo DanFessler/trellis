@@ -1,6 +1,6 @@
 {
   "name": "@danfessler/trellis-element",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "<trellis-workspace>: Trellis as a custom element for any framework or none.",
   "type": "module",
   "license": "SEE LICENSE IN LICENSE.md",
@@ -39,7 +39,7 @@
     "README.md"
   ],
   "peerDependencies": {
-    "@danfessler/trellis": "^0.2.0"
+    "@danfessler/trellis": "^0.3.0"
   },
   "scripts": {
     "build": "tsup && cp ../core/src/style.css dist/style.css && cp ../../LICENSE*.md .",

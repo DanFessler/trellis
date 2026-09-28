@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.3.0 — 2026-09-28
+
+### Changed
+
+- Dragging a divider past a neighbour's minimum now pushes the panels beyond it, nearest first. When a group runs out
+  of room, its edge pushes into the panels around it, up to the window's edge. Pushed panels stay pushed if the
+  divider is dragged back; `keepPushed: false` makes dragging back undo them. The arrow keys push too.
+- Free navigation no longer claims <kbd>Shift</kbd> or <kbd>Alt</kbd> presses, or plain scrolling, anywhere in the
+  workspace. Shift-click selections, Alt-click multi-cursors and horizontal scrolling work in content as usual, and a
+  crowded tab strip always scrolls its tabs.
+- A pinch zooms from anywhere, including over content. A notched <kbd>Ctrl</kbd>+scroll from a mouse steps a level
+  instead of zooming continuously.
+- Navigation gestures moved onto the gesture keys, <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>), which
+  work over content too:
+  - drag to pan (new);
+  - <kbd>V</kbd> + drag to scale (was <kbd>Alt</kbd>+drag), or <kbd>⌘</kbd><kbd>⌃</kbd> + drag on macOS;
+  - <kbd>⇧</kbd> + drag to zoom to a rectangle (was <kbd>Shift</kbd>+drag), or <kbd>⌘</kbd><kbd>⇧</kbd> + drag;
+  - scroll to step a level (was <kbd>Shift</kbd>+scroll).
+
+  A plain scroll over chrome no longer zooms.
+
+- `gestures: "workspace"` on a view type now lets a plain scroll over its content step the workspace. It used to zoom.
+- The root's `data-marquee` and `data-drag-zoom` attributes are now `data-gesture-key` (keys held) and
+  `data-gesture` (dragging), each `pan`, `scale` or `rect`.
+
+### Added
+
+- `keepPushed` option.
+- `gestureKeys` option, to change the keys for each gesture or turn one off, and `defaultGestureKeys()`.
+- `gestures: "exclusive"` on view types, for content that keeps its own pinch, such as maps and canvases.
+- `navigation.stepOut` keymap command. <kbd>Esc</kbd> steps out by default, and can now be remapped or turned off.
+
 ## 0.2.0 — 2026-09-27
 
 ### Changed

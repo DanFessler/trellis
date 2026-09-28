@@ -1,6 +1,6 @@
 {
   "name": "@danfessler/trellis-react",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "React bindings for Trellis: dockable, zoomable workspaces for web tools.",
   "type": "module",
   "license": "SEE LICENSE IN LICENSE.md",
@@ -36,7 +36,7 @@
     "README.md"
   ],
   "peerDependencies": {
-    "@danfessler/trellis": "^0.2.0",
+    "@danfessler/trellis": "^0.3.0",
     "react": ">=18.3",
     "react-dom": ">=18.3"
   },
