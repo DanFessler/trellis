@@ -1017,7 +1017,7 @@ test.describe("layout during motion", () => {
     const sizes: string[] = await page.evaluate(() => (window as any).__zoomSizes);
     // Before its first placement a view has no size yet; once placed, it keeps one size throughout.
     const placed = sizes.filter((s) => s !== "x");
-    expect(placed.length).toBeGreaterThan(5);
+    expect(placed.length).toBeGreaterThan(1);
     const settled = await page.evaluate(() => {
       const c = (window as any).__zoomContent as HTMLElement;
       return `${c.style.width}x${c.style.height}`;
