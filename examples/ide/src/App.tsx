@@ -211,6 +211,7 @@ function StatusBar() {
   const activeEditor = useIde((s) => s.activeEditor);
   const cursor = useIde((s) => (activeEditor ? s.cursors[activeEditor] : undefined));
   const theme = useIde((s) => s.theme);
+  const navigation = useIde((s) => s.navigation);
   const diagnostics = useDiagnostics();
   const errors = diagnostics.filter((d) => d.severity === "error").length;
   const warnings = diagnostics.filter((d) => d.severity === "warning").length;
@@ -285,6 +286,19 @@ function StatusBar() {
         </button>
         <button
           className="status-item"
+          title={
+            navigation === "free"
+              ? "Free navigation: scroll or pinch to zoom, Shift+drag to zoom to an area. Click for focus navigation."
+              : "Focus navigation: double-click a tab bar to zoom to a panel. Click for free navigation."
+          }
+          aria-pressed={navigation === "free"}
+          onClick={() => ide.setNavigation(navigation === "free" ? "focus" : "free")}
+          data-testid="navigation-toggle"
+        >
+          {navigation === "free" ? "Free zoom" : "Focus"}
+        </button>
+        <button
+          className="status-item"
           title="Switch color theme"
           onClick={() =>
             ide.setTheme(
@@ -310,6 +324,7 @@ export function App() {
 function Shell() {
   const ws = useOptionalWorkspace();
   const theme = useIde((s) => s.theme);
+  const navigation = useIde((s) => s.navigation);
 
   // Track the last focused editor so the outline and status bar keep context while you use tool panels.
   useEffect(() => {
@@ -377,7 +392,7 @@ function Shell() {
       <main className="ide-main">
         <Workspace
           theme={theme}
-          navigation="focus"
+          navigation={navigation}
           floating="overlay"
           storageKey={STORAGE_KEY}
           version={LAYOUT_VERSION}

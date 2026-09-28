@@ -15,11 +15,14 @@ export interface ConfirmRequest {
   resolve(value: string): void;
 }
 export type PaletteMode = "commands" | "files";
+/** "focus" zooms to panels on request; "free" adds scroll, pinch and drag zooming. */
+export type IdeNavigation = "focus" | "free";
 
 interface IdeState {
   activeEditor: string | null;
   cursors: Record<string, Cursor>;
   theme: IdeTheme;
+  navigation: IdeNavigation;
   palette: { open: boolean; mode: PaletteMode; nonce: number };
   confirm: ConfirmRequest | null;
   toast: { text: string; nonce: number } | null;
@@ -36,10 +39,20 @@ function initialTheme(): IdeTheme {
   return "dark";
 }
 
+const NAVIGATION_KEY = "trellis-ide:navigation";
+function initialNavigation(): IdeNavigation {
+  try {
+    return localStorage.getItem(NAVIGATION_KEY) === "free" ? "free" : "focus";
+  } catch {
+    return "focus";
+  }
+}
+
 let state: IdeState = {
   activeEditor: null,
   cursors: {},
   theme: initialTheme(),
+  navigation: initialNavigation(),
   palette: { open: false, mode: "commands", nonce: 0 },
   confirm: null,
   toast: null,
@@ -81,6 +94,14 @@ export const ide = {
       /* ignore */
     }
     set({ theme });
+  },
+  setNavigation(navigation: IdeNavigation) {
+    try {
+      localStorage.setItem(NAVIGATION_KEY, navigation);
+    } catch {
+      /* ignore */
+    }
+    set({ navigation });
   },
   openPalette(mode: PaletteMode) {
     set({ palette: { open: true, mode, nonce: state.palette.nonce + 1 } });
