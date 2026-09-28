@@ -1219,7 +1219,9 @@ test.describe("free navigation gestures", () => {
               ...mods,
             });
             target.dispatchEvent(e);
-            requestAnimationFrame(next);
+            // A steady stream, like a real pinch: frames on a slow machine can be further apart
+            // than the pause that ends a gesture.
+            setTimeout(next, 10);
           };
           next();
         }),
