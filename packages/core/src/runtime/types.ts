@@ -210,8 +210,8 @@ export interface WorkspaceOptions {
   tokens?: Record<string, string>;
   keymap?: Keymap;
   /** Keys held with the pointer for free-navigation gestures: `pan`, `scale` and `rect` (drag), and
-   * `step` (scroll). Defaults: `{ pan: "Mod+Alt", scale: "Mod+Alt+Z", rect: "Mod+Alt+Shift",
-   * step: "Mod+Alt" }`. `null` turns one off. */
+   * `step` (scroll). Each is a combo, a list of combos (any works) or `null` (off). See
+   * `defaultGestureKeys()` for the defaults. */
   gestureKeys?: Partial<GestureKeys>;
   /** Initial layout when nothing is persisted or controlled. */
   defaultLayout?: LayoutDocument | LayoutSpec | null;

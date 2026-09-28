@@ -288,7 +288,7 @@ function StatusBar() {
           className="status-item"
           title={
             navigation === "free"
-              ? `Free navigation: pinch to zoom. Hold ${mod}${isMac ? "⌥" : "Alt+"} and drag to pan, add Z to scale, add Shift to zoom to a rectangle, or scroll to step a level. Click for focus navigation.`
+              ? `Free navigation: pinch to zoom. Hold ${mod}${isMac ? "⌥" : "Alt+"} and drag to pan, add V to scale, add Shift to zoom to a rectangle, or scroll to step a level. Click for focus navigation.`
               : "Focus navigation: double-click a tab bar to zoom to a panel. Click for free navigation."
           }
           aria-pressed={navigation === "free"}

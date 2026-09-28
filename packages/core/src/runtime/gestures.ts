@@ -1,23 +1,33 @@
 import { isMac } from "./keymap";
 
-/** Keys held with the pointer or wheel for free-navigation gestures. `null` turns one off. */
+/** One key combo, several (any of them works), or `null` for off. */
+export type GestureCombo = string | string[] | null;
+
+/** Keys held with the pointer or wheel for free-navigation gestures. */
 export interface GestureKeys {
   /** Drag to pan. */
-  pan: string | null;
+  pan: GestureCombo;
   /** Drag to scale around the press point. */
-  scale: string | null;
+  scale: GestureCombo;
   /** Drag a rectangle; releasing frames what fits it best. */
-  rect: string | null;
+  rect: GestureCombo;
   /** Scroll to step in or out a level. */
-  step: string | null;
+  step: GestureCombo;
 }
 
-export const DEFAULT_GESTURE_KEYS: GestureKeys = {
-  pan: "Mod+Alt",
-  scale: "Mod+Alt+Z",
-  rect: "Mod+Alt+Shift",
-  step: "Mod+Alt",
-};
+/**
+ * The defaults: every gesture starts from ⌘⌥ (Ctrl+Alt), and V or Shift picks scale or rectangle.
+ * Scale and rectangle also have two-key chords: ⌘⇧ (Ctrl+Shift) for a rectangle everywhere, and
+ * ⌘⌃ for scale on macOS only, since elsewhere Mod is Ctrl and Mod+Ctrl would be Ctrl alone.
+ */
+export function defaultGestureKeys(mac = isMac()): GestureKeys {
+  return {
+    pan: "Mod+Alt",
+    scale: mac ? ["Mod+Alt+V", "Mod+Ctrl"] : "Mod+Alt+V",
+    rect: ["Mod+Alt+Shift", "Mod+Shift"],
+    step: "Mod+Alt",
+  };
+}
 
 interface Chord {
   ctrl: boolean;
@@ -39,7 +49,7 @@ const MODIFIERS: Record<string, "mod" | "ctrl" | "meta" | "alt" | "shift"> = {
   shift: "shift",
 };
 
-/** "Mod+Alt+Z" → modifiers plus held keys. Letters and digits match by physical key. */
+/** "Mod+Alt+V" → modifiers plus held keys. Letters and digits match by physical key. */
 export function parseChord(combo: string): Chord {
   const chord: Chord = { ctrl: false, meta: false, alt: false, shift: false, keys: [] };
   for (const part of combo.split("+").map((p) => p.trim())) {
@@ -56,9 +66,14 @@ export function parseChord(combo: string): Chord {
 
 type Modifiers = Pick<MouseEvent, "ctrlKey" | "metaKey" | "altKey" | "shiftKey">;
 
-/** Exactly these modifiers, and every key in the chord currently held. */
-export function matchesChord(e: Modifiers, combo: string | null, held: ReadonlySet<string>): boolean {
-  if (!combo) return false;
+/** Every combo in a gesture's setting. */
+export const combosOf = (combo: GestureCombo): string[] => (combo ? [combo].flat() : []);
+
+/** Exactly one combo's modifiers, and every key in that combo currently held. */
+export function matchesChord(e: Modifiers, combo: GestureCombo, held: ReadonlySet<string>): boolean {
+  return combosOf(combo).some((one) => matchesOne(e, one, held));
+}
+function matchesOne(e: Modifiers, combo: string, held: ReadonlySet<string>): boolean {
   const c = parseChord(combo);
   return (
     e.ctrlKey === c.ctrl &&

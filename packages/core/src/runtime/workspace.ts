@@ -44,7 +44,7 @@ import type {
 } from "../model/types";
 import { h, icons, place, setAttr, setStyle } from "./dom";
 import { DEFAULT_KEYMAP, formatCombo, matches, type Command } from "./keymap";
-import { DEFAULT_GESTURE_KEYS } from "./gestures";
+import { defaultGestureKeys } from "./gestures";
 import { Emitter, Lifetime } from "./lifetime";
 import { Menu, tidyMenu } from "./menu";
 import { DOCK_EASE, DOCK_MS, lerpRect, LayoutTween, MOTION, RectSpring, sameRect } from "./motion";
@@ -2475,7 +2475,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       if (!surface) return "chrome";
       return typeOf(surface.dataset.view!).gestures ?? "content";
     },
-    gestureKeys: () => ({ ...DEFAULT_GESTURE_KEYS, ...options.gestureKeys }),
+    gestureKeys: () => ({ ...defaultGestureKeys(), ...options.gestureKeys }),
     titleOf: (node) =>
       node.kind === "panel" ? titleOf(node.selected) : node.kind === "stage" ? "the stage" : "this group",
     schedule,

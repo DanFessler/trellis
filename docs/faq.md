@@ -59,7 +59,7 @@ Yes. While a drag, resize or navigation gesture is in progress, content is made 
 
 ### Can users zoom with a trackpad?
 
-Yes. In `navigation="free"`, pinching zooms the workspace from anywhere, including over your content. When the gesture ends, the camera springs to the best fit. With a mouse, hold <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>) and drag to pan, or scroll to step a level. Add <kbd>Z</kbd> to scale as you drag, or <kbd>Shift</kbd> to draw a rectangle to zoom to. Touch pinches work too.
+Yes. In `navigation="free"`, pinching zooms the workspace from anywhere, including over your content. When the gesture ends, the camera springs to the best fit. With a mouse, hold <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>) and drag to pan, or scroll to step a level. Add <kbd>V</kbd> to scale as you drag, or <kbd>Shift</kbd> to draw a rectangle to zoom to. Touch pinches work too.
 
 A plain scroll never zooms, so scrolling your content, or a crowded tab strip, works as usual. A type can keep pinch for itself with `gestures: "exclusive"`.
 

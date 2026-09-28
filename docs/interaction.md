@@ -73,7 +73,7 @@ The camera frames nodes and contiguous sibling ranges. It doesn't frame floating
 In `navigation: "free"`:
 
 - A pinch zooms from anywhere except content that keeps its own (`gestures: "exclusive"`).
-- Holding the gesture keys (<kbd>⌘</kbd><kbd>⌥</kbd>, or <kbd>Ctrl</kbd><kbd>Alt</kbd>) and dragging pans. Adding <kbd>Z</kbd> scales, and adding <kbd>Shift</kbd> draws a rectangle to zoom to. Scrolling steps the hierarchy.
+- Holding the gesture keys (<kbd>⌘</kbd><kbd>⌥</kbd>, or <kbd>Ctrl</kbd><kbd>Alt</kbd>) and dragging pans. Adding <kbd>V</kbd> scales, and adding <kbd>Shift</kbd> draws a rectangle to zoom to. Scrolling steps the hierarchy.
 - A plain scroll never moves the camera.
 - Zoom is rubber-banded, up to 1.35× the layout with a 30% edge overshoot.
 - 180 ms after a pinch stops, or when a drag is released, the camera springs to the best fit.

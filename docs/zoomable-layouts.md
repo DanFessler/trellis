@@ -47,15 +47,15 @@ Two splits in the same direction count as one level. A column inside a column ad
 
 People move between levels in a few ways:
 
-| To                       | Do this                                                                                                                  |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| Zoom to a panel          | Double-click its tab bar, or its icon when it's too small for one. Or press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>↩</kbd>.        |
-| Step out one level       | Press <kbd>Esc</kbd>.                                                                                                    |
-| Step in or out one level | Hold <kbd>⌘</kbd><kbd>⌥</kbd> and scroll. Needs free navigation.                                                         |
-| Pan                      | Hold <kbd>⌘</kbd><kbd>⌥</kbd> and drag. Needs free navigation.                                                           |
-| Zoom to any region       | Hold <kbd>⌘</kbd><kbd>⌥</kbd><kbd>⇧</kbd> and drag a rectangle around it. Needs free navigation.                         |
-| Zoom continuously        | Pinch, or hold <kbd>⌘</kbd><kbd>⌥</kbd><kbd>Z</kbd> and drag. Releasing snaps to the closest fit. Needs free navigation. |
-| See everything           | Press <kbd>⌘</kbd><kbd>⌥</kbd><kbd>↑</kbd>. Press it again to go back.                                                   |
+| To                       | Do this                                                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Zoom to a panel          | Double-click its tab bar, or its icon when it's too small for one. Or press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>↩</kbd>.                                      |
+| Step out one level       | Press <kbd>Esc</kbd>.                                                                                                                                  |
+| Step in or out one level | Hold <kbd>⌘</kbd><kbd>⌥</kbd> and scroll. Needs free navigation.                                                                                       |
+| Pan                      | Hold <kbd>⌘</kbd><kbd>⌥</kbd> and drag. Needs free navigation.                                                                                         |
+| Zoom to any region       | Hold <kbd>⌘</kbd><kbd>⇧</kbd> (or <kbd>⌘</kbd><kbd>⌥</kbd><kbd>⇧</kbd>) and drag a rectangle around it. Needs free navigation.                         |
+| Zoom continuously        | Pinch, or hold <kbd>⌘</kbd><kbd>⌥</kbd><kbd>V</kbd> (or <kbd>⌘</kbd><kbd>⌃</kbd>) and drag. Releasing snaps to the closest fit. Needs free navigation. |
+| See everything           | Press <kbd>⌘</kbd><kbd>⌥</kbd><kbd>↑</kbd>. Press it again to go back.                                                                                 |
 
 On Windows and Linux, <kbd>⌘</kbd> is <kbd>Ctrl</kbd> and <kbd>⌥</kbd> is <kbd>Alt</kbd>. Shortcuts can be remapped with the [keymap](./keyboard-accessibility.md), and the keys held for gestures with [`gestureKeys`](./navigation.md#gesture-keys).
 

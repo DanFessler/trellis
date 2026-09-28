@@ -35,7 +35,7 @@ import { findStage, UNIT, type LayoutMetrics } from "../model/tree";
 import type { Framing, LayoutDocument, LayoutNode, Rect } from "../model/types";
 import { uid } from "../model/document";
 import { h } from "./dom";
-import { isNotchedWheel, matchesChord, parseChord, type GestureKeys } from "./gestures";
+import { combosOf, isNotchedWheel, matchesChord, parseChord, type GestureKeys } from "./gestures";
 import type { Lifetime } from "./lifetime";
 import { sameRect, type RectSpring } from "./motion";
 
@@ -366,8 +366,19 @@ export function createNavigator(host: NavigationHost) {
   );
   const isChordKey = (e: KeyboardEvent) => {
     const { pan, scale, rect } = host.gestureKeys();
-    return [pan, scale, rect].some((combo) => !!combo && parseChord(combo).keys.includes(e.code));
+    return [pan, scale, rect].flatMap(combosOf).some((combo) => parseChord(combo).keys.includes(e.code));
   };
+  // On macOS, Ctrl+click means right-click: a gesture chord with ⌃ in it mustn't open a menu.
+  host.lifetime.listen(
+    host.root,
+    "contextmenu",
+    (e: MouseEvent) => {
+      if (!drag && !heldMode) return;
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    { capture: true },
+  );
   host.lifetime.listen(window, "blur", () => {
     held.clear();
     syncHeld(null);

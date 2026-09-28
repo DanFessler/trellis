@@ -1312,10 +1312,10 @@ test.describe("free navigation gestures", () => {
     expect(await page.evaluate(() => (window as any).__downs)).toBe(0);
   });
 
-  test("holding the workspace key and Z and dragging scales", async ({ page }) => {
+  test("holding the workspace key and V and dragging scales", async ({ page }) => {
     await open(page);
     const start = await inside(surface(page, "a"));
-    await hold(page, "z");
+    await hold(page, "v");
     await expect(page.locator(".trellis")).toHaveAttribute("data-gesture-key", "scale");
     const before = await camera(page);
     await page.mouse.move(start.x, start.y);
@@ -1323,7 +1323,7 @@ test.describe("free navigation gestures", () => {
     await page.mouse.move(start.x + 40, start.y - 120, { steps: 6 });
     const during = await camera(page);
     await page.mouse.up();
-    await release(page, "z");
+    await release(page, "v");
     // Dragging up or right zooms in: the camera covers less of the layout.
     expect(during.w).toBeLessThan(before.w * 0.9);
     await expect.poll(() => framed(page)).not.toBeNull();
@@ -1343,6 +1343,40 @@ test.describe("free navigation gestures", () => {
     await page.mouse.up();
     await release(page, "Shift");
     await expect.poll(() => framed(page)).toBe("right");
+  });
+
+  test("Mod+Shift and dragging draws a rectangle too, with two keys", async ({ page }) => {
+    await open(page);
+    const right = await box(panel(page, "right"));
+    for (const key of ["ControlOrMeta", "Shift"]) await page.keyboard.down(key);
+    await expect(page.locator(".trellis")).toHaveAttribute("data-gesture-key", "rect");
+    await page.mouse.move(right.x + 4, right.y + 4);
+    await page.mouse.down();
+    await page.mouse.move(right.x + right.width - 4, right.y + right.height - 4, { steps: 6 });
+    await page.mouse.up();
+    for (const key of ["Shift", "ControlOrMeta"]) await page.keyboard.up(key);
+    await expect.poll(() => framed(page)).toBe("right");
+  });
+
+  test("on macOS, ⌘⌃ and dragging scales, without opening a context menu", async ({ page }) => {
+    await open(page);
+    test.skip(!(await page.evaluate(() => /Mac/.test(navigator.platform))), "⌘⌃ is a macOS-only default");
+    await page.evaluate(() => {
+      (window as any).__menus = 0;
+      document.addEventListener("contextmenu", (e) => !e.defaultPrevented && (window as any).__menus++);
+    });
+    const start = await inside(surface(page, "a"));
+    for (const key of ["Meta", "Control"]) await page.keyboard.down(key);
+    await expect(page.locator(".trellis")).toHaveAttribute("data-gesture-key", "scale");
+    const before = await camera(page);
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(start.x + 40, start.y - 120, { steps: 6 });
+    const during = await camera(page);
+    await page.mouse.up();
+    for (const key of ["Control", "Meta"]) await page.keyboard.up(key);
+    expect(during.w).toBeLessThan(before.w * 0.9);
+    expect(await page.evaluate(() => (window as any).__menus)).toBe(0);
   });
 
   test("Escape cancels a rectangle without changing the framing", async ({ page }) => {

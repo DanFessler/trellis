@@ -46,15 +46,15 @@ When a view is opened or focused while the camera frames something that doesn't 
 
 In `"free"` mode, a pinch zooms from anywhere, and holding the _gesture keys_ turns the whole workspace into a handle. Everything else over a view's content belongs to the content, so text fields, lists and editors work as usual.
 
-| Gesture                                                                                            | Does                                                                                                                         |
-| -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Pinch on a trackpad                                                                                | Zooms around the pointer, from anywhere, content included.                                                                   |
-| Hold <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>) and drag                             | Pans.                                                                                                                        |
-| Hold <kbd>⌘</kbd><kbd>⌥</kbd><kbd>Z</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>Z</kbd>) and drag     | Scales around the press point. Dragging up or right zooms in.                                                                |
-| Hold <kbd>⌘</kbd><kbd>⌥</kbd><kbd>⇧</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>Shift</kbd>) and drag | Draws a rectangle, in either direction. Releasing frames the node or sibling range that fits it best.                        |
-| Hold <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>) and scroll                           | Steps the hierarchy one level at a time. Scrolling up steps in, toward the node under the pointer. Scrolling down steps out. |
-| <kbd>Ctrl</kbd>+scroll with a mouse wheel                                                          | Steps too. Browsers report a trackpad pinch as <kbd>Ctrl</kbd>+scroll, so Trellis tells them apart by their deltas.          |
-| Two-finger touch pinch                                                                             | Zooms and pans. Safari's trackpad `gesture*` events are supported too.                                                       |
+| Gesture                                                                                                                                                           | Does                                                                                                                         |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Pinch on a trackpad                                                                                                                                               | Zooms around the pointer, from anywhere, content included.                                                                   |
+| Hold <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>) and drag                                                                                            | Pans.                                                                                                                        |
+| Hold <kbd>⌘</kbd><kbd>⌥</kbd><kbd>V</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>V</kbd>), or <kbd>⌘</kbd><kbd>⌃</kbd> on macOS, and drag                             | Scales around the press point. Dragging up or right zooms in.                                                                |
+| Hold <kbd>⌘</kbd><kbd>⌥</kbd><kbd>⇧</kbd> or <kbd>⌘</kbd><kbd>⇧</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>Shift</kbd> or <kbd>Ctrl</kbd><kbd>Shift</kbd>) and drag | Draws a rectangle, in either direction. Releasing frames the node or sibling range that fits it best.                        |
+| Hold <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>) and scroll                                                                                          | Steps the hierarchy one level at a time. Scrolling up steps in, toward the node under the pointer. Scrolling down steps out. |
+| <kbd>Ctrl</kbd>+scroll with a mouse wheel                                                                                                                         | Steps too. Browsers report a trackpad pinch as <kbd>Ctrl</kbd>+scroll, so Trellis tells them apart by their deltas.          |
+| Two-finger touch pinch                                                                                                                                            | Zooms and pans. Safari's trackpad `gesture*` events are supported too.                                                       |
 
 The gesture keys work over content too. While they're held, content ignores the pointer, the root has `data-gesture-key` (`pan`, `scale` or `rect`) and the cursor shows what a drag will do. During the drag, the root has `data-gesture`. <kbd>Esc</kbd> cancels a drag and returns to the previous framing.
 
@@ -66,17 +66,28 @@ Zooming is rubber-banded. The camera can zoom out to 1.35× the layout and overs
 
 ### Gesture keys
 
-`gestureKeys` sets the keys for each gesture. Each is a set of modifiers and, optionally, keys held with them. `null` turns a gesture off:
+`gestureKeys` sets the keys for each gesture. A combo is a set of modifiers and, optionally, keys held with them. Give a list to accept several combos, or `null` to turn a gesture off:
 
 ```ts
 createWorkspace(el, {
   types,
   navigation: "free",
-  gestureKeys: { pan: "Mod+Alt", scale: "Mod+Alt+Z", rect: "Mod+Alt+Shift", step: "Mod+Alt" }, // the defaults
+  gestureKeys: { scale: "Mod+Alt+V", rect: null }, // one combo for scale, no rectangles
 });
 ```
 
-`Mod` is <kbd>⌘</kbd> on macOS and <kbd>Ctrl</kbd> elsewhere. Pick combinations your content doesn't use with the pointer. <kbd>Shift</kbd>, <kbd>Alt</kbd>, <kbd>⌘</kbd> and <kbd>Ctrl</kbd> on their own all have meanings in text and lists. Some combinations never reach the page: on macOS, <kbd>⌘</kbd><kbd>Space</kbd> and <kbd>⌘</kbd><kbd>⌥</kbd><kbd>Space</kbd> open Spotlight and Finder search unless you turn those shortcuts off.
+The defaults start every gesture from <kbd>⌘</kbd><kbd>⌥</kbd>, with a third key picking the drag, and add shorter two-key chords where they're safe:
+
+| Gesture | Default                                                       |
+| ------- | ------------------------------------------------------------- |
+| `pan`   | `"Mod+Alt"`                                                   |
+| `scale` | `["Mod+Alt+V", "Mod+Ctrl"]` on macOS, `"Mod+Alt+V"` elsewhere |
+| `rect`  | `["Mod+Alt+Shift", "Mod+Shift"]`                              |
+| `step`  | `"Mod+Alt"`                                                   |
+
+`Mod+Ctrl` is macOS-only because elsewhere `Mod` is <kbd>Ctrl</kbd>, so it would be <kbd>Ctrl</kbd> alone. On macOS, <kbd>Ctrl</kbd>+click usually opens a context menu, which Trellis suppresses while a gesture's keys are held. `defaultGestureKeys()` returns the defaults for the current platform. Every gesture's combos are distinct, so one never starts another.
+
+`Mod` is <kbd>⌘</kbd> on macOS and <kbd>Ctrl</kbd> elsewhere. Pick combinations your content doesn't use with the pointer. On their own, <kbd>Shift</kbd>, <kbd>Alt</kbd>, <kbd>⌘</kbd> and <kbd>Ctrl</kbd> all have meanings in text and lists. A <kbd>⌘</kbd><kbd>⇧</kbd>-click opens a link in a new tab, so the two-key rectangle takes that click over content with links. Some combinations never reach the page. On macOS, <kbd>⌘</kbd><kbd>Space</kbd> and <kbd>⌘</kbd><kbd>⌥</kbd><kbd>Space</kbd> open Spotlight and Finder search. <kbd>⌘</kbd><kbd>⌥</kbd><kbd>C</kbd>, <kbd>I</kbd> and <kbd>J</kbd> open the browser's developer tools.
 
 ### Gesture ownership
 
