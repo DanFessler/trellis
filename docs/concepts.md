@@ -44,7 +44,7 @@ Dragging a tab within its strip reorders it. Dragging it out of the strip create
 
 ## Splits
 
-A split arranges children in a weighted row (`axis: "x"`) or column (`axis: "y"`). Weights are relative: `[1, 3]` gives the second child three times the space. Users resize with the dividers between children. Dragging a divider past a neighbour's minimum size pushes the next divider along, and so on to the edge of the group. From there it pushes the group's own edge into the panels around it, up to the window's edge. Everything that doesn't have to move stays put, and dragging back within the same drag puts everything back. Double-clicking a divider evens out the two neighbours.
+A split arranges children in a weighted row (`axis: "x"`) or column (`axis: "y"`). Weights are relative: `[1, 3]` gives the second child three times the space. Users resize with the dividers between children. Dragging a divider past a neighbour's minimum size pushes the next divider along, and so on to the edge of the group. From there it pushes the group's own edge into the panels around it, up to the window's edge. Everything that doesn't have to move stays put. Pushed panels stay pushed when the divider is dragged back, unless `keepPushed` is `false`, which makes dragging back undo them. Double-clicking a divider evens out the two neighbours.
 
 Every panel keeps at least 80 pixels of width, and room for its tab bar plus a little content, so it can always show a tab and its menu. When the workspace or a group shrinks, panels with room to spare give it up first. If a group's panels can't all fit, the whole group is drawn smaller, like a zoomed-out copy of itself. Zooming to it brings them back to full size. See [Zoomable layouts](./zoomable-layouts.md#small-panels).
 

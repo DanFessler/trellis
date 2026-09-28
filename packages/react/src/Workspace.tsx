@@ -377,6 +377,9 @@ export interface WorkspaceProps {
   panelMenu?: boolean | ((entries: MenuEntry[], context: PanelMenuContext) => MenuEntry[]);
   /** Small groups collapse into one tile while navigating. See the core `detail` option. */
   detail?: false | { size?: number; outline?: number };
+  /** Whether panels pushed by a divider stay pushed when it's dragged back. See the core
+   * `keepPushed` option. */
+  keepPushed?: boolean;
   /** Show panel menus with your own component. Always calls the latest function. */
   renderMenu?(request: MenuRequest): void;
   /** Tab layout: `fill` makes tabs share the tab row; `inset` (px) is the space around them. */
@@ -491,6 +494,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       panelMenu: panelMenuOption(p.panelMenu),
       renderMenu: p.renderMenu ? renderMenuOption : undefined,
       detail: p.detail,
+      keepPushed: p.keepPushed,
       tabs: p.tabs,
       label: p.label,
       document: p.document,
@@ -544,6 +548,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       panelMenu: panelMenuOption(props.panelMenu),
       renderMenu: props.renderMenu ? renderMenuOption : undefined,
       detail: props.detail,
+      keepPushed: props.keepPushed,
       label: props.label,
       tabs: props.tabs,
     });
@@ -559,6 +564,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
     typeof props.panelMenu === "function" ? "function" : props.panelMenu,
     !!props.renderMenu,
     JSON.stringify(props.detail ?? null),
+    props.keepPushed,
     props.label,
     props.tabs?.fill,
     props.tabs?.inset,

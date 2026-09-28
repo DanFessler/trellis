@@ -226,6 +226,10 @@ export interface WorkspaceOptions {
    * the tile zooms to the part under the pointer. Its panels stay mounted. Defaults:
    * `{ size: 48, outline: 2 }`. `false` turns collapsing off. Only applies while navigation is on. */
   detail?: false | { size?: number; outline?: number };
+  /** Dragging a divider past a neighbour's minimum pushes the panels beyond it. By default they
+   * stay pushed if the divider is dragged back. `false` makes each drag work from the layout it
+   * started with, so dragging back undoes the pushes. */
+  keepPushed?: boolean;
   /** Show panel menus with your own component instead of the built-in one. */
   renderMenu?(request: MenuRequest): void;
   /** Where the built-in "Hide" animates to, e.g. your dock or tray button. */

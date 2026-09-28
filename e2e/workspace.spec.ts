@@ -1131,10 +1131,10 @@ test.describe("pushing dividers", () => {
     await expect(tab(page, "a")).toBeVisible();
   });
 
-  test("dragging past a neighbour's minimum pushes the next panel, and dragging back undoes it", async ({
-    page,
-  }) => {
-    const right = await width(page, "right");
+  /** Drags the first divider right past the stage's minimum, then back to where it started,
+   * returning the right panel's width at the start, when pushed, and back again. */
+  const pushAndReturn = async (page: Page) => {
+    const start = await width(page, "right");
     const d = await box(page.locator("[data-trellis-part=divider][data-index='0']").first());
     const y = d.y + d.height / 2;
     await page.mouse.move(d.x + d.width / 2, y);
@@ -1142,13 +1142,28 @@ test.describe("pushing dividers", () => {
     await page.mouse.move(d.x + 880, y, { steps: 10 });
     // The stage is at its minimum and the right panel has been pushed smaller.
     expect(await width(page, "docs")).toBeLessThan(100);
-    expect(await width(page, "right")).toBeLessThan(right - 50);
-    // Back to where the drag started, in the same gesture: everything is where it was.
+    const pushed = await width(page, "right");
     await page.mouse.move(d.x + d.width / 2, y, { steps: 10 });
-    expect(Math.abs((await width(page, "right")) - right)).toBeLessThan(1);
-    await page.mouse.move(d.x + 880, y, { steps: 10 });
+    const back = await width(page, "right");
     await page.mouse.up();
-    expect(await width(page, "right")).toBeLessThan(right - 50);
+    return { start, pushed, back, after: await width(page, "right") };
+  };
+
+  test("dragging past a neighbour's minimum pushes the next panel, which stays pushed when dragging back", async ({
+    page,
+  }) => {
+    const w = await pushAndReturn(page);
+    expect(w.pushed).toBeLessThan(w.start - 50);
+    expect(Math.abs(w.back - w.pushed)).toBeLessThan(1);
+    expect(Math.abs(w.after - w.pushed)).toBeLessThan(1);
+  });
+
+  test("keepPushed: false makes dragging back undo the pushes", async ({ page }) => {
+    await page.evaluate(() => (window as any).ws.update({ keepPushed: false }));
+    const w = await pushAndReturn(page);
+    expect(w.pushed).toBeLessThan(w.start - 50);
+    expect(Math.abs(w.back - w.start)).toBeLessThan(1);
+    expect(Math.abs(w.after - w.start)).toBeLessThan(1);
   });
 
   test("a divider inside a group pushes past the group's edge into its parent's panels", async ({ page }) => {

@@ -2214,11 +2214,17 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (e.button !== 0) return;
     e.preventDefault();
     const origin = doc;
-    // Pushes are worked out from the layout as it was when the drag started (see dragBoundary),
-    // so dragging back undoes them.
-    const push =
-      doc.root && dragBoundary(doc.root, layoutMetrics(), el.dataset.split!, Number(el.dataset.index));
+    const splitId = el.dataset.split!;
+    const index = Number(el.dataset.index);
+    const push = doc.root && dragBoundary(doc.root, layoutMetrics(), splitId, index);
     if (!push) return;
+    // Pushed panels stay pushed: each move pushes on from where the last one left the layout.
+    // With keepPushed: false, every move works from the layout the drag started with, so dragging
+    // back undoes the pushes.
+    const from = () =>
+      options.keepPushed === false
+        ? push
+        : (dragBoundary(doc.root!, layoutMetrics(), splitId, index) ?? push);
     const along = (ev: PointerEvent) => fromScreen(localPoint(ev))[push.axis];
     const grab = along(e);
     el.setPointerCapture(e.pointerId);
@@ -2227,7 +2233,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     gesture = true;
     updateInteractivity();
     const move = (ev: PointerEvent) => {
-      doc = { ...doc, root: push.to(push.start + along(ev) - grab) };
+      doc = { ...doc, root: from().to(push.start + along(ev) - grab) };
       entries = layoutRects(doc.root, layoutMetrics());
       render();
     };

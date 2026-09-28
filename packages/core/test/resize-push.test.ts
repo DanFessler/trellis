@@ -92,6 +92,11 @@ describe("dragging a divider in one row", () => {
     expect(bounds(back, m, "r")).toEqual([0, 300, 600, 1000]);
   });
 
+  it("a drag started from a pushed layout keeps the pushes (how keepPushed works, a move at a time)", () => {
+    const pushed = drag(abc, m, "r", 0, 700);
+    expect(bounds(drag(pushed, m, "r", 0, 300), m, "r")).toEqual([0, 300, 800, 1000]);
+  });
+
   it("works down a column the same way", () => {
     const col = column("col", [panel("a"), panel("b"), panel("c")]);
     expect(bounds(drag(col, m, "col", 0, 500), m, "col")).toEqual([0, 500, 550, 600]);
