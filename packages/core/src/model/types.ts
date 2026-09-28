@@ -91,6 +91,10 @@ export interface ViewRules {
   closable?: boolean;
   /** Content lays out at no less than this size and scales down below it. */
   minSize?: { width: number; height: number };
+  /** Below `minSize`: "interactive" (default) scales content down and keeps it usable; "inert"
+   * scales it down and ignores input until it's back at full size; `false` never scales it, so
+   * content lays out at whatever size its panel has. */
+  scaling?: "interactive" | "inert" | false;
   /** Tab bar: "always" (default) sits above the content; "auto" hides it while the view is alone
    * in its panel; "never" always hides it (rearrange from the menu or API); "overlay" lays it over
    * the top of a lone view, whose content extends underneath and draws its own title bar using

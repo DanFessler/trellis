@@ -66,7 +66,20 @@ A panel doesn't have to be usable at every zoom level. Panels never get smaller 
 - Below 160 × 64 pixels on screen, a panel shows only its icon. The whole tile becomes a drag handle, so it can still be moved, and double-clicking it zooms to the panel.
 - When every part of a nested group is smaller than 48 × 48, too small even for an icon, the group becomes one tile. Lines on the tile show how it's divided, two levels deep. Double-click a part of the tile to zoom to it. Its panels stay mounted the whole time, and focusing one of their views from code or the keyboard zooms to it. Views can dock beside a collapsed group, not into it. A flat row or column of small panels keeps its individual icons, and the group you've zoomed to never collapses.
 
-To use a small panel, zoom in until it's large enough, or drag it somewhere with more room. Scaled content ignores pointer input until it's back at full size.
+Scaled content works as usual: people can click, type and scroll in it at its drawn size, or zoom in until it's large enough. A type's `scaling` option changes that. `"inert"` scales content but ignores input until it's back at full size, and `false` never scales it, so content reflows to whatever size its panel has:
+
+```tsx
+<ViewType id="preview" title="Preview" minSize={{ width: 480, height: 320 }} scaling="inert">
+  <Preview />
+</ViewType>
+```
+
+Inside a scaled view, pointer positions are in screen pixels, and the view's layout is in its own, larger pixels. Code that turns a pointer into a position, such as a canvas or a custom slider, should convert with the ratio of the two. That also covers the moments while a zoom animates:
+
+```ts
+const r = el.getBoundingClientRect();
+const x = (e.clientX - r.left) * (el.offsetWidth / r.width);
+```
 
 The `detail` option sets when groups collapse. `size` is the on-screen width and height below which a part counts as too small, and `outline` is how many levels of lines a collapsed tile shows. `detail: false` keeps every panel, however small. Groups only collapse while navigation is on, because without zooming there'd be no way to open them:
 

@@ -1082,3 +1082,44 @@ test.describe("live reflow", () => {
     expect(found).toEqual([]);
   });
 });
+
+test.describe("scaled views", () => {
+  // Under free navigation, views lay out at no less than 480 × 320 and scale below it. The narrow
+  // "right" panel's outline view is scaled.
+  const typeInto = async (page: Page, view: string) => {
+    const input = surface(page, view).locator("[data-test=input]");
+    await input.click({ force: true });
+    await page.keyboard.type("hi");
+    return input.inputValue();
+  };
+  const interactive = (page: Page, view: string) =>
+    page.evaluate((v) => (window as any).ws.view(v).interactive, view);
+
+  test("are interactive by default", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&navigation=free");
+    await expect(surface(page, "outline")).toHaveAttribute("data-scaled", "");
+    expect(await typeInto(page, "outline")).toBe("hi");
+    expect(await interactive(page, "outline")).toBe(true);
+  });
+
+  test('scaling: "inert" scales them but ignores input', async ({ page }) => {
+    await page.goto("/?scenario=vanilla&navigation=free&scaling=inert");
+    await expect(surface(page, "outline")).toHaveAttribute("data-scaled", "inert");
+    expect(await typeInto(page, "outline")).toBe("");
+    expect(await interactive(page, "outline")).toBe(false);
+  });
+
+  test("scaling: false lays content out at the panel's size instead", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&navigation=free&scaling=false");
+    await expect(tab(page, "outline")).toBeVisible();
+    await expect(surface(page, "outline")).not.toHaveAttribute("data-scaled");
+    const { transform, width, shell } = await surface(page, "outline").evaluate((el) => {
+      const c = el.querySelector<HTMLElement>(":scope > [data-trellis-part=content]")!;
+      return { transform: c.style.transform, width: c.offsetWidth, shell: el.clientWidth };
+    });
+    expect(transform).toBe("");
+    expect(width).toBe(shell);
+    expect(width).toBeLessThan(480);
+    expect(await typeInto(page, "outline")).toBe("hi");
+  });
+});

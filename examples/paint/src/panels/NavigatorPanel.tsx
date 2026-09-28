@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { useActiveDoc } from "../store";
 import { FitIcon, MinusIcon, PlusIcon } from "../ui/icons";
+import { localPoint } from "../ui/localPoint";
 import { Slider } from "../ui/Slider";
 import { NoDocument } from "./LayersPanel";
 
@@ -64,8 +65,8 @@ export function NavigatorPanel() {
   const whole = vx0 <= 0 && vy0 <= 0 && vx1 >= doc.width && vy1 >= doc.height;
 
   const moveTo = (e: PointerEvent) => {
-    const r = box.current!.getBoundingClientRect();
-    doc.centerOn((e.clientX - r.left - ox) / s, (e.clientY - r.top - oy) / s);
+    const l = localPoint(box.current!, e);
+    doc.centerOn((l.x - ox) / s, (l.y - oy) / s);
   };
 
   return (
@@ -81,9 +82,9 @@ export function NavigatorPanel() {
         onPointerMove={(e) => e.currentTarget.hasPointerCapture(e.pointerId) && moveTo(e)}
         onWheel={(e) => {
           if (!s) return;
-          const r = box.current!.getBoundingClientRect();
-          const px = (e.clientX - r.left - ox) / s;
-          const py = (e.clientY - r.top - oy) / s;
+          const l = localPoint(box.current!, e);
+          const px = (l.x - ox) / s;
+          const py = (l.y - oy) / s;
           doc.zoomTo(doc.view.zoom * Math.exp(-e.deltaY * 0.004), {
             x: doc.view.x + px * doc.view.zoom,
             y: doc.view.y + py * doc.view.zoom,

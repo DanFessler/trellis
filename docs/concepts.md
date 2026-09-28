@@ -20,6 +20,7 @@ A view type is a registered kind of content, such as `"layers"` or `"terminal"`.
 | `singleton` | At most one instance. `open()` focuses the existing one.                                                                                                                                                 |
 | `closable`  | `false` hides the close button and ignores close shortcuts.                                                                                                                                              |
 | `minSize`   | `{ width, height }`. Content lays out at no less than this size and is scaled down below it. Defaults to 480 × 320 under `navigation: "free"`, and to none otherwise.                                    |
+| `scaling`   | Below `minSize`: `"interactive"` (default) keeps scaled content usable, `"inert"` ignores input until it's full size, and `false` never scales it, so content reflows to fit.                            |
 | `tabbar`    | `"always"` (default), `"auto"`, `"never"` or `"overlay"`. `"auto"` hides the tab bar while the view is alone in its panel. `"overlay"` floats it over a lone view whose content draws its own title bar. |
 | `gestures`  | `"workspace"` lets a plain wheel over this view's content zoom the workspace. See [Navigation](./navigation.md#gesture-ownership).                                                                       |
 
@@ -108,7 +109,7 @@ The complete workspace state is a serializable `LayoutDocument`. It holds the do
 
 While panels animate, Trellis repositions content every frame but doesn't notify views. `view.size`, `view.scale` and the `resize` and `scale` events update after motion settles. During drags, resizes and navigation gestures, content is non-interactive (`view.interactive` is `false`), so iframes and canvases don't swallow the pointer.
 
-When a panel is smaller than its type's `minSize`, Trellis lays the content out at the minimum and scales it down. Under `navigation: "free"` that minimum is 480 × 320 by default. `view.scale` reports the factor, and content is non-interactive while scaled.
+When a panel is smaller than its type's `minSize`, Trellis lays the content out at the minimum and scales it down. Under `navigation: "free"` that minimum is 480 × 320 by default. `view.scale` reports the factor. Scaled content still takes input, unless the type sets `scaling: "inert"`. Code that turns pointer positions into pixels should allow for the scale: see [Small panels](./zoomable-layouts.md#small-panels).
 
 ## Interaction model
 

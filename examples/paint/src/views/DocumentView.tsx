@@ -12,6 +12,7 @@ import type { DocParams, PaintDoc } from "../paint/PaintDoc";
 import { app, documents, exportPng, useApp, useDoc } from "../store";
 import { confirmDialog } from "../ui/Dialog";
 import { ImageIcon, MinusIcon, PlusIcon } from "../ui/icons";
+import { localPoint } from "../ui/localPoint";
 
 let checker: CanvasPattern | null = null;
 function checkerPattern(ctx: CanvasRenderingContext2D) {
@@ -154,10 +155,7 @@ function PaintCanvas({ doc, visible }: { doc: PaintDoc; visible: boolean }) {
   // Gestures over the canvas belong to the canvas: pinch / ctrl+wheel zooms, wheel pans.
   useEffect(() => {
     const el = wrap.current!;
-    const local = (e: { clientX: number; clientY: number }) => {
-      const r = el.getBoundingClientRect();
-      return { x: e.clientX - r.left, y: e.clientY - r.top };
-    };
+    const local = (e: { clientX: number; clientY: number }) => localPoint(el, e);
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       if (e.ctrlKey || e.metaKey) {
@@ -199,18 +197,15 @@ function PaintCanvas({ doc, visible }: { doc: PaintDoc; visible: boolean }) {
     pinch?: { dist: number; zoom: number; mid: { x: number; y: number } };
   }>({ mode: null, last: { x: 0, y: 0 }, lastPoint: null, touches: new Map() });
 
-  const localPoint = (e: { clientX: number; clientY: number }) => {
-    const r = wrap.current!.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
-  };
+  const local = (e: { clientX: number; clientY: number }) => localPoint(wrap.current!, e);
   const docPoint = (e: PointerEvent | ReactPointerEvent): Point => {
-    const l = localPoint(e);
+    const l = local(e);
     const p = doc.toDoc(l.x, l.y);
     const pressure = e.pointerType === "pen" ? e.pressure || 0.01 : 1;
     return { x: p.x, y: p.y, p: pressure };
   };
   const moveRing = (e: { clientX: number; clientY: number }) => {
-    const l = localPoint(e);
+    const l = local(e);
     if (ring.current) ring.current.style.transform = `translate(${l.x}px, ${l.y}px) translate(-50%, -50%)`;
     const p = doc.toDoc(l.x, l.y);
     if (hud.current)
@@ -229,7 +224,7 @@ function PaintCanvas({ doc, visible }: { doc: PaintDoc; visible: boolean }) {
     const g = gesture.current;
     app.set({ activeDoc: doc.id });
     if (e.pointerType === "touch") {
-      g.touches.set(e.pointerId, localPoint(e));
+      g.touches.set(e.pointerId, local(e));
       if (g.touches.size === 2) {
         if (g.mode === "paint") doc.cancelStroke();
         const [a, b] = [...g.touches.values()];
@@ -247,7 +242,7 @@ function PaintCanvas({ doc, visible }: { doc: PaintDoc; visible: boolean }) {
     if (g.mode) return;
     const t = toolRef.current;
     e.currentTarget.setPointerCapture(e.pointerId);
-    g.last = { x: e.clientX, y: e.clientY };
+    g.last = local(e);
     if (e.button === 1 || t === "hand") {
       e.preventDefault();
       g.mode = "pan";
@@ -276,7 +271,7 @@ function PaintCanvas({ doc, visible }: { doc: PaintDoc; visible: boolean }) {
     const g = gesture.current;
     moveRing(e);
     if (e.pointerType === "touch" && g.touches.has(e.pointerId)) {
-      g.touches.set(e.pointerId, localPoint(e));
+      g.touches.set(e.pointerId, local(e));
       if (g.mode === "pinch" && g.pinch && g.touches.size >= 2) {
         const [a, b] = [...g.touches.values()];
         const dist = Math.hypot(a.x - b.x, a.y - b.y);
@@ -288,8 +283,9 @@ function PaintCanvas({ doc, visible }: { doc: PaintDoc; visible: boolean }) {
       }
     }
     if (g.mode === "pan") {
-      doc.panBy(e.clientX - g.last.x, e.clientY - g.last.y);
-      g.last = { x: e.clientX, y: e.clientY };
+      const l = local(e);
+      doc.panBy(l.x - g.last.x, l.y - g.last.y);
+      g.last = l;
     } else if (g.mode === "paint") {
       const events = e.nativeEvent.getCoalescedEvents?.() ?? [];
       const pts = (events.length ? events : [e.nativeEvent]).map(docPoint);

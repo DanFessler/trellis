@@ -37,6 +37,8 @@ function input(label: string) {
 if (scenario === "vanilla") {
   const floating = (params.get("floating") ?? "overlay") as "overlay";
   const navigation = (params.get("navigation") ?? "focus") as "focus";
+  const scalingParam = params.get("scaling");
+  const scaling = scalingParam === "false" ? false : ((scalingParam as "inert" | null) ?? undefined);
   const options: WorkspaceOptions = {
     motion: "reduced",
     floating: floating === ("false" as string) ? false : floating,
@@ -69,6 +71,7 @@ if (scenario === "vanilla") {
       [1, 3, 1],
     ),
   };
+  if (scaling !== undefined) for (const t of Object.values(options.types)) t.scaling = scaling;
   const ws = createWorkspace(app, options);
   for (const e of ["open", "close", "focus", "navigate", "change"] as const)
     ws.on(e, (d: any) => w.events.push(`${e}:${typeof d === "object" && d ? (d.id ?? "doc") : d}`));

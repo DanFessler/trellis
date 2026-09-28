@@ -572,7 +572,7 @@
   overflow: auto;
   color: var(--trellis-text);
 }
-:where(.trellis [data-trellis-part="surface"][data-scaled] [data-trellis-part="content"]),
+:where(.trellis [data-trellis-part="surface"][data-scaled="inert"] [data-trellis-part="content"]),
 :where(.trellis[data-busy] [data-trellis-part="content"]) {
   pointer-events: none;
   user-select: none;

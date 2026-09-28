@@ -33,6 +33,7 @@ function typeFromTemplate(template: HTMLTemplateElement): [string, ViewTypeDefin
     closable: d.closable !== undefined ? d.closable !== "false" : undefined,
     gestures: d.gestures === "workspace" ? "workspace" : undefined,
     tabbar: d.tabbar === "auto" || d.tabbar === "never" || d.tabbar === "overlay" ? d.tabbar : undefined,
+    scaling: d.scaling === "inert" ? "inert" : d.scaling === "false" ? false : undefined,
     className: d.class,
   };
   if (d.minWidth || d.minHeight)

@@ -190,7 +190,7 @@ A `true` badge renders as a dot that swaps with the close button on hover, like 
 }
 ```
 
-On **surfaces**: `data-scaled` while content is scaled below its minimum size, and `data-tabbar` = `hidden` \| `overlay`.
+On **surfaces**: `data-scaled` while content is scaled below its minimum size (`inert` when it ignores input), and `data-tabbar` = `hidden` \| `overlay`.
 
 ### Overlay tab bars
 

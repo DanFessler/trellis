@@ -999,7 +999,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     setAttr(root, "data-busy", busy ? "" : null);
     for (const record of records.values()) {
       const scale = record.controller.state.scale;
-      record.controller.update({ interactive: !busy && scale >= 0.999 });
+      record.controller.update({ interactive: !busy && usableAt(record.controller.id, scale) });
     }
   }
   const moving = () =>
@@ -1317,7 +1317,13 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   /** Content minimum: the type's, or 480×320 under free navigation. */
   const FREE_MIN = { width: 480, height: 320 };
   function minSizeOf(viewId: string): { width: number; height: number } | undefined {
-    return typeOf(viewId).minSize ?? (navigationMode() === "free" ? FREE_MIN : undefined);
+    const type = typeOf(viewId);
+    if (type.scaling === false) return undefined;
+    return type.minSize ?? (navigationMode() === "free" ? FREE_MIN : undefined);
+  }
+  /** Whether a view takes input at this scale: always, unless its type makes scaled content inert. */
+  function usableAt(viewId: string, scale: number) {
+    return scale >= 0.999 || typeOf(viewId).scaling !== "inert";
   }
   function placementOf(viewId: string): ViewPlacement {
     const panel = panelOfView(doc, viewId) ?? (lifted()?.views.includes(viewId) ? lifted() : null);
@@ -1396,7 +1402,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     setStyle(content, "width", `${width}px`);
     setStyle(content, "height", `${height}px`);
     setStyle(content, "transform", transform);
-    setAttr(shell, "data-scaled", safe < 0.999 ? "" : null);
+    setAttr(shell, "data-scaled", safe < 0.999 ? (usableAt(controller.id, safe) ? "" : "inert") : null);
     setAttr(shell, "inert", selected && !concealed ? null : "");
     (record as any).__size = { width: Math.round(width), height: Math.round(height) };
     (record as any).__scale = Math.round(safe * 1000) / 1000;
@@ -1410,7 +1416,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       focused: focusedView === controller.id,
       placement: placementOf(controller.id),
       panelId: panel?.id ?? controller.state.panelId,
-      interactive: !busy && safe >= 0.999,
+      interactive: !busy && usableAt(controller.id, safe),
       // Size and scale settle once motion stops: views never re-render per frame.
       ...(moving()
         ? {}
