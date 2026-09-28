@@ -1123,3 +1123,92 @@ test.describe("scaled views", () => {
     expect(await typeInto(page, "outline")).toBe("hi");
   });
 });
+
+test.describe("pushing dividers", () => {
+  const width = async (page: Page, id: string) => (await box(panel(page, id))).width;
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+  });
+
+  test("dragging past a neighbour's minimum pushes the next panel, and dragging back undoes it", async ({
+    page,
+  }) => {
+    const right = await width(page, "right");
+    const d = await box(page.locator("[data-trellis-part=divider][data-index='0']").first());
+    const y = d.y + d.height / 2;
+    await page.mouse.move(d.x + d.width / 2, y);
+    await page.mouse.down();
+    await page.mouse.move(d.x + 880, y, { steps: 10 });
+    // The stage is at its minimum and the right panel has been pushed smaller.
+    expect(await width(page, "docs")).toBeLessThan(100);
+    expect(await width(page, "right")).toBeLessThan(right - 50);
+    // Back to where the drag started, in the same gesture: everything is where it was.
+    await page.mouse.move(d.x + d.width / 2, y, { steps: 10 });
+    expect(Math.abs((await width(page, "right")) - right)).toBeLessThan(1);
+    await page.mouse.move(d.x + 880, y, { steps: 10 });
+    await page.mouse.up();
+    expect(await width(page, "right")).toBeLessThan(right - 50);
+  });
+
+  test("a divider inside a group pushes past the group's edge into its parent's panels", async ({ page }) => {
+    // Files | [ Search | stage ] over Outline
+    await page.evaluate(() => {
+      const ws = (window as any).ws;
+      const doc = ws.getDocument();
+      const panel = (id: string, views: string[]) => ({ kind: "panel", id, views, selected: views[0] });
+      doc.root = {
+        kind: "split",
+        id: "r",
+        axis: "x",
+        weights: [1, 2],
+        children: [
+          panel("left", ["files"]),
+          {
+            kind: "split",
+            id: "col",
+            axis: "y",
+            weights: [1, 1],
+            children: [
+              {
+                kind: "split",
+                id: "inner",
+                axis: "x",
+                weights: [1, 1],
+                children: [
+                  panel("x1", ["search"]),
+                  { kind: "stage", id: "stage", child: panel("docs", ["a", "b"]) },
+                ],
+              },
+              panel("right", ["outline"]),
+            ],
+          },
+        ],
+      };
+      ws.setDocument(doc, { animate: false });
+    });
+    await expect(panel(page, "x1")).toBeVisible();
+    const left = await width(page, "left");
+    const outline = await width(page, "right");
+    const d = await box(page.locator("[data-trellis-part=divider][data-split='inner']"));
+    const y = d.y + d.height / 2;
+    await page.mouse.move(d.x + d.width / 2, y);
+    await page.mouse.down();
+    await page.mouse.move(d.x - 700, y, { steps: 10 });
+    await page.mouse.up();
+    // Search is at its minimum, so the group grew to the left and pushed Files smaller;
+    // Outline, below, spans the whole group and widened with it.
+    expect(await width(page, "x1")).toBeLessThan(100);
+    expect(await width(page, "left")).toBeLessThan(left - 100);
+    expect(await width(page, "right")).toBeGreaterThan(outline + 100);
+  });
+
+  test("the keyboard pushes too", async ({ page }) => {
+    const right = await width(page, "right");
+    const divider = page.locator("[data-trellis-part=divider][data-index='0']").first();
+    await divider.focus();
+    for (let i = 0; i < 12; i++) await page.keyboard.press("Shift+ArrowRight");
+    expect(await width(page, "docs")).toBeLessThan(100);
+    expect(await width(page, "right")).toBeLessThan(right - 50);
+  });
+});

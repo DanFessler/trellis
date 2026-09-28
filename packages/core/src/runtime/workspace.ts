@@ -1,4 +1,5 @@
 import { createDocument, type LayoutSpec } from "../model/builder";
+import { dragBoundary } from "../model/resize";
 import { leafIds } from "../model/spatial";
 import {
   clampFloat,
@@ -27,7 +28,6 @@ import {
   layoutRects,
   panelsOf,
   replaceNode,
-  resizeBoundary,
   UNIT,
   type Entry,
   type LayoutMetrics,
@@ -2205,15 +2205,6 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         (node.kind === "stage" && !node.child ? 120 : axis === "x" ? PANEL_MIN.w : tabbarHeight + 28) + gap,
     };
   }
-  /** A split child's minimum as a fraction of the split's own layout size. */
-  function minFraction(split: SplitNode, index: number): number {
-    const e = entries.get(split.id);
-    const child = split.children[index];
-    const childScale = entries.get(child.id)?.scale ?? 1;
-    const m = layoutMetrics();
-    const extent = e ? (split.axis === "x" ? e.rect.w * m.width : e.rect.h * m.height) : 0;
-    return extent > 0 ? (m.min(child, split.axis) * childScale) / extent : 0;
-  }
   /** A split with the proportions it actually has on screen (weights with minimums applied). */
   function effectiveSplit(id: string): SplitNode | null {
     const node = entries.get(id)?.node;
@@ -2222,26 +2213,21 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   function beginDivider(e: PointerEvent, el: HTMLElement) {
     if (e.button !== 0) return;
     e.preventDefault();
-    const splitId = el.dataset.split!;
-    const index = Number(el.dataset.index);
-    const split = effectiveSplit(splitId);
-    const entry = entries.get(splitId);
-    if (!split || !entry) return;
     const origin = doc;
+    // Pushes are worked out from the layout as it was when the drag started (see dragBoundary),
+    // so dragging back undoes them.
+    const push =
+      doc.root && dragBoundary(doc.root, layoutMetrics(), el.dataset.split!, Number(el.dataset.index));
+    if (!push) return;
+    const along = (ev: PointerEvent) => fromScreen(localPoint(ev))[push.axis];
+    const grab = along(e);
     el.setPointerCapture(e.pointerId);
-    setAttr(root, "data-resizing", split.axis);
+    setAttr(root, "data-resizing", push.axis);
     setAttr(el, "data-active", "");
     gesture = true;
     updateInteractivity();
     const move = (ev: PointerEvent) => {
-      const p = localPoint(ev);
-      const r = toScreen(entry.rect);
-      const position = split.axis === "x" ? (p.x - r.x) / r.w : (p.y - r.y) / r.h;
-      // Start from what's on screen, so a panel held at its minimum doesn't jump.
-      const current = effectiveSplit(splitId);
-      if (!current) return;
-      const resized = resizeBoundary(current, index, position, (i) => minFraction(current, i));
-      doc = { ...doc, root: replaceNode(doc.root, splitId, resized) };
+      doc = { ...doc, root: push.to(push.start + along(ev) - grab) };
       entries = layoutRects(doc.root, layoutMetrics());
       render();
     };
@@ -2271,19 +2257,18 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   }
   function dividerKey(e: KeyboardEvent, el: HTMLElement) {
     const split = effectiveSplit(el.dataset.split!);
-    if (!split) return;
-    const index = Number(el.dataset.index);
+    const entry = entries.get(el.dataset.split!);
+    if (!split || !entry || !doc.root) return;
     const decrease = split.axis === "x" ? "ArrowLeft" : "ArrowUp";
     const increase = split.axis === "x" ? "ArrowRight" : "ArrowDown";
     if (e.key !== decrease && e.key !== increase) return;
     e.preventDefault();
-    const total = split.weights.reduce((a, b) => a + b, 0);
-    const boundary = split.weights.slice(0, index + 1).reduce((a, b) => a + b, 0) / total;
-    const step = e.shiftKey ? 0.1 : 0.02;
-    const resized = resizeBoundary(split, index, boundary + (e.key === increase ? step : -step), (i) =>
-      minFraction(split, i),
-    );
-    commit({ ...doc, root: replaceNode(doc.root, split.id, resized) }, { animate: false });
+    const push = dragBoundary(doc.root, layoutMetrics(), split.id, Number(el.dataset.index));
+    if (!push) return;
+    // A step is a share of the split's own size.
+    const step = (e.shiftKey ? 0.1 : 0.02) * (split.axis === "x" ? entry.rect.w : entry.rect.h);
+    const next = push.to(push.start + (e.key === increase ? step : -step));
+    if (next !== doc.root) commit({ ...doc, root: next }, { animate: false });
   }
 
   // ---------------------------------------------------------------- floating resize

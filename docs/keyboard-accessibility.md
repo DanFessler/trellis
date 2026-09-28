@@ -94,7 +94,7 @@ The panel menu includes **Move _tab_ to ▸**, a submenu listing the other panel
 
 ## Dividers
 
-Dividers are focusable `separator`s. <kbd>←</kbd>/<kbd>→</kbd> (or <kbd>↑</kbd>/<kbd>↓</kbd> for columns) move them by a small step. Hold <kbd>Shift</kbd> for larger steps. Double-click a divider to even out its two neighbours. Panels don't shrink below a minimum usable size.
+Dividers are focusable `separator`s. <kbd>←</kbd>/<kbd>→</kbd> (or <kbd>↑</kbd>/<kbd>↓</kbd> for columns) move them by a small step. Hold <kbd>Shift</kbd> for larger steps. Double-click a divider to even out its two neighbours. Panels don't shrink below a minimum usable size: past a neighbour's minimum, a divider pushes the panels beyond it, the same as dragging.
 
 ## Menus
 
