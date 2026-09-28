@@ -34,13 +34,11 @@ const tryGit = (cwd: string, ...args: string[]) => {
 };
 
 /** Release tags, newest patch of each minor, newest first. */
-function releaseTags(repo: string): { tag: string; version: string; key: string }[] {
-  let tags = tryGit(repo, "tag", "-l", "v*") ?? "";
-  // CI and hosting checkouts are often shallow and tagless: fetch the tags before giving up.
-  if (!tags) {
-    tryGit(repo, "fetch", "--tags", "--quiet", "origin");
-    tags = tryGit(repo, "tag", "-l", "v*") ?? "";
-  }
+function releaseTags(repo: string, fetch: boolean): { tag: string; version: string; key: string }[] {
+  // Hosting and CI checkouts are often shallow or cached from an earlier build, and fetching a
+  // branch doesn't bring new tags: a release build could miss its own tag. Always fetch them.
+  if (fetch) tryGit(repo, "fetch", "--tags", "--force", "--quiet", "origin");
+  const tags = tryGit(repo, "tag", "-l", "v*") ?? "";
   const parsed = tags
     .split("\n")
     .map((tag) => ({ tag, m: /^v(\d+)\.(\d+)\.(\d+)$/.exec(tag.trim()) }))
@@ -81,7 +79,7 @@ export function collectDocSets(options: { repo: string; cacheDir: string; dev: b
   const workingDocs = path.join(repo, "docs");
   const sets: DocSet[] = [];
 
-  for (const release of releaseTags(repo)) {
+  for (const release of releaseTags(repo, !dev)) {
     const dir = path.join(cacheDir, release.key);
     try {
       extract(repo, release.tag, dir);
