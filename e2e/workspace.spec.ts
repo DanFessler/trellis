@@ -1327,6 +1327,38 @@ test.describe("free navigation gestures", () => {
     await expect.poll(() => framed(page)).not.toBeNull();
   });
 
+  test("holding the workspace key and Shift and dragging a rectangle frames what fits it best", async ({
+    page,
+  }) => {
+    await open(page);
+    const right = await box(panel(page, "right"));
+    await hold(page, "Shift");
+    await expect(page.locator(".trellis")).toHaveAttribute("data-gesture-key", "rect");
+    await page.mouse.move(right.x + 4, right.y + 4);
+    await page.mouse.down();
+    await page.mouse.move(right.x + right.width - 4, right.y + right.height - 4, { steps: 6 });
+    await expect(page.locator("[data-trellis-part=marquee-target]")).toHaveAttribute("data-visible", "");
+    await page.mouse.up();
+    await release(page, "Shift");
+    await expect.poll(() => framed(page)).toBe("right");
+  });
+
+  test("Escape cancels a rectangle without changing the framing", async ({ page }) => {
+    await open(page);
+    const right = await box(panel(page, "right"));
+    await hold(page, "Shift");
+    await page.mouse.move(right.x + 4, right.y + 4);
+    await page.mouse.down();
+    await page.mouse.move(right.x + right.width - 4, right.y + right.height - 4, { steps: 6 });
+    await expect(page.locator("[data-trellis-part=marquee-target]")).toHaveAttribute("data-visible", "");
+    await page.keyboard.press("Escape");
+    await expect(page.locator("[data-trellis-part=marquee-target]")).not.toHaveAttribute("data-visible");
+    await page.mouse.up();
+    await release(page, "Shift");
+    await page.waitForTimeout(300);
+    expect(await framed(page)).toBeNull();
+  });
+
   test("holding the workspace key and scrolling steps a level toward the pointer", async ({ page }) => {
     await open(page);
     const at = await inside(surface(page, "files"));

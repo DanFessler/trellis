@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isNotchedWheel, matchesChord, parseChord } from "../src/runtime/gestures";
+import { DEFAULT_GESTURE_KEYS, isNotchedWheel, matchesChord, parseChord } from "../src/runtime/gestures";
 import { isMac } from "../src/runtime/keymap";
 
 const mods = (m: Partial<Record<"ctrlKey" | "metaKey" | "altKey" | "shiftKey", boolean>> = {}) => ({
@@ -59,5 +59,13 @@ describe("telling a mouse wheel from a trackpad pinch", () => {
     expect(isNotchedWheel({ deltaMode: 0, deltaX: 0, deltaY: -6.5 })).toBe(false);
     expect(isNotchedWheel({ deltaMode: 0, deltaX: 0, deltaY: 3 })).toBe(false);
     expect(isNotchedWheel({ deltaMode: 0, deltaX: 0, deltaY: -52.25 })).toBe(false);
+  });
+});
+
+describe("default gesture keys", () => {
+  it("give each drag its own exact set of keys, so one never starts another", () => {
+    const drags = [DEFAULT_GESTURE_KEYS.pan, DEFAULT_GESTURE_KEYS.scale, DEFAULT_GESTURE_KEYS.rect];
+    const signature = (combo: string | null) => JSON.stringify(parseChord(combo!));
+    expect(new Set(drags.map(signature)).size).toBe(drags.length);
   });
 });

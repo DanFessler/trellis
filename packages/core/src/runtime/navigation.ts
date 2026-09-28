@@ -8,8 +8,9 @@
  *
  * Gestures: a pinch (and touch pinch, and Safari gesture events) zooms from anywhere except
  * content that keeps its own pinch. Holding the gesture keys (⌘⌥ or Ctrl+Alt by default) turns
- * the whole workspace into a handle: drag to pan, hold Z too and drag to scale, scroll to step a
- * level. Everything else over content belongs to the content.
+ * the whole workspace into a handle: drag to pan, hold Z too and drag to scale, hold Shift too and
+ * drag a rectangle to frame, scroll to step a level. Everything else over content belongs to the
+ * content.
  *
  * Gestures run only with `navigation: "free"`; `"focus"` keeps maximize, Escape and
  * history. Floating windows are never camera targets (NAV-12).
@@ -24,6 +25,7 @@ import {
   navNode,
   navParent,
   recordVisit,
+  rectangleCamera,
   savedFrameDestination,
   type MaximizeSession,
   type SpaceEntry,
@@ -312,19 +314,18 @@ export function createNavigator(host: NavigationHost) {
   );
 
   // Gesture keys: while they're held, the root says so (for the cursor), content ignores the
-  // pointer, and a drag anywhere pans or scales.
+  // pointer, and a drag anywhere pans, scales or draws a rectangle.
   const held = new Set<string>();
-  let heldMode: "pan" | "scale" | null = null;
-  function syncHeld(e: KeyboardEvent | PointerEvent | null) {
+  type DragMode = "pan" | "scale" | "rect";
+  let heldMode: DragMode | null = null;
+  /** The drag the held keys would start. Each gesture has its own exact set of modifiers. */
+  function dragMode(e: KeyboardEvent | PointerEvent): DragMode | null {
     const keys = host.gestureKeys();
-    const mode =
-      e && free() && !host.busy()
-        ? matchesChord(e, keys.scale, held)
-          ? "scale"
-          : matchesChord(e, keys.pan, held)
-            ? "pan"
-            : null
-        : null;
+    for (const mode of ["scale", "rect", "pan"] as const) if (matchesChord(e, keys[mode], held)) return mode;
+    return null;
+  }
+  function syncHeld(e: KeyboardEvent | PointerEvent | null) {
+    const mode = e && free() && !host.busy() ? dragMode(e) : null;
     if (mode === heldMode) return;
     heldMode = mode;
     if (mode) host.root.setAttribute("data-gesture-key", mode);
@@ -364,8 +365,8 @@ export function createNavigator(host: NavigationHost) {
     { capture: true },
   );
   const isChordKey = (e: KeyboardEvent) => {
-    const { pan, scale } = host.gestureKeys();
-    return [pan, scale].some((combo) => !!combo && parseChord(combo).keys.includes(e.code));
+    const { pan, scale, rect } = host.gestureKeys();
+    return [pan, scale, rect].some((combo) => !!combo && parseChord(combo).keys.includes(e.code));
   };
   host.lifetime.listen(window, "blur", () => {
     held.clear();
@@ -387,27 +388,56 @@ export function createNavigator(host: NavigationHost) {
     el.style.height = `${Math.max(0, r.h)}px`;
   };
 
-  // Dragging with the gesture keys held: pan, or scale around the press point.
+  // A rectangle, and the framing releasing it would choose.
+  const marqueeEl = h("div", { "data-trellis-part": "marquee", "aria-hidden": "true" });
+  const candidateEl = h("div", { "data-trellis-part": "marquee-target", "aria-hidden": "true" }, h("span"));
+  host.root.append(marqueeEl, candidateEl);
+  host.lifetime.add(() => {
+    marqueeEl.remove();
+    candidateEl.remove();
+  });
+
+  // Dragging with the gesture keys held: pan, scale around the press point, or draw a rectangle.
   let drag: {
-    mode: "pan" | "scale";
+    mode: DragMode;
     pointerId: number;
     x: number;
     y: number;
     lastX: number;
     lastY: number;
+    /** For a rectangle: the camera and workspace bounds when it started, and what it would frame. */
+    view: Rect;
+    viewport: Rect;
+    candidate: string | null;
   } | null = null;
+  function moveRect(e: PointerEvent) {
+    const d = drag!;
+    const world = rectangleCamera({ x: d.x, y: d.y }, { x: e.clientX, y: e.clientY }, d.viewport, d.view);
+    const screen = host.toScreen(world);
+    place(marqueeEl, screen);
+    d.candidate = screen.w >= 8 && screen.h >= 8 ? bestFit(world, entries) : null;
+    candidateEl.toggleAttribute("data-visible", !!d.candidate);
+    if (d.candidate) {
+      const entry = entries.get(d.candidate)!;
+      place(candidateEl, host.panelScreen(entry.rect));
+      candidateEl.querySelector("span")!.textContent =
+        `Release to focus ${host.titleOf(entry.node)} · Esc to cancel`;
+    }
+  }
   function finishDrag(commit: boolean) {
     if (!drag) return;
-    const { pointerId } = drag;
+    const { pointerId, mode, candidate } = drag;
     drag = null;
     suppressClickUntil = performance.now() + 350;
     host.root.removeAttribute("data-gesture");
+    candidateEl.removeAttribute("data-visible");
     try {
       if (host.root.hasPointerCapture(pointerId)) host.root.releasePointerCapture(pointerId);
     } catch {
       /* ignore */
     }
-    if (commit) finishGesture();
+    if (mode === "rect") focus(commit && candidate ? candidate : framed);
+    else if (commit) finishGesture();
     else focus(framed);
   }
   host.lifetime.listen(
@@ -415,19 +445,28 @@ export function createNavigator(host: NavigationHost) {
     "pointerdown",
     (e: PointerEvent) => {
       if (!free() || host.busy() || drag || e.button !== 0 || e.pointerType === "touch") return;
-      const keys = host.gestureKeys();
-      const mode = matchesChord(e, keys.scale, held)
-        ? "scale"
-        : matchesChord(e, keys.pan, held)
-          ? "pan"
-          : null;
+      const mode = dragMode(e);
       if (!mode) return;
       e.preventDefault();
       e.stopPropagation();
-      drag = { mode, pointerId: e.pointerId, x: e.clientX, y: e.clientY, lastX: e.clientX, lastY: e.clientY };
+      const r = bounds();
+      drag = {
+        mode,
+        pointerId: e.pointerId,
+        x: e.clientX,
+        y: e.clientY,
+        lastX: e.clientX,
+        lastY: e.clientY,
+        view: { ...host.camera.value },
+        viewport: { x: r.left, y: r.top, w: r.width, h: r.height },
+        candidate: null,
+      };
       host.root.setPointerCapture(e.pointerId);
       host.root.setAttribute("data-gesture", mode);
-      zoom(1, e.clientX, e.clientY);
+      if (mode === "rect") {
+        endGesture();
+        moveRect(e);
+      } else zoom(1, e.clientX, e.clientY);
     },
     { capture: true },
   );
@@ -443,7 +482,8 @@ export function createNavigator(host: NavigationHost) {
       drag.lastX = e.clientX;
       drag.lastY = e.clientY;
       // Scale: dragging up or right zooms in.
-      if (drag.mode === "pan") zoom(1, e.clientX, e.clientY, dx, dy);
+      if (drag.mode === "rect") moveRect(e);
+      else if (drag.mode === "pan") zoom(1, e.clientX, e.clientY, dx, dy);
       else zoom(Math.exp((dy - dx) * 0.006), drag.x, drag.y);
     },
     { capture: true },

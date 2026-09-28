@@ -53,6 +53,7 @@ People move between levels in a few ways:
 | Step out one level       | Press <kbd>Esc</kbd>.                                                                                                    |
 | Step in or out one level | Hold <kbd>⌘</kbd><kbd>⌥</kbd> and scroll. Needs free navigation.                                                         |
 | Pan                      | Hold <kbd>⌘</kbd><kbd>⌥</kbd> and drag. Needs free navigation.                                                           |
+| Zoom to any region       | Hold <kbd>⌘</kbd><kbd>⌥</kbd><kbd>⇧</kbd> and drag a rectangle around it. Needs free navigation.                         |
 | Zoom continuously        | Pinch, or hold <kbd>⌘</kbd><kbd>⌥</kbd><kbd>Z</kbd> and drag. Releasing snaps to the closest fit. Needs free navigation. |
 | See everything           | Press <kbd>⌘</kbd><kbd>⌥</kbd><kbd>↑</kbd>. Press it again to go back.                                                   |
 
@@ -107,7 +108,7 @@ Maximize remembers the level it zoomed from. Toggling it again returns there, ev
 
 ## Turn it on
 
-Zooming to panels, stepping out and history work in the default `"focus"` mode. Pinch, pan, scale and step gestures need `"free"`:
+Zooming to panels, stepping out and history work in the default `"focus"` mode. Pinch, pan, scale, rectangle and step gestures need `"free"`:
 
 ```tsx
 <Workspace navigation="free">{/* … */}</Workspace>

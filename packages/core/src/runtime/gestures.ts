@@ -6,6 +6,8 @@ export interface GestureKeys {
   pan: string | null;
   /** Drag to scale around the press point. */
   scale: string | null;
+  /** Drag a rectangle; releasing frames what fits it best. */
+  rect: string | null;
   /** Scroll to step in or out a level. */
   step: string | null;
 }
@@ -13,6 +15,7 @@ export interface GestureKeys {
 export const DEFAULT_GESTURE_KEYS: GestureKeys = {
   pan: "Mod+Alt",
   scale: "Mod+Alt+Z",
+  rect: "Mod+Alt+Shift",
   step: "Mod+Alt",
 };
 

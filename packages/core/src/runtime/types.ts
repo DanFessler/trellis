@@ -209,9 +209,9 @@ export interface WorkspaceOptions {
   /** CSS custom properties applied to the workspace, e.g. { "--trellis-accent": "#f60" }. */
   tokens?: Record<string, string>;
   keymap?: Keymap;
-  /** Keys held with the pointer for free-navigation gestures: `pan` (drag), `scale` (drag) and
-   * `step` (scroll). Defaults: `{ pan: "Mod+Alt", scale: "Mod+Alt+Z", step: "Mod+Alt" }`. `null`
-   * turns one off. */
+  /** Keys held with the pointer for free-navigation gestures: `pan`, `scale` and `rect` (drag), and
+   * `step` (scroll). Defaults: `{ pan: "Mod+Alt", scale: "Mod+Alt+Z", rect: "Mod+Alt+Shift",
+   * step: "Mod+Alt" }`. `null` turns one off. */
   gestureKeys?: Partial<GestureKeys>;
   /** Initial layout when nothing is persisted or controlled. */
   defaultLayout?: LayoutDocument | LayoutSpec | null;

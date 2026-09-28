@@ -112,6 +112,7 @@ Every element Trellis renders has a `data-trellis-part` attribute:
 | `surface`                                         | A view's frame. Has `data-view` and `data-type`, plus the type's `className`.                                                                           |
 | `content`                                         | The view's content element. Your content mounts into it.                                                                                                |
 | `divider`                                         | A resize handle between split children.                                                                                                                 |
+| `marquee`, `marquee-target`                       | The rectangle being drawn with the gesture keys and <kbd>Shift</kbd>, and the target releasing it would frame.                                          |
 | `resize`                                          | A floating panel's resize handle (`data-dir="n" \| "se" \| …`).                                                                                         |
 | `backdrop`, `stage-empty`, `empty`, `chrome`      | Slots. See [Core API](./core-api.md#slots).                                                                                                             |
 | `drop-slot`                                       | While dragging, the slot the layout opens where the view will land. `data-visible` while shown; `data-kind="tab"` for tab drops.                        |
@@ -150,17 +151,17 @@ You can style Trellis's menus through classes as well as the `menu` part. Menus 
 
 On the **root** (`.trellis`):
 
-| Attribute                                          | When                                                                                 |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `data-theme`                                       | Always: the active theme name.                                                       |
-| `data-navigation`                                  | Always: `focus`, `free` or `false`.                                                  |
-| `data-dragging`                                    | A drag is in progress.                                                               |
-| `data-drop`                                        | During a drag: `dock`, `tab`, `stage`, `float` or `none`.                            |
-| `data-gesture-key`, `data-gesture`                 | The gesture keys are held (`pan` or `scale`), or a pan or scale drag is in progress. |
-| `data-resizing`                                    | Resizing: `x`, `y` (dividers) or `float`.                                            |
-| `data-framed`                                      | The camera is zoomed in on something.                                                |
-| `data-busy`                                        | A drag or gesture is in progress; content is non-interactive.                        |
-| `data-has-stage`, `data-stage-empty`, `data-empty` | Layout shape.                                                                        |
+| Attribute                                          | When                                                                               |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `data-theme`                                       | Always: the active theme name.                                                     |
+| `data-navigation`                                  | Always: `focus`, `free` or `false`.                                                |
+| `data-dragging`                                    | A drag is in progress.                                                             |
+| `data-drop`                                        | During a drag: `dock`, `tab`, `stage`, `float` or `none`.                          |
+| `data-gesture-key`, `data-gesture`                 | The gesture keys are held (`pan`, `scale` or `rect`), or that drag is in progress. |
+| `data-resizing`                                    | Resizing: `x`, `y` (dividers) or `float`.                                          |
+| `data-framed`                                      | The camera is zoomed in on something.                                              |
+| `data-busy`                                        | A drag or gesture is in progress; content is non-interactive.                      |
+| `data-has-stage`, `data-stage-empty`, `data-empty` | Layout shape.                                                                      |
 
 On **panels**:
 

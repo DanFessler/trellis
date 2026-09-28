@@ -157,6 +157,26 @@ export function frameLeaves(root: LayoutNode | null, ids: string[]): string | nu
   return best.node.id;
 }
 
+/** Convert a screen-space marquee into world coordinates through the camera, clipped to the layout. */
+export function rectangleCamera(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  viewport: Rect,
+  camera: Rect,
+): Rect {
+  const clamp = (value: number) => Math.max(0, Math.min(1, value));
+  const ax = clamp((a.x - viewport.x) / viewport.w);
+  const ay = clamp((a.y - viewport.y) / viewport.h);
+  const bx = clamp((b.x - viewport.x) / viewport.w);
+  const by = clamp((b.y - viewport.y) / viewport.h);
+  return {
+    x: camera.x + Math.min(ax, bx) * camera.w,
+    y: camera.y + Math.min(ay, by) * camera.h,
+    w: Math.abs(bx - ax) * camera.w,
+    h: Math.abs(by - ay) * camera.h,
+  };
+}
+
 // ------------------------------------------------------------------ history & maximize
 
 export type Visit = { id: string; leaves: string[] };

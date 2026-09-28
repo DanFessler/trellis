@@ -19,7 +19,7 @@ Set `navigation` on the workspace:
 | Mode                  | What users can do                                                                                                                                                                                                                                                            |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `"focus"` _(default)_ | Maximize and restore panels: double-click a tab bar, choose **Maximize** in the panel menu, or press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>↩</kbd> (<kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Enter</kbd>). <kbd>Esc</kbd> steps out one level. History and the overview work. No gestures. |
-| `"free"`              | Everything in focus mode, plus [gestures](#free-navigation-gestures): pinch to zoom, and pan, scale and step with the gesture keys. Content gets a default [minimum size](#content-minimum) of 480 × 320.                                                                    |
+| `"free"`              | Everything in focus mode, plus [gestures](#free-navigation-gestures): pinch to zoom, and pan, scale, zoom to a rectangle and step with the gesture keys. Content gets a default [minimum size](#content-minimum) of 480 × 320.                                               |
 | `false`               | No navigation. Double-click does nothing and _Maximize_ isn't in the menu.                                                                                                                                                                                                   |
 
 ```tsx
@@ -46,16 +46,19 @@ When a view is opened or focused while the camera frames something that doesn't 
 
 In `"free"` mode, a pinch zooms from anywhere, and holding the _gesture keys_ turns the whole workspace into a handle. Everything else over a view's content belongs to the content, so text fields, lists and editors work as usual.
 
-| Gesture                                                                                        | Does                                                                                                                         |
-| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Pinch on a trackpad                                                                            | Zooms around the pointer, from anywhere, content included.                                                                   |
-| Hold <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>) and drag                         | Pans.                                                                                                                        |
-| Hold <kbd>⌘</kbd><kbd>⌥</kbd><kbd>Z</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>Z</kbd>) and drag | Scales around the press point. Dragging up or right zooms in.                                                                |
-| Hold <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>) and scroll                       | Steps the hierarchy one level at a time. Scrolling up steps in, toward the node under the pointer. Scrolling down steps out. |
-| <kbd>Ctrl</kbd>+scroll with a mouse wheel                                                      | Steps too. Browsers report a trackpad pinch as <kbd>Ctrl</kbd>+scroll, so Trellis tells them apart by their deltas.          |
-| Two-finger touch pinch                                                                         | Zooms and pans. Safari's trackpad `gesture*` events are supported too.                                                       |
+| Gesture                                                                                            | Does                                                                                                                         |
+| -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Pinch on a trackpad                                                                                | Zooms around the pointer, from anywhere, content included.                                                                   |
+| Hold <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>) and drag                             | Pans.                                                                                                                        |
+| Hold <kbd>⌘</kbd><kbd>⌥</kbd><kbd>Z</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>Z</kbd>) and drag     | Scales around the press point. Dragging up or right zooms in.                                                                |
+| Hold <kbd>⌘</kbd><kbd>⌥</kbd><kbd>⇧</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>Shift</kbd>) and drag | Draws a rectangle, in either direction. Releasing frames the node or sibling range that fits it best.                        |
+| Hold <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>) and scroll                           | Steps the hierarchy one level at a time. Scrolling up steps in, toward the node under the pointer. Scrolling down steps out. |
+| <kbd>Ctrl</kbd>+scroll with a mouse wheel                                                          | Steps too. Browsers report a trackpad pinch as <kbd>Ctrl</kbd>+scroll, so Trellis tells them apart by their deltas.          |
+| Two-finger touch pinch                                                                             | Zooms and pans. Safari's trackpad `gesture*` events are supported too.                                                       |
 
-The gesture keys work over content too. While they're held, content ignores the pointer, the root has `data-gesture-key` (`pan` or `scale`) and the cursor shows what a drag will do. During the drag, the root has `data-gesture`. <kbd>Esc</kbd> cancels a drag and returns to the previous framing.
+The gesture keys work over content too. While they're held, content ignores the pointer, the root has `data-gesture-key` (`pan`, `scale` or `rect`) and the cursor shows what a drag will do. During the drag, the root has `data-gesture`. <kbd>Esc</kbd> cancels a drag and returns to the previous framing.
+
+While drawing a rectangle, `[data-trellis-part="marquee"]` shows it, and `[data-trellis-part="marquee-target"]` outlines what releasing would frame, with a label. The target has `data-visible` while there is one.
 
 A plain scroll never moves the camera, over content or chrome, so a tab strip whose tabs overflow always scrolls its tabs. Double-clicking a tab bar still zooms to its panel.
 
@@ -69,7 +72,7 @@ Zooming is rubber-banded. The camera can zoom out to 1.35× the layout and overs
 createWorkspace(el, {
   types,
   navigation: "free",
-  gestureKeys: { pan: "Mod+Alt", scale: "Mod+Alt+Z", step: "Mod+Alt" }, // the defaults
+  gestureKeys: { pan: "Mod+Alt", scale: "Mod+Alt+Z", rect: "Mod+Alt+Shift", step: "Mod+Alt" }, // the defaults
 });
 ```
 

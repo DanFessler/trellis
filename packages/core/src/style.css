@@ -764,7 +764,7 @@
 }
 
 /* ------------------------------------------------------------------ navigation feedback */
-:where(.trellis [data-trellis-part="snap-preview"]) {
+:where(.trellis [data-trellis-part="snap-preview"], .trellis [data-trellis-part="marquee-target"]) {
   position: absolute;
   left: 0;
   top: 0;
@@ -775,10 +775,13 @@
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.13);
   border-radius: calc(var(--trellis-radius) + 3px);
 }
-:where(.trellis [data-trellis-part="snap-preview"][data-visible]) {
+:where(
+  .trellis [data-trellis-part="snap-preview"][data-visible],
+  .trellis [data-trellis-part="marquee-target"][data-visible]
+) {
   display: block;
 }
-:where(.trellis [data-trellis-part="snap-preview"] span) {
+:where(.trellis [data-trellis-part="snap-preview"] span, .trellis [data-trellis-part="marquee-target"] span) {
   position: absolute;
   left: 50%;
   top: 12px;
@@ -791,6 +794,20 @@
   font-size: 10px;
   letter-spacing: 0.2px;
   white-space: nowrap;
+}
+:where(.trellis [data-trellis-part="marquee"]) {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3400;
+  display: none;
+  pointer-events: none;
+  border: 1px solid var(--trellis-accent);
+  background: color-mix(in srgb, var(--trellis-accent) 12%, transparent);
+  border-radius: 4px;
+}
+:where(.trellis[data-gesture="rect"] [data-trellis-part="marquee"]) {
+  display: block;
 }
 /* Gesture keys held: the whole workspace is a handle. Content (iframes included) ignores the
    pointer, so a drag anywhere reaches the workspace, and the cursor says what a drag will do. */
@@ -810,6 +827,12 @@
 .trellis[data-gesture="pan"],
 .trellis[data-gesture="pan"] * {
   cursor: grabbing !important;
+}
+.trellis[data-gesture-key="rect"],
+.trellis[data-gesture-key="rect"] *,
+.trellis[data-gesture="rect"],
+.trellis[data-gesture="rect"] * {
+  cursor: crosshair !important;
 }
 .trellis[data-gesture-key="scale"],
 .trellis[data-gesture-key="scale"] *,

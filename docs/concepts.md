@@ -92,7 +92,7 @@ Floating panels aren't camera targets. See [Floating panels](./floating.md).
 Navigation animates the workspace's camera to frame part of the layout. The `navigation` option has three modes:
 
 - `"focus"` (default): double-click a tab bar, choose _Maximize_ from the panel's menu, or press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>↩</kbd> to zoom one panel to fill the workspace. Doing it again restores the previous framing, and <kbd>Esc</kbd> steps out one level.
-- `"free"`: focus mode plus gestures. A pinch zooms from anywhere. Holding <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>), a drag pans, a drag with <kbd>Z</kbd> also held scales, and a scroll steps through the hierarchy. When a gesture ends, the camera snaps to the best-fitting panel, split or range of siblings.
+- `"free"`: focus mode plus gestures. A pinch zooms from anywhere. Holding <kbd>⌘</kbd><kbd>⌥</kbd> (<kbd>Ctrl</kbd><kbd>Alt</kbd>), a drag pans and a scroll steps through the hierarchy. Adding <kbd>Z</kbd> makes a drag scale, and adding <kbd>Shift</kbd> makes it draw a rectangle to zoom to. When a gesture ends, the camera snaps to the best-fitting panel, split or range of siblings.
 - `false`: no navigation.
 
 The camera frames nodes and contiguous sibling ranges. Navigation has back and forward history, an overview that toggles back, and saved framings, which remember views rather than nodes. See [Navigation and maximize](./navigation.md).
