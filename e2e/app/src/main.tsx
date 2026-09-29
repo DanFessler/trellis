@@ -22,6 +22,13 @@ const params = new URLSearchParams(location.search);
 const scenario = params.get("scenario") ?? "vanilla";
 const app = document.getElementById("app")!;
 const w = window as any;
+// ?dir=rtl lays the page out right to left; the workspace follows it.
+if (params.get("dir")) document.documentElement.dir = params.get("dir")!;
+// Content Security Policy and Trusted Types violations, for the strict scenario's tests.
+w.violations = [] as string[];
+document.addEventListener("securitypolicyviolation", (e) =>
+  w.violations.push(`${e.violatedDirective} ${e.blockedURI} ${e.sample}`),
+);
 w.mounts = {} as Record<string, number>;
 w.unmounts = {} as Record<string, number>;
 w.events = [] as string[];
@@ -76,6 +83,8 @@ if (scenario === "vanilla") {
   const [gestureType, gestureValue] = (params.get("gestures") ?? "").split(":");
   if (gestureType && options.types[gestureType])
     options.types[gestureType].gestures = gestureValue as "content" | "workspace";
+  // Tests add types with ws.update({ types: { ...w.types, … } }).
+  w.types = options.types;
   const ws = createWorkspace(app, options);
   for (const e of ["open", "close", "focus", "navigate", "change"] as const)
     ws.on(e, (d: any) => w.events.push(`${e}:${typeof d === "object" && d ? (d.id ?? "doc") : d}`));
@@ -106,6 +115,12 @@ function Counter() {
     </div>
   );
 }
+/** Throws while rendering whenever window.__boom is set. */
+function Boom() {
+  const view = useView();
+  if ((window as any).__boom) throw new Error(`boom in ${view.id}`);
+  return <p data-test="boom-ok">fine</p>;
+}
 function Opener() {
   const ws = useWorkspace();
   return (
@@ -127,7 +142,14 @@ if (scenario === "react") {
     <StrictMode>
       <WorkspaceProvider>
         <Status />
-        <Workspace motion="reduced" ref={(h) => void (w.ws = h)}>
+        <Workspace
+          motion="reduced"
+          ref={(h) => void (w.ws = h)}
+          onError={(e) => (w.errors ??= []).push(`${e.source}:${e.viewId ?? ""}`)}
+        >
+          <ViewType id="boom" title="Boom" placement="stage">
+            <Boom />
+          </ViewType>
           <ViewType id="counter" title={(v) => String(v.params.name)} placement="stage">
             <Counter />
           </ViewType>
@@ -178,12 +200,15 @@ if (scenario === "element") {
 }
 
 if (scenario === "stress") {
-  const cols = 6;
-  const rows = 6;
+  // ?cols=&rows=&tabs= size the grid; scripts/bench.mjs uses it.
+  const cols = Number(params.get("cols") ?? 6);
+  const rows = Number(params.get("rows") ?? 6);
+  const tabs = Number(params.get("tabs") ?? 3);
   const types: WorkspaceOptions["types"] = {
     cell: { title: (v) => `Cell ${v.params.n}`, mount: input("cell") },
   };
   let n = 0;
+  const started = performance.now();
   const ws = createWorkspace(app, {
     types,
     navigation: "free",
@@ -191,15 +216,39 @@ if (scenario === "stress") {
       Array.from({ length: cols }, () =>
         L.column(
           Array.from({ length: rows }, () =>
-            L.panel(
-              L.view("cell", { params: { n: n++ } }),
-              L.view("cell", { params: { n: n++ } }),
-              L.view("cell", { params: { n: n++ } }),
-            ),
+            L.panel(...Array.from({ length: tabs }, () => L.view("cell", { params: { n: n++ } }))),
           ),
         ),
       ),
     ),
   });
+  // Until the first frame is on screen.
+  requestAnimationFrame(() => requestAnimationFrame(() => (w.startup = performance.now() - started)));
   w.ws = ws;
+}
+
+if (scenario === "strict") {
+  // Views that build their content without markup strings, so the page can run with inline
+  // style attributes blocked and Trusted Types enforced. The e2e test adds that policy.
+  const text = (el: HTMLElement, view: any) => {
+    const p = document.createElement("p");
+    p.textContent = `note ${view.id}`;
+    el.append(p);
+  };
+  const note = (id: string) => L.view("note", { id });
+  w.ws = createWorkspace(app, {
+    types: { note: { title: (v) => `Note ${v.id}`, mount: text } },
+    navigation: "free",
+    defaultLayout: L.row(
+      [
+        L.panel({ id: "left" }, note("n1"), note("n2")),
+        L.stage(L.panel({ id: "docs" }, note("n3"))),
+        L.column([
+          L.panel({ id: "right" }, note("n4")),
+          L.row([note("x1"), note("x2"), L.column([note("x3"), note("x4")])]),
+        ]),
+      ],
+      [1, 12, 0.3],
+    ),
+  });
 }

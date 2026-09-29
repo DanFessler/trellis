@@ -1,5 +1,6 @@
 import {
   Children,
+  Component,
   createContext,
   forwardRef,
   Fragment,
@@ -33,11 +34,13 @@ import {
   type MenuEntry,
   type MenuRequest,
   type PanelMenuContext,
+  type Permissions,
   type Params,
   type Placement,
   type Surface,
   type Theme,
   type ViewHandle,
+  type WorkspaceError,
   type ViewInfo,
   type ViewRules,
   type ViewState,
@@ -202,7 +205,17 @@ export interface ViewTypeProps<P extends object = Params> extends ViewRules {
   menu?: MenuEntry[] | ((view: ViewHandle<P>) => MenuEntry[]);
   /** Who gets gestures over the content under free navigation. See the core `gestures` option. */
   gestures?: ViewTypeDefinition<P>["gestures"];
+  /** Shown instead of this type's content if it throws while rendering. Overrides the
+   * workspace's `errorFallback`. */
+  errorFallback?: (info: ErrorFallbackProps<P>) => ReactNode;
   className?: string;
+}
+
+export interface ErrorFallbackProps<P extends object = Params> {
+  error: unknown;
+  view: ViewHandle<P>;
+  /** Render the view's content again. */
+  retry(): void;
 }
 /** Register a kind of view. Renders nothing itself. */
 export function ViewType<P extends object = Params>(_props: ViewTypeProps<P>): null {
@@ -382,6 +395,10 @@ export interface WorkspaceProps {
   /** Whether panels pushed by a divider stay pushed when it's dragged back. See the core
    * `keepPushed` option. */
   keepPushed?: boolean;
+  /** What users may change through the interface. See the core `permissions` option. */
+  permissions?: boolean | Partial<Permissions>;
+  /** Layout direction: "auto" (default) follows the page; "rtl" mirrors the workspace. */
+  direction?: "ltr" | "rtl" | "auto";
   /** Keys held for free-navigation gestures. See the core `gestureKeys` option. */
   gestureKeys?: Partial<GestureKeys>;
   /** Show panel menus with your own component. Always calls the latest function. */
@@ -403,6 +420,12 @@ export interface WorkspaceProps {
   onClose?(view: ViewInfo): void;
   onFocus?(viewId: string | null): void;
   onNavigate?(framed: string | null): void;
+  /** Something in a view or a callback threw; the workspace carries on. Without this prop,
+   * errors go to the console. */
+  onError?(error: WorkspaceError): void;
+  /** Shown instead of a view's content if it throws while rendering. The default shows the
+   * view's title, the error and a Try again button. A type's own `errorFallback` wins. */
+  errorFallback?: (info: ErrorFallbackProps) => ReactNode;
   onMissingType?(type: string, id: string): "drop" | "placeholder";
   className?: string;
   style?: CSSProperties;
@@ -500,6 +523,8 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       detail: p.detail,
       keepPushed: p.keepPushed,
       gestureKeys: p.gestureKeys,
+      direction: p.direction,
+      permissions: p.permissions,
       tabs: p.tabs,
       label: p.label,
       document: p.document,
@@ -520,6 +545,11 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       handle.on("close", (v) => latest.current.props.onClose?.(v)),
       handle.on("focus", (v) => latest.current.props.onFocus?.(v)),
       handle.on("navigate", (v) => latest.current.props.onNavigate?.(v)),
+      handle.on("error", (e) => {
+        const onError = latest.current.props.onError;
+        if (onError) onError(e);
+        else console.error(e.error);
+      }),
     ];
     setWs(handle);
     return () => {
@@ -555,6 +585,8 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       detail: props.detail,
       keepPushed: props.keepPushed,
       gestureKeys: props.gestureKeys,
+      direction: props.direction,
+      permissions: props.permissions,
       label: props.label,
       tabs: props.tabs,
     });
@@ -572,6 +604,8 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
     JSON.stringify(props.detail ?? null),
     props.keepPushed,
     JSON.stringify(props.gestureKeys ?? null),
+    props.direction,
+    JSON.stringify(props.permissions ?? null),
     props.label,
     props.tabs?.fill,
     props.tabs?.inset,
@@ -608,7 +642,13 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       />
       {ws &&
         surfaces.map((surface) => (
-          <SurfacePortal key={surface.view.id} surface={surface} type={typeById.get(surface.view.type)} />
+          <SurfacePortal
+            key={surface.view.id}
+            surface={surface}
+            type={typeById.get(surface.view.type)}
+            ws={ws}
+            fallback={props.errorFallback}
+          />
         ))}
       {ws &&
         (parsed.stage?.backdrop ?? parsed.backdrop) != null &&
@@ -642,14 +682,77 @@ export const Workspace = Object.assign(forwardRef(WorkspaceImpl), {
 }) as WorkspaceComponent;
 const noSurfaces: readonly Surface[] = [];
 
-function SurfacePortal({ surface, type }: { surface: Surface; type: ViewTypeProps<any> | undefined }) {
+function SurfacePortal({
+  surface,
+  type,
+  ws,
+  fallback,
+}: {
+  surface: Surface;
+  type: ViewTypeProps<any> | undefined;
+  ws: WorkspaceHandle;
+  fallback: WorkspaceProps["errorFallback"];
+}) {
   const view = surface.view;
+  // Each view renders inside its own boundary: one that throws shows its fallback and the rest
+  // of the workspace, other views' state included, carries on.
+  const boundary = (children: ReactNode, show: ViewBoundaryProps["fallback"]) => (
+    <ViewBoundary view={view} ws={ws} fallback={show}>
+      {children}
+    </ViewBoundary>
+  );
   return (
     <ViewContext.Provider value={view}>
-      {type && !type.iframe && !type.mount && createPortal(<Content type={type} />, surface.content, view.id)}
-      {type && type.icon != null && !isMarkup(type.icon) && createPortal(type.icon, surface.icon)}
-      {type?.accessory != null && createPortal(<Accessory type={type} />, surface.accessory)}
+      {type &&
+        !type.iframe &&
+        !type.mount &&
+        createPortal(
+          boundary(<Content type={type} />, type.errorFallback ?? fallback ?? defaultFallback),
+          surface.content,
+          view.id,
+        )}
+      {type &&
+        type.icon != null &&
+        !isMarkup(type.icon) &&
+        createPortal(boundary(type.icon, null), surface.icon)}
+      {type?.accessory != null && createPortal(boundary(<Accessory type={type} />, null), surface.accessory)}
     </ViewContext.Provider>
+  );
+}
+
+interface ViewBoundaryProps {
+  view: ViewHandle;
+  ws: WorkspaceHandle;
+  /** What to show instead; null shows nothing (icons and accessories). */
+  fallback: ((info: ErrorFallbackProps) => ReactNode) | null;
+  children: ReactNode;
+}
+class ViewBoundary extends Component<ViewBoundaryProps, { failure: { error: unknown } | null }> {
+  state = { failure: null as { error: unknown } | null };
+  static getDerivedStateFromError(error: unknown) {
+    return { failure: { error } };
+  }
+  componentDidCatch(error: unknown) {
+    this.props.ws.reportError(error, { viewId: this.props.view.id, source: "render" });
+  }
+  retry = () => this.setState({ failure: null });
+  render() {
+    const { failure } = this.state;
+    if (!failure) return this.props.children;
+    const { fallback, view } = this.props;
+    return fallback ? fallback({ error: failure.error, view, retry: this.retry }) : null;
+  }
+}
+/** Matches the core's fallback for content that fails to mount, so both look the same. */
+function defaultFallback({ error, view, retry }: ErrorFallbackProps) {
+  return (
+    <div data-trellis-part="view-error" role="alert">
+      <strong>{view.title} couldn’t load</strong>
+      <p>{error instanceof Error ? error.message : String(error)}</p>
+      <button type="button" data-trellis-part="view-error-retry" onClick={retry}>
+        Try again
+      </button>
+    </div>
   );
 }
 function Content({ type }: { type: ViewTypeProps<any> }) {

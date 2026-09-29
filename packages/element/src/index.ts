@@ -111,7 +111,7 @@ function specFrom(el: Element): LayoutSpec | null {
  * `<trellis-workspace>`: a light-DOM custom element around `createWorkspace`.
  *
  * Attributes: theme, floating ("false" | "stage" | "overlay"), navigation ("false" | "focus" | "free"),
- * motion, storage-key, version, label, panel-menu, keep-pushed ("false" undoes pushes when a divider is dragged back).
+ * motion, storage-key, version, label, panel-menu, direction ("ltr" | "rtl" | "auto"), keep-pushed ("false" undoes pushes when a divider is dragged back).
  * Children: `<template data-view-type>` definitions, one layout root (`<trellis-split>` etc.),
  * and optional `<div slot="backdrop|stage-empty|empty|chrome">` content.
  * Properties: `types` (merged over template types), `defaultLayout`, `document`, `options`, and `workspace` (the handle).
@@ -128,6 +128,7 @@ export class TrellisWorkspaceElement extends ElementBase {
     "motion",
     "panel-menu",
     "keep-pushed",
+    "direction",
     "tab-fill",
     "tab-inset",
   ];
@@ -214,6 +215,9 @@ export class TrellisWorkspaceElement extends ElementBase {
       ...(this.hasAttribute("motion") ? { motion: this.attr("motion") } : {}),
       ...(this.hasAttribute("panel-menu") ? { panelMenu: bool(this, "panel-menu") } : {}),
       ...(this.hasAttribute("keep-pushed") ? { keepPushed: bool(this, "keep-pushed") } : {}),
+      ...(this.hasAttribute("direction")
+        ? { direction: this.attr<"ltr" | "rtl" | "auto">("direction") }
+        : {}),
       ...(this.hasAttribute("tab-fill") || this.hasAttribute("tab-inset")
         ? {
             tabs: {

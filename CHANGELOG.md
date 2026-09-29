@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Error isolation. A view whose content fails to mount or render shows a fallback with **Try again**, and the rest of
+  the workspace carries on. In React, each view renders in its own error boundary. Everything that throws goes to a new
+  `error` event with its source, view and type; `ws.reportError` sends your own errors the same way, and
+  `errorFallback` replaces the fallback. React gets `onError` and `errorFallback` props.
+- Right-to-left layouts. `direction: "auto"` (the default) follows the page, and `"rtl"` mirrors the layout, tabs,
+  menus, keys and gestures. Documents stay direction-neutral.
+- `permissions`, to lock the layout or allow only some changes: `rearrange`, `resize`, `close`, `float` and `hide`.
+  Calls from code are never limited.
+- `npm run bench`, which measures startup, memory and frame timing for large workspaces.
+- Performance and Security pages in the docs.
+
+### Changed
+
+- Large workspaces render much faster: with the CPU slowed 4× and 300 views, slow frames during a tab drag fall from
+  98% to 3%, and during a zoom from 84% to 22%.
+- `sanitize` and `setDocument` accept any value without throwing, and repair anything inconsistent. A saved layout
+  with the wrong shape falls back to the default layout.
+- Trellis works under a strict Content Security Policy (`style-src-attr 'none'`) and with Trusted Types enforced, as
+  long as icons aren't passed as markup strings.
+
+### Fixed
+
+- **Close other tabs** closed tabs whose type isn't closable.
+
 ## 0.3.0 — 2026-09-28
 
 ### Changed

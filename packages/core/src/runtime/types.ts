@@ -209,6 +209,17 @@ export interface WorkspaceOptions {
   /** CSS custom properties applied to the workspace, e.g. { "--trellis-accent": "#f60" }. */
   tokens?: Record<string, string>;
   keymap?: Keymap;
+  /** What users may change through the interface: `false` locks the layout, `true` (default)
+   * allows everything, or turn off each of these. Calls from code always work, so an admin tool or
+   * a server-driven layout can still change it. Can change at any time. */
+  permissions?: boolean | Partial<Permissions>;
+  /** Layout direction. "auto" (default) follows the page (the `dir` attribute or CSS `direction`
+   * around the workspace); "rtl" mirrors the layout, tabs, menus, keys and gestures. Documents are
+   * direction-neutral: a row's first child sits at its start edge either way. */
+  direction?: "ltr" | "rtl" | "auto";
+  /** What a view shows when its content fails to mount: a node or text. The default shows the
+   * view's title, the error message and a Try again button. */
+  errorFallback?: (info: ErrorFallbackInfo) => Node | string;
   /** Keys held with the pointer for free-navigation gestures: `pan`, `scale` and `rect` (drag), and
    * `step` (scroll). Each is a combo, a list of combos (any works) or `null` (off). See
    * `defaultGestureKeys()` for the defaults. */
@@ -261,7 +272,56 @@ export interface WorkspaceSnapshot {
   dragging: boolean;
 }
 
+export interface Permissions {
+  /** Drag tabs and panels: docking, tabbing, reordering, moving floating windows, and the panel
+   * menu's Move and New split items. */
+  rearrange: boolean;
+  /** Resize with dividers (dragging, arrow keys, double-click) and floating windows' edges. */
+  resize: boolean;
+  /** Close views: close buttons, middle-click, Delete, the Close menu items and shortcut. */
+  close: boolean;
+  /** Turn panels into floating windows and back: the Float and Dock menu items, the float
+   * shortcut, and dragging a whole panel between the layout and the desktop. */
+  float: boolean;
+  /** Hide panels: the Hide menu item and shortcut. */
+  hide: boolean;
+}
+
+/** Where an error came from: a view type's `mount`, its cleanup, `title`, `iframe` or `menu`
+ * function, a close guard, an event listener, a framework render (adapters), your own code
+ * (`reportError`), or another callback option. */
+export type ErrorSource =
+  | "mount"
+  | "cleanup"
+  | "title"
+  | "iframe"
+  | "menu"
+  | "guard"
+  | "listener"
+  | "render"
+  | "content"
+  | "callback";
+
+export interface WorkspaceError {
+  error: unknown;
+  source: ErrorSource;
+  /** The view it happened in, when there is one. */
+  viewId?: string;
+  /** That view's type. */
+  type?: string;
+}
+
+export interface ErrorFallbackInfo {
+  error: unknown;
+  view: ViewHandle;
+  /** Mount the view's content again. */
+  retry(): void;
+}
+
 export interface WorkspaceEvents {
+  /** Something in a view or a callback threw. The workspace carries on; with no listener, the
+   * error goes to the console. */
+  error(error: WorkspaceError): void;
   /** Committed layout changes only; never fires mid-drag or mid-animation. */
   change(document: LayoutDocument): void;
   open(view: ViewInfo): void;
@@ -291,6 +351,8 @@ export interface WorkspaceHandle {
   toggleDock(panelOrViewId: string): void;
   setTitle(viewId: string, title: string): void;
   setParams(viewId: string, patch: object): void;
+  /** Send an error through the workspace's `error` event, as if the workspace had caught it. */
+  reportError(error: unknown, context?: { viewId?: string; source?: ErrorSource }): void;
   navigation: {
     frame(target: string | string[] | "all" | "stage"): void;
     /** Maximize a docked panel, or restore it if it is maximized. Returns false for floating or hidden panels, or when navigation is off. (Double-clicking a stage float's tab bar frames the stage instead.) */
