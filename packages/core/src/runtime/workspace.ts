@@ -83,6 +83,8 @@ interface PanelDom {
   handles: HTMLElement | null;
   /** Shown instead of content when the panel is too small to use ("frame only"). */
   frameIcon: HTMLElement;
+  /** What the frame icon was last built from. */
+  frameIconKey: string;
   /** Width the accessories and menu take at the end of an overlaid title bar. */
   endInset: number;
 }
@@ -139,11 +141,6 @@ const TYPE_PLACEHOLDER = (type: string): ViewTypeDefinition => ({
   },
 });
 
-const escapeHtml = (text: string) =>
-  text.replace(
-    /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
-  );
 const DEFAULT_FLOAT_SIZE = { w: 560, h: 400 };
 /** Below this size a panel shows only its icon ("frame only"). */
 const FRAME_ONLY = { w: 160, h: 64 };
@@ -649,7 +646,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       "aria-haspopup": "menu",
       tabindex: "-1",
     });
-    menuButton.innerHTML = icons.more;
+    menuButton.append(icons.more());
     const tabbar = h(
       "div",
       { "data-trellis-part": "tabbar", "data-panel": panelId },
@@ -671,6 +668,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       tabs: new Map(),
       handles: null,
       frameIcon,
+      frameIconKey: "",
       endInset: 0,
     };
     panelDoms.set(panelId, dom);
@@ -785,7 +783,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         // Mouse affordance only: keyboard and screen-reader users close with Delete or the panel menu,
         // which keeps the tab free of nested interactive content.
         const closeButton = h("span", { "data-trellis-part": "tab-close", "aria-hidden": "true" });
-        closeButton.innerHTML = icons.close;
+        closeButton.append(icons.close());
         const el = h("div", {
           "data-trellis-part": "tab",
           "data-view": viewId,
@@ -861,9 +859,18 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       // Mirrored on the bar, which may be detached from the panel (overlay bars).
       setAttr(dom.tabbar, "data-focused", focusedPanel === panelId ? "" : null);
       setAttr(dom.tabbar, "data-single", panel.views.length === 1 ? "" : null);
-      const iconSource = records.get(panel.selected)?.icon.innerHTML ?? "";
-      const icon = iconSource || `<b>${escapeHtml(titleOf(panel.selected).slice(0, 1).toUpperCase())}</b>`;
-      if (dom.frameIcon.innerHTML !== icon) dom.frameIcon.innerHTML = icon;
+      // The selected view's icon, copied as nodes (never re-parsed), or its title's first letter.
+      const source = records.get(panel.selected)?.icon;
+      const letter = titleOf(panel.selected).slice(0, 1).toUpperCase();
+      const key = source?.childNodes.length ? source.innerHTML : `letter:${letter}`;
+      if (dom.frameIconKey !== key) {
+        dom.frameIconKey = key;
+        dom.frameIcon.replaceChildren(
+          ...(source?.childNodes.length
+            ? [...source.childNodes].map((n) => n.cloneNode(true))
+            : [h("b", {}, letter)]),
+        );
+      }
       if (barMode(panel) === "overlay")
         dom.endInset = dom.accessories.offsetWidth + dom.menuButton.offsetWidth + 24;
       // The button shows whenever the panel has a menu. The built-ins alone always give one.
@@ -1205,8 +1212,18 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     visit(doc.root);
   }
   /** Lines for a collapsed group's splits, `outline` levels deep, as percentages of the group. */
-  function groupOutline(node: SplitNode, bounds: Rect, depth: number): string {
-    let html = "";
+  /** A collapsed group's dividing lines, as positions in percent of the tile. */
+  interface GroupLine {
+    axis: "x" | "y";
+    /** Along the tile's width, from its start edge (right when right to left). */
+    inline: number;
+    /** Down the tile's height. */
+    block: number;
+    /** The line's length, across its axis. */
+    length: number;
+  }
+  function groupOutline(node: SplitNode, bounds: Rect, depth: number): GroupLine[] {
+    const lines: GroupLine[] = [];
     const walk = (n: LayoutNode, level: number): void => {
       if (n.kind === "stage") {
         if (n.child) walk(n.child, level);
@@ -1215,21 +1232,30 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       if (n.kind !== "split" || level >= depth) return;
       const r = entries.get(n.id)?.rect;
       if (!r) return;
-      const pct = (v: number, from: number, size: number) => `${(((v - from) / size) * 100).toFixed(3)}%`;
-      // Horizontal positions are measured from the tile's start edge.
-      const start = rtl ? "right" : "left";
+      const pct = (v: number, from: number, size: number) => Math.round(((v - from) / size) * 100000) / 1000;
       for (const child of n.children.slice(1)) {
         const c = entries.get(child.id)?.rect;
         if (!c) continue;
-        html +=
+        lines.push(
           n.axis === "x"
-            ? `<i data-axis="x" style="${start}:${pct(c.x, bounds.x, bounds.w)};top:${pct(r.y, bounds.y, bounds.h)};height:${pct(r.y + r.h, r.y, bounds.h)}"></i>`
-            : `<i data-axis="y" style="top:${pct(c.y, bounds.y, bounds.h)};${start}:${pct(r.x, bounds.x, bounds.w)};width:${pct(r.x + r.w, r.x, bounds.w)}"></i>`;
+            ? {
+                axis: "x",
+                inline: pct(c.x, bounds.x, bounds.w),
+                block: pct(r.y, bounds.y, bounds.h),
+                length: pct(r.y + r.h, r.y, bounds.h),
+              }
+            : {
+                axis: "y",
+                inline: pct(r.x, bounds.x, bounds.w),
+                block: pct(c.y, bounds.y, bounds.h),
+                length: pct(r.x + r.w, r.x, bounds.w),
+              },
+        );
       }
       n.children.forEach((c) => walk(c, level + 1));
     };
     walk(node, 0);
-    return html;
+    return lines;
   }
   /** The part of a collapsed group under a point, as deep as its outline shows. Zooming there always
    * makes progress, even when the whole group is too small to open at this screen size. */
@@ -1271,10 +1297,21 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         layer.append(el);
         groupEls.set(id, el);
       }
+      // Built as elements with their positions set through the style object, not markup, so a
+      // Content Security Policy that blocks inline style attributes doesn't break them.
       const lines = groupOutline(e.node, e.rect, outline);
-      if (el.dataset.lines !== lines) {
-        el.innerHTML = lines;
-        el.dataset.lines = lines;
+      const key = `${rtl}:${JSON.stringify(lines)}`;
+      if (el.dataset.lines !== key) {
+        el.dataset.lines = key;
+        el.replaceChildren(
+          ...lines.map((line) => {
+            const i = h("i", { "data-axis": line.axis });
+            i.style.setProperty(rtl ? "right" : "left", `${line.inline}%`);
+            i.style.top = `${line.block}%`;
+            i.style.setProperty(line.axis === "x" ? "height" : "width", `${line.length}%`);
+            return i;
+          }),
+        );
       }
       const count = leafIds(e.node).length;
       setAttr(el, "aria-label", `${count} panels. Double-click to zoom in.`);

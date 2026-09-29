@@ -24,6 +24,11 @@ const app = document.getElementById("app")!;
 const w = window as any;
 // ?dir=rtl lays the page out right to left; the workspace follows it.
 if (params.get("dir")) document.documentElement.dir = params.get("dir")!;
+// Content Security Policy and Trusted Types violations, for the strict scenario's tests.
+w.violations = [] as string[];
+document.addEventListener("securitypolicyviolation", (e) =>
+  w.violations.push(`${e.violatedDirective} ${e.blockedURI} ${e.sample}`),
+);
 w.mounts = {} as Record<string, number>;
 w.unmounts = {} as Record<string, number>;
 w.events = [] as string[];
@@ -220,4 +225,30 @@ if (scenario === "stress") {
   // Until the first frame is on screen.
   requestAnimationFrame(() => requestAnimationFrame(() => (w.startup = performance.now() - started)));
   w.ws = ws;
+}
+
+if (scenario === "strict") {
+  // Views that build their content without markup strings, so the page can run with inline
+  // style attributes blocked and Trusted Types enforced. The e2e test adds that policy.
+  const text = (el: HTMLElement, view: any) => {
+    const p = document.createElement("p");
+    p.textContent = `note ${view.id}`;
+    el.append(p);
+  };
+  const note = (id: string) => L.view("note", { id });
+  w.ws = createWorkspace(app, {
+    types: { note: { title: (v) => `Note ${v.id}`, mount: text } },
+    navigation: "free",
+    defaultLayout: L.row(
+      [
+        L.panel({ id: "left" }, note("n1"), note("n2")),
+        L.stage(L.panel({ id: "docs" }, note("n3"))),
+        L.column([
+          L.panel({ id: "right" }, note("n4")),
+          L.row([note("x1"), note("x2"), L.column([note("x3"), note("x4")])]),
+        ]),
+      ],
+      [1, 12, 0.3],
+    ),
+  });
 }

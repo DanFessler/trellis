@@ -2060,3 +2060,42 @@ test.describe("saved layouts", () => {
     }
   });
 });
+
+test.describe("strict pages", () => {
+  test("works with inline style attributes blocked and Trusted Types enforced", async ({
+    page,
+    browserName,
+  }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.route("**/?scenario=strict*", async (route) => {
+      const response = await route.fetch();
+      const html = (await response.text()).replace(
+        "<head>",
+        `<head><meta http-equiv="Content-Security-Policy" content="style-src-attr 'none'; require-trusted-types-for 'script'">`,
+      );
+      await route.fulfill({ response, body: html });
+    });
+    await page.goto("/?scenario=strict");
+    await expect(tab(page, "n3")).toBeVisible();
+    // Built-in icons are there: close buttons, the menu button, and a submenu chevron.
+    await expect(tab(page, "n3").locator("[data-trellis-part=tab-close] svg")).toBeAttached();
+    await expect(panel(page, "docs").locator("[data-trellis-part=panel-menu] svg")).toBeAttached();
+    await panel(page, "docs").locator("[data-trellis-part=panel-menu]").click();
+    await expect(page.locator(".trellis-menu .trellis-menu-chevron svg").first()).toBeAttached();
+    await page.keyboard.press("Escape");
+    // The nested group is too small, so it collapses; its lines are positioned.
+    const group = page.locator("[data-trellis-part=group]");
+    await expect(group).toHaveCount(1);
+    const tile = await box(group);
+    const first = await box(group.locator("i[data-axis=x]").first());
+    expect(first.x).toBeGreaterThan(tile.x + 2);
+    expect(first.x).toBeLessThan(tile.x + tile.width - 2);
+    // A panel too small for tabs shows its title's first letter.
+    await expect(panel(page, "left")).toHaveAttribute("data-frame-only", "");
+    await expect(panel(page, "left").locator("[data-trellis-part=frame-icon]")).toHaveText("N");
+    expect(errors).toEqual([]);
+    expect(await page.evaluate(() => (window as any).violations)).toEqual([]);
+    void browserName;
+  });
+});

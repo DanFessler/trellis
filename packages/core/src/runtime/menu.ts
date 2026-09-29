@@ -83,12 +83,12 @@ export class Menu {
       "aria-haspopup": entry.items ? "menu" : undefined,
     });
     const check = h("span", { class: "trellis-menu-check" });
-    if (entry.checked) check.innerHTML = icons.check;
+    if (entry.checked) check.append(icons.check());
     button.append(check, h("span", { class: "trellis-menu-label" }, entry.label));
     if (entry.shortcut) button.append(h("span", { class: "trellis-menu-shortcut" }, entry.shortcut));
     if (entry.items) {
       const chevron = h("span", { class: "trellis-menu-chevron" });
-      chevron.innerHTML = icons.chevron;
+      chevron.append(icons.chevron());
       button.append(chevron);
     }
     const openSub = () => {
