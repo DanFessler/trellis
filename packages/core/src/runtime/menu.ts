@@ -24,6 +24,10 @@ export class Menu {
   get open() {
     return !!this.el;
   }
+  /** Right to left, submenus open to the left and the arrow keys swap. */
+  private get rtl() {
+    return getComputedStyle(this.host).direction === "rtl";
+  }
   show(entries: MenuEntry[], anchor: { x: number; y: number; alignRight?: boolean }, focusFirst = true) {
     this.close(false);
     this.restoreFocus = document.activeElement as HTMLElement | null;
@@ -93,7 +97,12 @@ export class Menu {
       this.submenu = new Menu(this.host);
       const r = button.getBoundingClientRect();
       const b = this.host.getBoundingClientRect();
-      this.submenu.show(entry.items, { x: r.right - b.left - 4, y: r.top - b.top - 5 });
+      this.submenu.show(
+        entry.items,
+        this.rtl
+          ? { x: r.left - b.left + 4, y: r.top - b.top - 5, alignRight: true }
+          : { x: r.right - b.left - 4, y: r.top - b.top - 5 },
+      );
       this.submenu.parent = this;
     };
     button.addEventListener("pointerenter", () => {
@@ -125,6 +134,7 @@ export class Menu {
       e.preventDefault();
       items[(to + items.length) % items.length]?.focus();
     };
+    const [open, back] = this.rtl ? ["ArrowLeft", "ArrowRight"] : ["ArrowRight", "ArrowLeft"];
     switch (e.key) {
       case "ArrowDown":
         return move(index + 1);
@@ -134,13 +144,13 @@ export class Menu {
         return move(0);
       case "End":
         return move(items.length - 1);
-      case "ArrowRight":
+      case open:
         if (items[index]?.getAttribute("aria-haspopup")) {
           e.preventDefault();
           items[index].click();
         }
         return;
-      case "ArrowLeft":
+      case back:
       case "Escape":
         e.preventDefault();
         e.stopPropagation();

@@ -1597,3 +1597,230 @@ test.describe("errors in views", () => {
     await expect(surface(page, id).locator("[data-test=boom-ok]")).toBeVisible();
   });
 });
+
+test.describe("right to left", () => {
+  const open = async (page: Page, extra = "") => {
+    await page.goto(`/?scenario=vanilla&dir=rtl${extra}`);
+    await expect(tab(page, "a")).toBeVisible();
+  };
+  const x = async (locator: Locator) => (await box(locator)).x;
+  const right = async (locator: Locator) => {
+    const b = await box(locator);
+    return b.x + b.width;
+  };
+
+  test("mirrors the layout: a row's first child is on the right", async ({ page }) => {
+    await open(page);
+    expect(await x(panel(page, "left"))).toBeGreaterThan(await x(panel(page, "docs")));
+    expect(await x(panel(page, "docs"))).toBeGreaterThan(await x(panel(page, "right")));
+    await expect(page.locator(".trellis")).toHaveCSS("direction", "rtl");
+  });
+
+  test("tabs run right to left, with the panel menu at the end", async ({ page }) => {
+    await open(page);
+    expect(await x(tab(page, "files"))).toBeGreaterThan(await x(tab(page, "search")));
+    const menu = panel(page, "left").locator("[data-trellis-part=panel-menu]");
+    expect(await x(menu)).toBeLessThan(await x(tab(page, "search")));
+  });
+
+  test("arrow keys in a tab list follow reading order", async ({ page }) => {
+    await open(page);
+    // Three tabs, so next and previous differ: a, b, c from right to left.
+    await page.evaluate(() =>
+      (window as any).ws.open("editor", { id: "c", params: { name: "c.ts" }, focus: false }),
+    );
+    await tab(page, "a").click();
+    await page.keyboard.press("ArrowLeft");
+    await expect(tab(page, "b")).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("ArrowLeft");
+    await expect(tab(page, "c")).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("ArrowRight");
+    await expect(tab(page, "b")).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("dividers move the way they're dragged, by pointer and keyboard", async ({ page }) => {
+    await open(page);
+    const width = async () => (await box(panel(page, "left"))).width;
+    const before = await width();
+    const d = await box(page.locator("[data-trellis-part=divider][data-index='0']").first());
+    // The first divider sits on the left edge of the first panel, which is on the right.
+    await drag(page, center(d), { x: d.x + d.width / 2 - 100, y: d.y + d.height / 2 });
+    const dragged = await width();
+    expect(dragged).toBeGreaterThan(before + 80);
+    await page.locator("[data-trellis-part=divider][data-index='0']").first().focus();
+    await page.keyboard.press("ArrowLeft");
+    expect(await width()).toBeGreaterThan(dragged + 5);
+  });
+
+  test("dropping a tab on a panel's left edge docks it on the left", async ({ page }) => {
+    await open(page);
+    const docs = await box(panel(page, "docs"));
+    const from = center(await box(tab(page, "outline")));
+    await drag(page, from, { x: docs.x + 12, y: docs.y + docs.height / 2 }, false);
+    await page.waitForTimeout(250);
+    await page.mouse.up();
+    await expect.poll(async () => (await box(surface(page, "outline"))).x).toBeLessThan(docs.x + 40);
+    const outline = await box(surface(page, "outline"));
+    expect(outline.x + outline.width).toBeLessThanOrEqual((await box(panel(page, "docs"))).x + 12);
+    expect(outline.y).toBeGreaterThanOrEqual(docs.y - 2);
+  });
+
+  test("reordering tabs follows reading order", async ({ page }) => {
+    await open(page);
+    // a, b, c run from right to left. Drag c into the gap between a and b.
+    await page.evaluate(() =>
+      (window as any).ws.open("editor", { id: "c", params: { name: "c.ts" }, focus: false }),
+    );
+    const b = await box(tab(page, "b"));
+    const c = center(await box(tab(page, "c")));
+    await page.mouse.move(c.x, c.y);
+    await page.mouse.down();
+    await page.mouse.move(c.x + 10, c.y, { steps: 3 });
+    await page.mouse.move(b.x + b.width * 0.85, c.y, { steps: 8 });
+    await page.mouse.up();
+    await expect
+      .poll(async () => {
+        const root = (await doc(page)).root;
+        const stage = root.children.find((n: any) => n.kind === "stage");
+        return stage.child.views;
+      })
+      .toEqual(["a", "c", "b"]);
+  });
+
+  test("floating windows are placed from the right and follow the pointer", async ({ page }) => {
+    await open(page);
+    const id = await page.evaluate(
+      () =>
+        (window as any).ws.open("files", { placement: { float: { x: 0.05, y: 0.1, w: 0.3, h: 0.4 } } })
+          .panelId as string,
+    );
+    const start = await box(panel(page, id));
+    expect(start.x).toBeGreaterThan(1200 / 2);
+    const bar = await box(panel(page, id).locator("[data-trellis-part=tabbar]"));
+    await drag(
+      page,
+      { x: bar.x + bar.width - 20, y: bar.y + bar.height / 2 },
+      {
+        x: bar.x + bar.width - 80,
+        y: bar.y + bar.height / 2 + 30,
+      },
+    );
+    await expect.poll(async () => (await box(panel(page, id))).x).toBeLessThan(start.x - 30);
+  });
+
+  test("menus open toward the start edge, and submenus to the left", async ({ page }) => {
+    await open(page);
+    const button = await box(panel(page, "docs").locator("[data-trellis-part=panel-menu]"));
+    await panel(page, "docs").locator("[data-trellis-part=panel-menu]").click();
+    const menu = page.locator(".trellis-menu").first();
+    await expect(menu).toBeVisible();
+    await expect(menu).toHaveCSS("direction", "rtl");
+    expect(Math.abs((await box(menu)).x - button.x)).toBeLessThan(4);
+    const move = menu.getByRole("menuitem", { name: /^Move/ });
+    await move.focus();
+    await page.keyboard.press("ArrowLeft");
+    const sub = page.locator(".trellis-menu").nth(1);
+    await expect(sub).toBeVisible();
+    // It overlaps its parent slightly, as it does left to right.
+    expect(await right(sub)).toBeLessThanOrEqual((await box(menu)).x + 10);
+    // The split that lands on the left says so.
+    await expect(sub.getByRole("menuitem", { name: "New split left" })).toBeVisible();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.locator(".trellis-menu")).toHaveCount(1);
+    // Shortcuts keep reading left to right.
+    await expect(menu.locator(".trellis-menu-shortcut").first()).toHaveCSS("direction", "ltr");
+  });
+
+  test("navigation gestures follow the pointer", async ({ page }) => {
+    await open(page, "&navigation=free");
+    // Stepping in toward the pointer frames the panel under it.
+    const files = center(await box(surface(page, "files")));
+    await page.mouse.move(files.x, files.y);
+    for (const key of ["ControlOrMeta", "Alt"]) await page.keyboard.down(key);
+    await page.mouse.wheel(0, -100);
+    for (const key of ["Alt", "ControlOrMeta"]) await page.keyboard.up(key);
+    await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).toBe("left");
+    await page.evaluate(() => (window as any).ws.navigation.frame("all"));
+    await page.waitForTimeout(300);
+    // A rectangle around a panel frames that panel.
+    const r = await box(panel(page, "right"));
+    for (const key of ["ControlOrMeta", "Alt", "Shift"]) await page.keyboard.down(key);
+    await page.mouse.move(r.x + 4, r.y + 4);
+    await page.mouse.down();
+    await page.mouse.move(r.x + r.width - 4, r.y + r.height - 4, { steps: 6 });
+    await page.mouse.up();
+    for (const key of ["Shift", "Alt", "ControlOrMeta"]) await page.keyboard.up(key);
+    await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).toBe("right");
+    // Panning moves the layout with the pointer.
+    await page.evaluate(() => (window as any).ws.navigation.frame("all"));
+    await page.waitForTimeout(300);
+    const before = await x(panel(page, "docs"));
+    const at = center(await box(surface(page, "a")));
+    for (const key of ["ControlOrMeta", "Alt"]) await page.keyboard.down(key);
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    await page.mouse.move(at.x + 120, at.y, { steps: 6 });
+    const during = await x(panel(page, "docs"));
+    await page.mouse.up();
+    for (const key of ["Alt", "ControlOrMeta"]) await page.keyboard.up(key);
+    expect(during).toBeGreaterThan(before + 60);
+  });
+
+  test("a collapsed group mirrors its lines, and double-clicking zooms to the part under the pointer", async ({
+    page,
+  }) => {
+    await open(page, "&navigation=free");
+    const ids = await page.evaluate(() => {
+      const ws = (window as any).ws;
+      const x1 = ws.open("files", { placement: { beside: "right", edge: "bottom", share: 0.5 } });
+      const x2 = ws.open("search", { placement: { beside: x1.panelId, edge: "right" } });
+      const x3 = ws.open("files", { placement: { beside: x2.panelId, edge: "right" } });
+      ws.open("search", { placement: { beside: x3.panelId, edge: "bottom" } });
+      const doc = ws.getDocument();
+      doc.root.weights = [1, 12, 0.3];
+      ws.setDocument(doc);
+      ws.navigation.overview();
+      return { x1: x1.panelId };
+    });
+    const group = page.locator("[data-trellis-part=group]");
+    await expect(group).toHaveCount(1);
+    // The row's first seam, after x1, is measured from the tile's right edge.
+    const first = group.locator("i[data-axis=x]").first();
+    expect(await first.evaluate((el) => (el as HTMLElement).style.right)).not.toBe("");
+    // x1 is the row's first part, so it's on the right of the tile.
+    const tile = await box(group);
+    await page.mouse.dblclick(tile.x + tile.width * 0.9, tile.y + tile.height / 2);
+    await expect(panel(page, ids.x1)).toBeVisible();
+  });
+
+  test("resizing a floating window from its left edge grows it leftward", async ({ page }) => {
+    await open(page);
+    const id = await page.evaluate(
+      () =>
+        (window as any).ws.open("files", { placement: { float: { x: 0.1, y: 0.1, w: 0.3, h: 0.4 } } })
+          .panelId as string,
+    );
+    const before = await box(panel(page, id));
+    const handle = page.locator(`.trellis-handles[data-panel="${id}"] [data-dir=w]`);
+    const h = center(await box(handle));
+    await page.mouse.move(h.x, h.y);
+    await page.mouse.down();
+    await page.mouse.move(h.x - 60, h.y, { steps: 5 });
+    await page.mouse.up();
+    await expect.poll(async () => (await box(panel(page, id))).width).toBeGreaterThan(before.width + 50);
+    const after = await box(panel(page, id));
+    expect(Math.abs(after.x + after.width - (before.x + before.width))).toBeLessThan(2);
+    // The document still measures it from the right: its start edge.
+    const rect = await page.evaluate(
+      (p) => (window as any).ws.getDocument().floating.find((f: any) => f.panel.id === p).rect,
+      id,
+    );
+    expect(rect.x).toBeCloseTo(0.1, 2);
+  });
+
+  test('direction: "ltr" overrides the page', async ({ page }) => {
+    await open(page);
+    await page.evaluate(() => (window as any).ws.update({ direction: "ltr" }));
+    await expect.poll(async () => (await x(panel(page, "left"))) < (await x(panel(page, "docs")))).toBe(true);
+  });
+});

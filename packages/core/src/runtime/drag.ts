@@ -72,6 +72,8 @@ export interface DragHost {
   tabbarHeight(panel: PanelNode): number;
   toScreen(world: Rect): Rect;
   fromScreen(p: { x: number; y: number }): { x: number; y: number };
+  /** Right to left: tabs run leftward and floating rects are measured from the right. */
+  rtl(): boolean;
   /** Screen rect of a docked node, inset by the gap. */
   panelScreen(world: Rect): Rect;
   /** Inverse of panelScreen. */
@@ -282,23 +284,31 @@ export function createDragController(host: DragHost) {
     const dragged = sort.items.find((item) => item.id === d.pendingTab)!;
     const list = host.panelDom(d.lifted.id)?.tablist.getBoundingClientRect() ?? sort.row;
     const left = Math.max(list.left, Math.min(list.right - dragged.width, e.clientX - sort.grab));
-    let x = sort.items[0].x;
+    // Tabs run from the start edge: the left, or the right when right to left. `edge` walks the
+    // row in reading order, one resting slot at a time.
+    const rtl = host.rtl();
+    const first = sort.items[0];
+    const slot = (edge: number, width: number) => (rtl ? edge - width : edge);
+    const step = (edge: number, width: number) => (rtl ? edge - width : edge + width);
+    let edge = rtl ? first.x + first.width : first.x;
     let index = 0;
     for (const id of sort.order) {
       const item = sort.items.find((item) => item.id === id)!;
       // Reorder when the pointer crosses a neighbouring tab's resting centre.
-      if (id !== dragged.id && e.clientX > x + item.width / 2) index++;
-      x += item.width;
+      const centre = slot(edge, item.width) + item.width / 2;
+      if (id !== dragged.id && (rtl ? e.clientX < centre : e.clientX > centre)) index++;
+      edge = step(edge, item.width);
     }
     sort.order = sort.order.filter((id) => id !== dragged.id);
     sort.order.splice(index, 0, dragged.id);
-    x = sort.items[0].x;
+    edge = rtl ? first.x + first.width : first.x;
     for (const id of sort.order) {
       const item = sort.items.find((item) => item.id === id)!;
       item.el.setAttribute("data-sorting", "");
       if (id === dragged.id) item.el.setAttribute("data-dragging", "");
-      item.el.style.transform = `translateX(${(id === dragged.id ? left : x) - item.x}px)`;
-      x += item.width;
+      const x = id === dragged.id ? left : slot(edge, item.width);
+      item.el.style.transform = `translateX(${x - item.x}px)`;
+      edge = step(edge, item.width);
     }
   }
 
@@ -527,7 +537,9 @@ export function createDragController(host: DragHost) {
         const el = dom.tabs.get(panel.views[i])?.el;
         if (!el) continue;
         const r = el.getBoundingClientRect();
-        if (p.x < r.left - rootBox.left + r.width / 2) {
+        const centre = r.left - rootBox.left + r.width / 2;
+        // Before this tab in reading order: left of its centre, or right of it right to left.
+        if (host.rtl() ? p.x > centre : p.x < centre) {
           index = i;
           break;
         }
@@ -863,7 +875,8 @@ export function createDragController(host: DragHost) {
     const x = d.pointer.x - w * d.grabX;
     const y = d.pointer.y - grabY;
     return {
-      x: (x - container.x) / container.w,
+      // Measured from the layer's start edge (see floatScreen).
+      x: host.rtl() ? (container.x + container.w - x - w) / container.w : (x - container.x) / container.w,
       y: (y - container.y) / container.h,
       w: w / container.w,
       h: h / container.h,

@@ -209,6 +209,10 @@ export interface WorkspaceOptions {
   /** CSS custom properties applied to the workspace, e.g. { "--trellis-accent": "#f60" }. */
   tokens?: Record<string, string>;
   keymap?: Keymap;
+  /** Layout direction. "auto" (default) follows the page (the `dir` attribute or CSS `direction`
+   * around the workspace); "rtl" mirrors the layout, tabs, menus, keys and gestures. Documents are
+   * direction-neutral: a row's first child sits at its start edge either way. */
+  direction?: "ltr" | "rtl" | "auto";
   /** What a view shows when its content fails to mount: a node or text. The default shows the
    * view's title, the error message and a Try again button. */
   errorFallback?: (info: ErrorFallbackInfo) => Node | string;

@@ -272,6 +272,21 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
 
   // ---------------------------------------------------------------- theme
   let appliedTokens = new Set<string>();
+  // ---------------------------------------------------------------- direction
+  /** Right to left: the layout is mirrored at the screen boundary (toScreen and fromScreen), so
+   * the document stays direction-neutral: a row's first child is its start edge. */
+  let rtl = false;
+  /** Follow the `direction` option, or the page's own direction with "auto". Returns whether it
+   * changed. */
+  function readDirection(): boolean {
+    const direction = options.direction ?? "auto";
+    setAttr(root, "dir", direction === "auto" ? null : direction);
+    const next = getComputedStyle(root).direction === "rtl";
+    if (next === rtl) return false;
+    rtl = next;
+    setAttr(root, "data-direction", rtl ? "rtl" : null);
+    return true;
+  }
   function applyTheme() {
     setAttr(root, "data-theme", options.theme ?? "system");
     const tabs = options.tabs ?? {};
@@ -288,6 +303,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     appliedTokens = new Set(Object.keys(tokens));
     setAttr(root, "data-navigation", String(navigationMode()));
     readMetrics();
+    readDirection();
   }
   function readMetrics() {
     const style = getComputedStyle(root);
@@ -304,18 +320,21 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const p = pad();
     const W = viewport.w - p * 2;
     const H = viewport.h - p * 2;
+    const x = p + ((r.x - c.x) / c.w) * W;
+    const w = (r.w / c.w) * W;
     return {
-      x: p + ((r.x - c.x) / c.w) * W,
+      x: rtl ? viewport.w - x - w : x,
       y: p + ((r.y - c.y) / c.h) * H,
-      w: (r.w / c.w) * W,
+      w,
       h: (r.h / c.h) * H,
     };
   }
   function fromScreen(p: { x: number; y: number }) {
     const c = camera.value;
     const q = pad();
+    const x = rtl ? viewport.w - p.x : p.x;
     return {
-      x: c.x + ((p.x - q) / (viewport.w - q * 2)) * c.w,
+      x: c.x + ((x - q) / (viewport.w - q * 2)) * c.w,
       y: c.y + ((p.y - q) / (viewport.h - q * 2)) * c.h,
     };
   }
@@ -339,13 +358,16 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (layerName === "overlay") return { x: 0, y: 0, w: viewport.w, h: viewport.h };
     return toScreen(stageWorld());
   }
+  /** Floating rects are fractions of their layer, measured from its start edge. */
   function floatScreen(rect: Rect, layerName: FloatingLayer): Rect {
     const c = floatContainer(layerName);
-    return { x: c.x + rect.x * c.w, y: c.y + rect.y * c.h, w: rect.w * c.w, h: rect.h * c.h };
+    const x = rtl ? c.x + c.w - (rect.x + rect.w) * c.w : c.x + rect.x * c.w;
+    return { x, y: c.y + rect.y * c.h, w: rect.w * c.w, h: rect.h * c.h };
   }
   function screenToFloat(r: Rect, layerName: FloatingLayer): Rect {
     const c = floatContainer(layerName);
-    return { x: (r.x - c.x) / c.w, y: (r.y - c.y) / c.h, w: r.w / c.w, h: r.h / c.h };
+    const x = rtl ? (c.x + c.w - r.x - r.w) / c.w : (r.x - c.x) / c.w;
+    return { x, y: (r.y - c.y) / c.h, w: r.w / c.w, h: r.h / c.h };
   }
   /** Where a panel should be, ignoring tweens. */
   function targetRect(panelId: string): Rect | null {
@@ -1137,13 +1159,15 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       const r = entries.get(n.id)?.rect;
       if (!r) return;
       const pct = (v: number, from: number, size: number) => `${(((v - from) / size) * 100).toFixed(3)}%`;
+      // Horizontal positions are measured from the tile's start edge.
+      const start = rtl ? "right" : "left";
       for (const child of n.children.slice(1)) {
         const c = entries.get(child.id)?.rect;
         if (!c) continue;
         html +=
           n.axis === "x"
-            ? `<i data-axis="x" style="left:${pct(c.x, bounds.x, bounds.w)};top:${pct(r.y, bounds.y, bounds.h)};height:${pct(r.y + r.h, r.y, bounds.h)}"></i>`
-            : `<i data-axis="y" style="top:${pct(c.y, bounds.y, bounds.h)};left:${pct(r.x, bounds.x, bounds.w)};width:${pct(r.x + r.w, r.x, bounds.w)}"></i>`;
+            ? `<i data-axis="x" style="${start}:${pct(c.x, bounds.x, bounds.w)};top:${pct(r.y, bounds.y, bounds.h)};height:${pct(r.y + r.h, r.y, bounds.h)}"></i>`
+            : `<i data-axis="y" style="top:${pct(c.y, bounds.y, bounds.h)};${start}:${pct(r.x, bounds.x, bounds.w)};width:${pct(r.x + r.w, r.x, bounds.w)}"></i>`;
       }
       n.children.forEach((c) => walk(c, level + 1));
     };
@@ -2044,8 +2068,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (panel.views.length > 1 && region !== "floating")
       moves.push(
         {
+          // Toward the end edge, which is on the left when the layout is mirrored.
           id: "split-right",
-          label: "New split right",
+          label: rtl ? "New split left" : "New split right",
           run: () => dock(viewId, { beside: panelId, edge: "right" }),
         },
         {
@@ -2127,8 +2152,14 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       return;
     }
     menuCloseHook = reset;
-    if (r) menu.show(entries, { x: r.right - b.left, y: r.bottom - b.top + 4, alignRight: true });
-    else menu.show(entries, at ?? { x: 0, y: 0 });
+    // The menu opens toward the start edge: under the button, lined up with its outer edge.
+    if (r)
+      menu.show(entries, {
+        x: (rtl ? r.left : r.right) - b.left,
+        y: r.bottom - b.top + 4,
+        alignRight: !rtl,
+      });
+    else menu.show(entries, { ...(at ?? { x: 0, y: 0 }), alignRight: rtl });
   }
 
   // ---------------------------------------------------------------- keyboard
@@ -2144,10 +2175,12 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       setFocus(viewId);
       panelDoms.get(panelId)?.tabs.get(viewId)?.el.focus();
     };
+    // Next is the tab after this one in reading order: to the left, right to left.
+    const [next, previous] = rtl ? ["ArrowLeft", "ArrowRight"] : ["ArrowRight", "ArrowLeft"];
     switch (e.key) {
-      case "ArrowRight":
+      case next:
         return go(index + 1);
-      case "ArrowLeft":
+      case previous:
         return go(index - 1);
       case "Home":
         return go(0);
@@ -2269,7 +2302,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const p = pad();
     const a = fromScreen({ x: screen.x - p, y: screen.y - p });
     const b = fromScreen({ x: screen.x + screen.w + p, y: screen.y + screen.h + p });
-    return { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y };
+    // Mirrored, the screen's left edge is the world's right edge.
+    const x = Math.min(a.x, b.x);
+    return { x, y: a.y, w: Math.abs(b.x - a.x), h: b.y - a.y };
   }
   function announce(text: string) {
     live.textContent = text;
@@ -2348,8 +2383,13 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const split = effectiveSplit(el.dataset.split!);
     const entry = entries.get(el.dataset.split!);
     if (!split || !entry || !doc.root) return;
-    const decrease = split.axis === "x" ? "ArrowLeft" : "ArrowUp";
-    const increase = split.axis === "x" ? "ArrowRight" : "ArrowDown";
+    // The arrow moves the divider that way on screen, which is backwards in a mirrored row.
+    const [decrease, increase] =
+      split.axis === "y"
+        ? ["ArrowUp", "ArrowDown"]
+        : rtl
+          ? ["ArrowRight", "ArrowLeft"]
+          : ["ArrowLeft", "ArrowRight"];
     if (e.key !== decrease && e.key !== increase) return;
     e.preventDefault();
     const push = dragBoundary(doc.root, layoutMetrics(), split.id, Number(el.dataset.index));
@@ -2491,6 +2531,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     tabbarHeight: (panel) => barHeight(panel),
     toScreen,
     fromScreen,
+    rtl: () => rtl,
     panelScreen: (world) => inset(toScreen(world), pad()),
     fromScreenRect,
     floatWorld(panelId) {
@@ -2544,6 +2585,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     viewport: () => viewport,
     fromScreen,
     toScreen,
+    rtl: () => rtl,
     panelScreen: (world) => inset(toScreen(world), pad()),
     setGesture(active) {
       gesture = active;
@@ -2585,6 +2627,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (w === viewport.w && hh === viewport.h) return;
     viewport = { w, h: hh };
     readMetrics();
+    readDirection();
     tween.stop();
     // Minimums are in pixels, so a new size can change the layout's proportions and scales.
     sync();
@@ -2685,6 +2728,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     update(patch) {
       const typesChanged = patch.types && patch.types !== options.types;
       options = { ...options, ...patch };
+      // With direction "auto", any update picks up a change to the page's own direction.
+      readDirection();
       if (
         "theme" in patch ||
         "tokens" in patch ||
