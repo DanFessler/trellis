@@ -294,7 +294,7 @@ export function restorePanel(
  * - Only one stage is kept.
  */
 export function sanitize(
-  input: LayoutDocument,
+  input: unknown,
   isKnownType: (type: string) => boolean = () => true,
 ): LayoutDocument {
   const src: Record<string, unknown> = isRecord(input) ? input : {};

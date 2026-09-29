@@ -120,6 +120,8 @@ Every element Trellis renders has a `data-trellis-part` attribute:
 | `source-slot`                                     | While dragging, where the view came from.                                                                                                               |
 | `group`                                           | A nested group too small to show its panels, drawn as one tile. Has `data-group="<split id>"`. Its lines are `<i>` elements with `data-axis`.           |
 | `frame-icon`                                      | The centred icon of a frame-only panel. Sized by `--trellis-frame-icon-size`.                                                                           |
+| `view-error`, `view-error-retry`                  | The fallback a view shows when its content fails, and its **Try again** button. See [Handling errors](./errors.md).                                     |
+| `view-missing`                                    | The placeholder for a view whose type isn't registered.                                                                                                 |
 | `menu`                                            | A popup menu: the panel menu or one of its submenus. See [Menus](#menus).                                                                               |
 
 ### Menus
@@ -161,6 +163,7 @@ On the **root** (`.trellis`):
 | `data-resizing`                                    | Resizing: `x`, `y` (dividers) or `float`.                                          |
 | `data-framed`                                      | The camera is zoomed in on something.                                              |
 | `data-busy`                                        | A drag or gesture is in progress; content is non-interactive.                      |
+| `data-direction`                                   | `rtl` while the workspace is mirrored. See [Right to left](./right-to-left.md).    |
 | `data-has-stage`, `data-stage-empty`, `data-empty` | Layout shape.                                                                      |
 
 On **panels**:

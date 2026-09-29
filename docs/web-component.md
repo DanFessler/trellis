@@ -111,11 +111,12 @@ These attributes on `<trellis-workspace>` map to [`WorkspaceOptions`](./core-api
 | `motion`      | `motion`          | `"system"`    | The animation policy.                                                                                               |
 | `panel-menu`  | `panelMenu`       | `true`        | Turns the built-in menu items on or off. To pass a function or `renderMenu`, use the `options` property.            |
 | `keep-pushed` | `keepPushed`      | `true`        | `false` makes dragging a divider back undo the panels it pushed.                                                    |
+| `direction`   | `direction`       | `"auto"`      | `ltr` or `rtl` overrides the page's direction. See [Right to left](./right-to-left.md).                             |
 | `storage-key` | `persist.key`     |               | Saves the layout to `localStorage` under this key and restores it from there. Read once, when the workspace mounts. |
 | `version`     | `persist.version` |               | Your layout version. A saved layout with a different `version` is discarded. Read once, when the workspace mounts.  |
 | `label`       | `label`           | `"Workspace"` | The accessible name of the workspace region. Read once, when the workspace mounts.                                  |
 
-`theme`, `floating`, `navigation`, `motion`, `panel-menu`, `keep-pushed`, `tab-fill` and `tab-inset` can change at any time.
+`theme`, `floating`, `navigation`, `motion`, `panel-menu`, `keep-pushed`, `direction`, `tab-fill` and `tab-inset` can change at any time. Set `permissions`, `errorFallback` and the other options through the `options` property.
 
 ## Properties
 
