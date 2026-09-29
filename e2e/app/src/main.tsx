@@ -195,12 +195,15 @@ if (scenario === "element") {
 }
 
 if (scenario === "stress") {
-  const cols = 6;
-  const rows = 6;
+  // ?cols=&rows=&tabs= size the grid; scripts/bench.mjs uses it.
+  const cols = Number(params.get("cols") ?? 6);
+  const rows = Number(params.get("rows") ?? 6);
+  const tabs = Number(params.get("tabs") ?? 3);
   const types: WorkspaceOptions["types"] = {
     cell: { title: (v) => `Cell ${v.params.n}`, mount: input("cell") },
   };
   let n = 0;
+  const started = performance.now();
   const ws = createWorkspace(app, {
     types,
     navigation: "free",
@@ -208,15 +211,13 @@ if (scenario === "stress") {
       Array.from({ length: cols }, () =>
         L.column(
           Array.from({ length: rows }, () =>
-            L.panel(
-              L.view("cell", { params: { n: n++ } }),
-              L.view("cell", { params: { n: n++ } }),
-              L.view("cell", { params: { n: n++ } }),
-            ),
+            L.panel(...Array.from({ length: tabs }, () => L.view("cell", { params: { n: n++ } }))),
           ),
         ),
       ),
     ),
   });
+  // Until the first frame is on screen.
+  requestAnimationFrame(() => requestAnimationFrame(() => (w.startup = performance.now() - started)));
   w.ws = ws;
 }

@@ -10,7 +10,6 @@ import {
   hidePanel,
   insertPanel,
   locatePanel,
-  panelOfView,
   raiseFloat,
   removePanel,
   restorePanel,
@@ -418,11 +417,37 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       camera.value = value;
     }
   }
+  // Where each view and panel is, rebuilt when the document changes (documents are never edited
+  // in place). Rendering asks for every view on every frame, so walking the tree for each would
+  // cost views × panels per frame.
+  let indexed: LayoutDocument | null = null;
+  const viewIndex = new Map<string, { panel: PanelNode; region: Region | "hidden" }>();
+  const panelIndex = new Map<string, { panel: PanelNode; region: Region | "hidden" }>();
+  function located() {
+    if (indexed === doc) return;
+    indexed = doc;
+    viewIndex.clear();
+    panelIndex.clear();
+    const add = (panel: PanelNode, region: Region | "hidden") => {
+      if (panelIndex.has(panel.id)) return;
+      const entry = { panel, region };
+      panelIndex.set(panel.id, entry);
+      for (const v of panel.views) if (!viewIndex.has(v)) viewIndex.set(v, entry);
+    };
+    for (const p of panelsOf(findStage(doc.root))) add(p, "stage");
+    for (const p of panelsOf(doc.root)) add(p, "side");
+    for (const f of doc.floating) add(f.panel, "floating");
+    for (const h of doc.hidden) add(h.panel, "hidden");
+  }
+  /** The panel showing a view in the current document (panelOfView, without the walk). */
+  function panelOf(viewId: string): PanelNode | null {
+    located();
+    return viewIndex.get(viewId)?.panel ?? null;
+  }
   function regionOf(panelId: string): Region {
-    if (doc.floating.some((f) => f.panel.id === panelId)) return "floating";
-    const stage = findStage(doc.root);
-    if (stage && findNode(stage, panelId)) return "stage";
-    return "side";
+    located();
+    const region = panelIndex.get(panelId)?.region;
+    return region === "hidden" || region === undefined ? "side" : region;
   }
 
   // ---------------------------------------------------------------- surfaces
@@ -437,7 +462,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       scale: 1,
       title: titleOf(viewId),
       badge: badges.get(viewId) ?? null,
-      panelId: panelOfView(doc, viewId)?.id ?? "",
+      panelId: panelOf(viewId)?.id ?? "",
       params: doc.views[viewId]?.params ?? {},
     };
   }
@@ -740,7 +765,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   }
   function findPanel(panelId: string): PanelNode | null {
     if (lifted()?.id === panelId) return lifted();
-    return locatePanel(doc, panelId)?.panel ?? leaving.get(panelId)?.panel ?? null;
+    located();
+    return panelIndex.get(panelId)?.panel ?? leaving.get(panelId)?.panel ?? null;
   }
   function syncTabs(panel: PanelNode) {
     const dom = ensurePanelDom(panel.id);
@@ -978,10 +1004,10 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       }
     if (focusedView && !after.has(focusedView) && !lifted()?.views.includes(focusedView)) {
       const fallback =
-        panelOfView(doc, lastFocusFallback()) ?? panelsOf(doc.root)[0] ?? doc.floating[0]?.panel ?? null;
+        panelOf(lastFocusFallback()) ?? panelsOf(doc.root)[0] ?? doc.floating[0]?.panel ?? null;
       setFocus(fallback?.selected ?? null, false);
     } else if (focusedView) {
-      const panel = panelOfView(doc, focusedView);
+      const panel = panelOf(focusedView);
       focusedPanel = panel?.id ?? focusedPanel;
     }
     // Render now so the DOM matches the document synchronously after every change.
@@ -1390,6 +1416,13 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         if (!record) continue;
         shown.add(viewId);
         const selected = panel.selected === viewId;
+        // A background tab is hidden: while things move it isn't placed each frame, only once
+        // they settle (or when it's selected).
+        if (!selected && moving()) {
+          setStyle(record.shell, "visibility", "hidden");
+          setAttr(record.shell, "inert", "");
+          continue;
+        }
         placeSurface(
           record,
           body,
@@ -1420,7 +1453,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       if (shown.has(viewId)) continue;
       setStyle(record.shell, "visibility", "hidden");
       setAttr(record.shell, "inert", "");
-      const panel = panelOfView(doc, viewId);
+      const panel = panelOf(viewId);
       const hidden = panel ? doc.hidden.some((x) => x.panel.id === panel.id) : false;
       record.controller.update({
         visible: false,
@@ -1454,10 +1487,20 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     return scale >= 0.999 || typeOf(viewId).scaling !== "inert";
   }
   function placementOf(viewId: string): ViewPlacement {
-    const panel = panelOfView(doc, viewId) ?? (lifted()?.views.includes(viewId) ? lifted() : null);
-    if (!panel) return "docked";
-    if (doc.hidden.some((x) => x.panel.id === panel.id)) return "hidden";
-    const r = regionOf(panel.id);
+    located();
+    const entry = viewIndex.get(viewId);
+    if (!entry)
+      return lifted()?.views.includes(viewId) && lifted() ? placementOfPanel(lifted()!.id) : "docked";
+    return entry.region === "hidden"
+      ? "hidden"
+      : entry.region === "floating"
+        ? "floating"
+        : entry.region === "stage"
+          ? "stage"
+          : "docked";
+  }
+  function placementOfPanel(panelId: string): ViewPlacement {
+    const r = regionOf(panelId);
     return r === "floating" ? "floating" : r === "stage" ? "stage" : "docked";
   }
   /** Whether any whole pixel of a screen rect is in view: a rect ending exactly at an edge isn't. */
@@ -1534,8 +1577,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     setAttr(shell, "inert", selected && !concealed ? null : "");
     (record as any).__size = { width: Math.round(width), height: Math.round(height) };
     (record as any).__scale = Math.round(safe * 1000) / 1000;
-    const panel =
-      panelOfView(doc, controller.id) ?? (lifted()?.views.includes(controller.id) ? lifted() : null);
+    const panel = panelOf(controller.id) ?? (lifted()?.views.includes(controller.id) ? lifted() : null);
     const onscreen = inView(body);
     const busy = !!dragActive() || gesture;
     controller.update({
@@ -1556,7 +1598,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   }
   function renderDividers(round: boolean) {
     // Without the resize permission there's nothing to grab or focus.
-    const show = !tween.active && !dragActive() && !gesture && can("resize");
+    // Hidden while anything moves (nothing to grab mid-animation), and without the resize permission.
+    const show = !tween.active && !camera.moving && !dragActive() && !gesture && can("resize");
     for (const el of dividerEls.values()) {
       const split = effectiveSplit(el.dataset.split!);
       const e = split && entries.get(split.id);
@@ -1606,7 +1649,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
 
   // ---------------------------------------------------------------- focus
   function setFocus(viewId: string | null, emit = true) {
-    const panel = viewId ? panelOfView(doc, viewId) : null;
+    const panel = viewId ? panelOf(viewId) : null;
     const nextPanel = panel?.id ?? null;
     if (focusedView === viewId && focusedPanel === nextPanel) return;
     focusedView = viewId;
@@ -1622,13 +1665,13 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     setFocus(viewId);
     raiseIfFloating(viewId);
     // A view inside a collapsed group can't be seen: zoom to it.
-    const panel = panelOfView(doc, viewId);
+    const panel = panelOf(viewId);
     if (panel && collapsedOf.has(panel.id) && !dragActive()) nav.focus(panel.id);
     // Adapters render content asynchronously; move DOM focus once it has had a frame to mount.
     if (moveDom) lifetime.frame(() => moveFocusInto(viewId));
   }
   function raiseIfFloating(viewId: string) {
-    const panel = panelOfView(doc, viewId);
+    const panel = panelOf(viewId);
     if (!panel || dragActive()) return;
     const raised = raiseFloat(doc, panel.id);
     if (raised !== doc) commit(raised, { animate: false, silent: true });
@@ -1642,7 +1685,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (target) target.focus({ preventScroll: true });
     else
       panelDoms
-        .get(panelOfView(doc, viewId)?.id ?? "")
+        .get(panelOf(viewId)?.id ?? "")
         ?.tabs.get(viewId)
         ?.el.focus({ preventScroll: true });
   }
@@ -1666,7 +1709,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   function infoOf(viewId: string): ViewInfo | null {
     const record = doc.views[viewId];
     if (!record) return null;
-    const panel = panelOfView(doc, viewId) ?? (lifted()?.views.includes(viewId) ? lifted() : null);
+    const panel = panelOf(viewId) ?? (lifted()?.views.includes(viewId) ? lifted() : null);
     return {
       id: viewId,
       type: record.type,
@@ -1809,7 +1852,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const appeared = panelDoms.get(panel.id);
     if (appeared && !from) appear(appeared.el, panel.views);
     if (o.focus !== false) {
-      const target = panelOfView(doc, id);
+      const target = panelOf(id);
       if (target && doc.floating.some((f) => f.panel.id === target.id))
         commit(raiseFloat(doc, target.id), { silent: true, animate: false });
       focusView(id, true);
@@ -1838,7 +1881,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     return null;
   }
   function reveal(viewId: string, focusIt: boolean) {
-    const panel = panelOfView(doc, viewId);
+    const panel = panelOf(viewId);
     if (!panel) return;
     if (doc.hidden.some((x) => x.panel.id === panel.id)) restore(panel.id);
     let next = selectView(doc, viewId);
@@ -1848,7 +1891,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     ensureFramedVisible(viewId);
   }
   function ensureFramedVisible(viewId: string) {
-    const panel = panelOfView(doc, viewId);
+    const panel = panelOf(viewId);
     if (panel) nav.ensureVisible(panel.id);
   }
 
@@ -1860,24 +1903,24 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (!doc.views[viewId]) return false;
     // If keyboard focus was on this view or its tab, hand it to whatever gets selected next.
     const active = document.activeElement;
-    const panelId = panelOfView(doc, viewId)?.id;
+    const panelId = panelOf(viewId)?.id;
     const tabEl = panelId ? panelDoms.get(panelId)?.tabs.get(viewId)?.el : undefined;
     const hadFocus = !!active && (!!record?.shell.contains(active) || !!tabEl?.contains(active));
     commit(closeViewInDoc(doc, viewId));
     if (hadFocus) {
       const next =
-        (panelId && locatePanel(doc, panelId)?.panel) || (focusedView ? panelOfView(doc, focusedView) : null);
+        (panelId && locatePanel(doc, panelId)?.panel) || (focusedView ? panelOf(focusedView) : null);
       if (next) panelDoms.get(next.id)?.tabs.get(next.selected)?.el.focus({ preventScroll: true });
       else root.focus({ preventScroll: true });
     }
     return true;
   }
   function resolvePanel(id: string): PanelNode | null {
-    return locatePanel(doc, id)?.panel ?? panelOfView(doc, id);
+    return locatePanel(doc, id)?.panel ?? panelOf(id);
   }
   function hide(id: string, o: { toward?: Element | Rect } = {}) {
     // A view that shares its panel is hidden on its own and restored into the same panel.
-    const owner = !locatePanel(doc, id) ? panelOfView(doc, id) : null;
+    const owner = !locatePanel(doc, id) ? panelOf(id) : null;
     if (owner && owner.views.length > 1 && !doc.hidden.some((x) => x.panel.id === owner.id)) {
       const alone: PanelNode = { kind: "panel", id: uid("panel"), views: [id], selected: id };
       const detached = detachView(doc, id);
@@ -1975,7 +2018,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     let d = doc;
     let panel: PanelNode | null = loc?.panel ?? null;
     if (!loc) {
-      const owner = panelOfView(doc, id);
+      const owner = panelOf(id);
       if (!owner) return;
       if (owner.views.length > 1) {
         d = detachView(doc, id);
