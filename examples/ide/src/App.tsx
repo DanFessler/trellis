@@ -303,7 +303,7 @@ function StatusBar() {
           title={
             {
               off: "World transform (experimental) is off: every panel is laid out on every frame of a camera move. Click for auto.",
-              auto: "World transform (experimental) is auto: each camera move uses it only when laying panels out every frame would be too slow. Click to turn on.",
+              auto: "World transform (experimental) is auto: camera moves with 40 or more panels in view use it. Click to turn on.",
               on: "World transform (experimental) is on: a camera move lays panels out once and moves them with one transform. Click to turn off.",
             }[worldTransform]
           }

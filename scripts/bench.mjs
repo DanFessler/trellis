@@ -9,12 +9,18 @@ import { createServer } from "vite";
 
 const PORT = 5340;
 const VIEWPORT = { width: 1600, height: 1000 };
-const SIZES = [
-  { cols: 4, rows: 4, tabs: 1 },
-  { cols: 6, rows: 6, tabs: 3 },
-  { cols: 10, rows: 10, tabs: 3 },
-];
-const THROTTLES = [1, 4];
+// SIZES=5x5,8x8 measures other grids (3 tabs a panel); THROTTLES=4 only the slowed CPU.
+const SIZES = process.env.SIZES
+  ? process.env.SIZES.split(",").map((s) => {
+      const [cols, rows] = s.split("x").map(Number);
+      return { cols, rows, tabs: 3 };
+    })
+  : [
+      { cols: 4, rows: 4, tabs: 1 },
+      { cols: 6, rows: 6, tabs: 3 },
+      { cols: 10, rows: 10, tabs: 3 },
+    ];
+const THROTTLES = process.env.THROTTLES ? process.env.THROTTLES.split(",").map(Number) : [1, 4];
 
 const server = await createServer({
   configFile: "e2e/app/vite.config.ts",

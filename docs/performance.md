@@ -50,18 +50,13 @@ With 300 views and the CPU slowed 4×, slow frames fall from 30–40% to under 1
 
 Nothing changes once the camera is still. The option may become the default, change, or go away.
 
-### Auto
+### Only for moves with many panels
 
-`worldTransform: "auto"` uses the world transform only for moves that need it, so light layouts and fast machines never see the trade-offs:
+`worldTransform: { minPanels: n }` uses the world transform only for camera moves with at least `n` panels in view where they start or end. Floating panels always count. Each move is decided when the camera starts moving, so a zoom from one panel to its neighbour stays on the normal renderer, even in a large layout.
 
-- It predicts what a normal moving frame would cost from how long layouts take on this machine: every layout that resizes panels is timed, and so is the one a world-mode move draws. How a moving frame compares with a full layout is learned from the normal moving frames measured.
-- A move uses the world transform when its predicted frame takes more than 70% of a display frame, and goes back to the normal renderer only below 35%, so it doesn't flip between moves.
-- Moves with fewer than 12 panels on screen always use the normal renderer.
-- As a backstop, if two of the last four frames of a move stutter (a missed display frame and over 25 ms), the rest of the move uses the world transform, and so do the next few.
+`worldTransform: "auto"` is `{ minPanels: 40 }`. With the CPU slowed 4×, laying out 36 panels on every frame kept up, and 49 began to stutter. Set your own threshold if your content is especially light or heavy.
 
-Pass the option when creating the workspace, so the first layout is measured. In auto mode, each render finishes the browser's layout straight away so it can be timed.
-
-`WORLD=1 npm run bench` measures with the world transform on, and `WORLD=auto` with auto.
+`WORLD=1 npm run bench` measures with the world transform on, and `WORLD=auto` with auto. `SIZES=6x6,8x8` measures other grids.
 
 ## Keeping your content fast
 

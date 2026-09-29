@@ -395,9 +395,9 @@ export interface WorkspaceProps {
   /** Whether panels pushed by a divider stay pushed when it's dragged back. See the core
    * `keepPushed` option. */
   keepPushed?: boolean;
-  /** Experimental: move the workspace with one transform while the camera moves, or `"auto"` to
-   * decide per move. See the core `worldTransform` option. */
-  worldTransform?: boolean | "auto";
+  /** Experimental: move the workspace with one transform while the camera moves, always, or for
+   * moves with many panels in view. See the core `worldTransform` option. */
+  worldTransform?: boolean | "auto" | { minPanels: number };
   /** What users may change through the interface. See the core `permissions` option. */
   permissions?: boolean | Partial<Permissions>;
   /** Layout direction: "auto" (default) follows the page; "rtl" mirrors the workspace. */
@@ -608,7 +608,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
     !!props.renderMenu,
     JSON.stringify(props.detail ?? null),
     props.keepPushed,
-    props.worldTransform,
+    JSON.stringify(props.worldTransform ?? null),
     JSON.stringify(props.gestureKeys ?? null),
     props.direction,
     JSON.stringify(props.permissions ?? null),

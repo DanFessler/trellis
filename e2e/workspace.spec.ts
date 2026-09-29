@@ -2296,8 +2296,12 @@ test.describe("world transform (experimental)", () => {
 
   test.describe("auto", () => {
     /** Runs a zoom to `target`, noting on each frame whether the layer was transformed, and, with
-     * `measure`, where the panels were. Measuring forces layouts, which makes frames late. */
-    const zoomFrames = async (page: Page, target: string | "first", measure = false) => {
+     * `measure`, where the panels were: on every frame, or on frames in world mode. */
+    const zoomFrames = async (
+      page: Page,
+      target: string | "first",
+      measure: false | "all" | "world" = false,
+    ) => {
       // Recorded in the page, on every frame, after the workspace has drawn it.
       await page.evaluate((t) => {
         const w = window as any;
@@ -2313,27 +2317,22 @@ test.describe("world transform (experimental)", () => {
         requestAnimationFrame(record);
       }, target);
       const samples = [];
-      for (let i = 0; measure && i < 14; i++) {
+      for (let i = 0; measure && i < (measure === "all" ? 14 : 40); i++) {
         await page.evaluate(() => new Promise(requestAnimationFrame));
-        samples.push(...(await geometry(page)));
+        const transformed = await page.evaluate(
+          () => (window as any).ws.element.querySelector(".trellis-layer").style.transform !== "",
+        );
+        if (measure === "all" || transformed) samples.push(...(await geometry(page)));
       }
       await still(page);
       const modes: boolean[] = await page.evaluate(() => (window as any).__modes);
       return { modes, samples };
     };
-    /** Makes every frame late by busying the main thread, as heavy content or a slow machine would. */
-    const hog = (page: Page, ms: number) =>
-      page.evaluate((ms) => {
-        const w = window as any;
-        w.__hog = ms;
-        const busy = () => {
-          if (!w.__hog) return;
-          const end = performance.now() + w.__hog;
-          while (performance.now() < end);
-          requestAnimationFrame(busy);
-        };
-        requestAnimationFrame(busy);
-      }, ms);
+    const open = async (page: Page, query: string) => {
+      await page.goto(`/?scenario=stress&${query}`);
+      await page.waitForFunction(() => (window as any).startup !== undefined, null, { timeout: 60000 });
+      await page.evaluate(() => (window as any).ws.update({ motion: "full" }));
+    };
 
     test("a light layout stays on the normal renderer", async ({ page }) => {
       await page.goto("/?scenario=vanilla&navigation=free");
@@ -2344,32 +2343,46 @@ test.describe("world transform (experimental)", () => {
       expect([...zoomIn.modes, ...zoomOut.modes]).not.toContain(true);
     });
 
-    test("a layout that's slow to lay out uses world mode from a move's first frame", async ({
-      page,
-      browserName,
-    }) => {
-      test.skip(browserName !== "chromium", "CPU throttling needs Chromium");
-      const cdp = await page.context().newCDPSession(page);
-      await cdp.send("Emulation.setCPUThrottlingRate", { rate: 6 });
-      await page.goto("/?scenario=stress&cols=10&rows=10&tabs=3&world=auto");
-      await page.waitForFunction(() => (window as any).startup !== undefined, null, { timeout: 60000 });
-      await page.waitForTimeout(500);
-      await page.evaluate(() => (window as any).ws.update({ motion: "full" }));
+    test("a move showing 40 panels or more uses world mode from its first frame", async ({ page }) => {
+      await open(page, "cols=10&rows=10&tabs=1&world=auto");
       const { modes } = await zoomFrames(page, "first");
       expect(modes[0]).toBe(true);
+      expect(modes.every((m) => m)).toBe(true);
+    });
+
+    test("a move showing fewer than 40 panels uses the normal renderer", async ({ page }) => {
+      await open(page, "cols=6&rows=6&tabs=1&world=auto");
+      const { modes } = await zoomFrames(page, "first");
+      expect(modes).not.toContain(true);
+    });
+
+    test("counts the panels in view where the move starts or ends, not the whole layout", async ({
+      page,
+    }) => {
+      await open(page, "cols=10&rows=10&tabs=1&world=auto");
+      // Zoomed in on one panel, a move to its neighbour shows only a few panels.
+      await zoomFrames(page, "first");
+      const neighbour = await page.evaluate(() => (window as any).ws.getSnapshot().views[1].panelId);
+      const { modes } = await zoomFrames(page, neighbour);
+      expect(modes).not.toContain(true);
+      // Back out to everything: 100 panels where it ends.
+      const out = await zoomFrames(page, "all");
+      expect(out.modes[0]).toBe(true);
+    });
+
+    test("the threshold can be set", async ({ page }) => {
+      await open(page, "cols=6&rows=6&tabs=1");
+      await page.evaluate(() => (window as any).ws.update({ worldTransform: { minPanels: 20 } }));
+      expect((await zoomFrames(page, "first")).modes[0]).toBe(true);
+      await zoomFrames(page, "all");
+      await page.evaluate(() => (window as any).ws.update({ worldTransform: { minPanels: 50 } }));
+      expect((await zoomFrames(page, "first")).modes).not.toContain(true);
     });
 
     test("a move that starts while the layout is still animating decides from its start", async ({
       page,
-      browserName,
     }) => {
-      test.skip(browserName !== "chromium", "CPU throttling needs Chromium");
-      const cdp = await page.context().newCDPSession(page);
-      await cdp.send("Emulation.setCPUThrottlingRate", { rate: 6 });
-      await page.goto("/?scenario=stress&cols=10&rows=10&tabs=3&world=auto");
-      await page.waitForFunction(() => (window as any).startup !== undefined, null, { timeout: 60000 });
-      await page.waitForTimeout(500);
-      await page.evaluate(() => (window as any).ws.update({ motion: "full" }));
+      await open(page, "cols=10&rows=10&tabs=1&world=auto");
       // Cancelling a tab drag animates the layout back; zoom while it does.
       const grab = center(
         await page
@@ -2383,50 +2396,11 @@ test.describe("world transform (experimental)", () => {
       await page.mouse.move(900, 600, { steps: 10 });
       await page.keyboard.press("Escape");
       await page.mouse.up();
-      const { modes } = await zoomFrames(page, "first");
+      // Once world mode takes over, panels are where the camera puts them.
+      const { modes, samples } = await zoomFrames(page, "first", "world");
       expect(modes).toContain(true);
-    });
-
-    test("switches to world mode partway through a move once frames run late, without a jump", async ({
-      page,
-      browserName,
-    }) => {
-      test.skip(browserName !== "chromium", "headless Firefox's frames don't follow a display");
-      await page.goto("/?scenario=stress&cols=5&rows=5&tabs=1&world=auto");
-      await page.waitForFunction(() => (window as any).startup !== undefined);
-      await page.waitForTimeout(300);
-      await page.evaluate(() => (window as any).ws.update({ motion: "full" }));
-      // Laying out 25 panels is cheap: moves start on the normal renderer.
-      const light = await zoomFrames(page, "first");
-      expect(light.modes).not.toContain(true);
-      await zoomFrames(page, "all");
-
-      await hog(page, 35);
-      const { modes, samples } = await zoomFrames(page, "first", true);
-      expect(modes[0]).toBe(false);
-      expect(modes).toContain(true);
+      expect(samples.length).toBeGreaterThan(0);
       expect(worst(samples)).toBeLessThan(1.5);
-      // The next move doesn't wait for late frames.
-      const next = await zoomFrames(page, "all");
-      expect(next.modes[0]).toBe(true);
-    });
-
-    test("goes back to the normal renderer once frames are on time again", async ({ page, browserName }) => {
-      test.skip(browserName !== "chromium", "headless Firefox's frames don't follow a display");
-      await page.goto("/?scenario=stress&cols=5&rows=5&tabs=1&world=auto");
-      await page.waitForFunction(() => (window as any).startup !== undefined);
-      await page.waitForTimeout(300);
-      await page.evaluate(() => (window as any).ws.update({ motion: "full" }));
-      await hog(page, 35);
-      expect((await zoomFrames(page, "first")).modes).toContain(true);
-      await page.evaluate(() => ((window as any).__hog = 0));
-      let moves = 0;
-      for (let target: "first" | "all" = "all"; moves < 10; target = target === "all" ? "first" : "all") {
-        moves++;
-        const { modes } = await zoomFrames(page, target);
-        if (!modes.includes(true)) break;
-      }
-      expect(moves).toBeLessThanOrEqual(8);
     });
   });
 });

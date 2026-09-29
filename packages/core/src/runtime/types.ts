@@ -251,10 +251,12 @@ export interface WorkspaceOptions {
   keepPushed?: boolean;
   /** Experimental. While the camera moves, lay the workspace out once and move it with a single
    * transform, instead of laying out every panel on every frame. Much cheaper with many panels;
-   * the trade-off is that panels scale like pictures until the camera stops. `"auto"` decides per
-   * move, from how long layouts take on this machine and whether frames arrive late; moves with
-   * fewer than 12 panels on screen never use it. Default `false`. */
-  worldTransform?: boolean | "auto";
+   * the trade-off is that panels scale like pictures until the camera stops.
+   * - `{ minPanels: n }` uses it for moves with at least `n` panels in view where they start or
+   *   end (floating panels always count). Decided when the camera starts moving.
+   * - `"auto"` is `{ minPanels: 40 }`.
+   * Default `false`. */
+  worldTransform?: boolean | "auto" | { minPanels: number };
   /** Show panel menus with your own component instead of the built-in one. */
   renderMenu?(request: MenuRequest): void;
   /** Where the built-in "Hide" animates to, e.g. your dock or tray button. */
