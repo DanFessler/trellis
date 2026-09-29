@@ -1973,3 +1973,90 @@ test.describe("permissions", () => {
     expect(await tryDivider(page)).toBe(true);
   });
 });
+
+test.describe("saved layouts", () => {
+  /** A saved layout that also has a view of a type this app doesn't register (yet). */
+  const withUnknown = (page: Page) =>
+    page.evaluate(() => {
+      const ws = (window as any).ws;
+      const doc = ws.getDocument();
+      doc.views.chart = { type: "chart", params: { series: 3 } };
+      doc.root.children[2].views.push("chart");
+      return doc;
+    });
+
+  test("a view of an unknown type shows a placeholder, and its content once the type is registered", async ({
+    page,
+  }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    const saved = await withUnknown(page);
+    await page.evaluate((d) => (window as any).ws.setDocument(d), saved);
+    await tab(page, "chart").click();
+    await expect(surface(page, "chart").locator("[data-trellis-part=view-missing]")).toContainText("chart");
+    // Its record, params included, survives saving again.
+    expect((await doc(page)).views.chart).toEqual({ type: "chart", params: { series: 3 } });
+    await page.evaluate(() => {
+      const w = window as any;
+      w.ws.update({
+        types: {
+          ...w.types,
+          chart: {
+            title: "Chart",
+            mount: (el: HTMLElement, view: any) => {
+              el.innerHTML = `<p data-test="chart">${view.params.series} series</p>`;
+            },
+          },
+        },
+      });
+    });
+    await expect(surface(page, "chart").locator("[data-test=chart]")).toHaveText("3 series");
+    await expect(tab(page, "chart")).toContainText("Chart");
+  });
+
+  test('onMissingType: "drop" leaves unknown views out', async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    const saved = await withUnknown(page);
+    await page.evaluate((d) => {
+      const ws = (window as any).ws;
+      ws.update({ onMissingType: () => "drop" });
+      ws.setDocument(d);
+    }, saved);
+    await expect(tab(page, "chart")).toHaveCount(0);
+    expect((await doc(page)).views.chart).toBeUndefined();
+    await expect(tab(page, "outline")).toBeVisible();
+  });
+
+  test("setDocument accepts anything without throwing, and the workspace stays usable", async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    const results = await page.evaluate(() => {
+      const ws = (window as any).ws;
+      const out: string[] = [];
+      for (const junk of [null, 42, "layout", [], {}, { root: { kind: "split", children: "no" } }]) {
+        try {
+          ws.setDocument(junk);
+          out.push("ok");
+        } catch (error) {
+          out.push(String(error));
+        }
+      }
+      ws.open("editor", { params: { name: "after.ts" } });
+      return out;
+    });
+    expect(results.every((r) => r === "ok")).toBe(true);
+    await expect(page.locator("[data-trellis-part=tab]")).toHaveCount(1);
+  });
+
+  test("a corrupted saved layout falls back to the default", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&persist");
+    await expect(tab(page, "a")).toBeVisible();
+    for (const junk of ["{not json", JSON.stringify({ schema: 1, version: 1, root: 7, views: "x" })]) {
+      await page.evaluate((j) => localStorage.setItem("e2e", j), junk);
+      await page.reload();
+      await expect(tab(page, "a")).toBeVisible();
+      await expect(tab(page, "outline")).toBeVisible();
+    }
+  });
+});

@@ -109,13 +109,30 @@ interface Leaving {
   duration: number;
 }
 
+/** Whether saved data has a layout document's shape. Details inside are repaired later (see
+ * sanitize), but a save with the wrong shape is corrupt, and the default layout wins. */
+function isDocumentShaped(value: unknown): value is LayoutDocument {
+  const doc = value as LayoutDocument | null;
+  return (
+    !!doc &&
+    typeof doc === "object" &&
+    doc.schema === 1 &&
+    (doc.root === null || (typeof doc.root === "object" && !Array.isArray(doc.root))) &&
+    !!doc.views &&
+    typeof doc.views === "object" &&
+    !Array.isArray(doc.views) &&
+    Array.isArray(doc.floating) &&
+    Array.isArray(doc.hidden)
+  );
+}
+
 const TYPE_PLACEHOLDER = (type: string): ViewTypeDefinition => ({
   title: type,
   mount(el) {
     el.append(
       h(
         "div",
-        { class: "trellis-placeholder" },
+        { class: "trellis-placeholder", "data-trellis-part": "view-missing" },
         h("strong", {}, "Unavailable"),
         h("span", {}, `No view type named “${type}” is registered.`),
       ),
@@ -1007,17 +1024,20 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       const raw = localStorage.getItem(options.persist.key);
       if (!raw) return null;
       const parsed = JSON.parse(raw) as LayoutDocument;
-      if (parsed?.schema !== 1) return null;
+      if (!isDocumentShaped(parsed)) return null;
       if ((options.persist.version ?? undefined) !== (parsed.version ?? undefined)) return null;
       return parsed;
     } catch {
       return null;
     }
   }
+  /** Any document from storage, a server or a caller: repaired first (see sanitize), then views
+   * of unregistered types are dropped or kept as placeholders, as onMissingType says. */
   function prepare(input: LayoutDocument): LayoutDocument {
+    const doc = sanitize(input, () => true);
     const drop = new Set<string>();
-    for (const [id, record] of Object.entries(input.views ?? {})) {
-      if (!record || options.types[record.type]) continue;
+    for (const [id, record] of Object.entries(doc.views)) {
+      if (options.types[record.type]) continue;
       const decision =
         guarded(() => options.onMissingType?.(record.type, id), undefined, {
           source: "callback",
@@ -1025,7 +1045,6 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         }) ?? "placeholder";
       if (decision === "drop") drop.add(id);
     }
-    const doc = sanitize(input, () => true);
     let result = doc;
     for (const id of drop) result = closeViewInDoc(result, id);
     return result;
