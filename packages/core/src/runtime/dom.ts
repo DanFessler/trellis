@@ -13,6 +13,21 @@ export function h<K extends keyof HTMLElementTagNameMap>(
   return el;
 }
 
+/** The built-in fallback for a view whose content failed to mount. Text only: messages are never
+ * parsed as markup. */
+export function errorFallbackElement(title: string, error: unknown, retry: () => void): HTMLElement {
+  const message = error instanceof Error ? error.message : String(error);
+  const button = h("button", { type: "button", "data-trellis-part": "view-error-retry" }, "Try again");
+  button.addEventListener("click", retry);
+  return h(
+    "div",
+    { "data-trellis-part": "view-error", role: "alert" },
+    h("strong", {}, `${title} couldn’t load`),
+    h("p", {}, message),
+    button,
+  );
+}
+
 export const icons = {
   close:
     '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7m0-7l-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>',

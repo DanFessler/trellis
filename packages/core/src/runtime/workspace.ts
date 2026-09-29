@@ -42,13 +42,14 @@ import type {
   Rect,
   SplitNode,
 } from "../model/types";
-import { h, icons, place, setAttr, setStyle } from "./dom";
+import { errorFallbackElement, h, icons, place, setAttr, setStyle } from "./dom";
 import { DEFAULT_KEYMAP, formatCombo, matches, type Command } from "./keymap";
 import { defaultGestureKeys } from "./gestures";
 import { Emitter, Lifetime } from "./lifetime";
 import { Menu, tidyMenu } from "./menu";
 import { DOCK_EASE, DOCK_MS, lerpRect, LayoutTween, MOTION, RectSpring, sameRect } from "./motion";
 import type {
+  ErrorSource,
   IframeOptions,
   MenuEntry,
   MenuItem,
@@ -96,6 +97,8 @@ interface SurfaceRecord {
   mountKey: unknown;
   iconHtml: string | null;
   surface: Surface;
+  /** Set while the content failed to mount and shows the error fallback. */
+  failure: { error: unknown } | null;
 }
 interface Leaving {
   panel: PanelNode;
@@ -137,7 +140,33 @@ const DETAIL = { size: 48, outline: 2 };
 export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOptions): WorkspaceHandle {
   let options: WorkspaceOptions = { ...initialOptions };
   const lifetime = new Lifetime();
-  const events = new Emitter<WorkspaceEvents>();
+  const events = new Emitter<WorkspaceEvents>((error) => reportError(error, { source: "listener" }));
+  // ---------------------------------------------------------------- errors
+  let reporting = false;
+  /** One channel for everything that throws: the `error` event, or the console without a
+   * listener. An error thrown while reporting one goes to the console, so nothing loops. */
+  function reportError(error: unknown, context: { source: ErrorSource; viewId?: string }) {
+    if (reporting || !events.has("error")) {
+      console.error(error);
+      return;
+    }
+    const type = context.viewId ? doc?.views[context.viewId]?.type : undefined;
+    reporting = true;
+    try {
+      events.emit("error", { error, source: context.source, viewId: context.viewId, type });
+    } finally {
+      reporting = false;
+    }
+  }
+  /** Run a callback from options or a view type; if it throws, report it and use `fallback`. */
+  function guarded<T>(run: () => T, fallback: T, context: { source: ErrorSource; viewId?: string }): T {
+    try {
+      return run();
+    } catch (error) {
+      reportError(error, context);
+      return fallback;
+    }
+  }
   const listeners = new Set<() => void>();
 
   // ---------------------------------------------------------------- DOM
@@ -235,7 +264,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         try {
           return title(controller);
         } catch (error) {
-          console.error(error);
+          reportError(error, { source: "title", viewId });
         }
     } else if (title) return title;
     return record.type;
@@ -377,6 +406,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     focus: (id: string) => handle.focus(id),
     close: (id: string, o?: { force?: boolean }) => close(id, o),
     hide: (id: string) => hide(id),
+    reportError: (error: unknown, context: { viewId: string; source: ErrorSource }) =>
+      reportError(error, context),
   };
   function ensureSurface(viewId: string): SurfaceRecord {
     let record = records.get(viewId);
@@ -406,6 +437,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       mountKey: null,
       iconHtml: null,
       surface: { view: controller, content, icon, accessory },
+      failure: null,
     };
     records.set(viewId, record);
     // Title functions receive the view handle, which only exists now.
@@ -419,27 +451,40 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
    * Content is only remounted when what it renders actually changes. */
   function mountContent(record: SurfaceRecord) {
     const def = typeOf(record.controller.id);
+    const viewId = record.controller.id;
     record.mountedWith = def;
     setAttr(record.shell, "class", def.className ?? null);
-    const raw = def.iframe
-      ? typeof def.iframe === "function"
-        ? def.iframe(record.controller)
-        : def.iframe
-      : null;
+    let iframeError: { error: unknown } | null = null;
+    let raw: string | IframeOptions | null = null;
+    if (typeof def.iframe === "function")
+      try {
+        raw = def.iframe(record.controller);
+      } catch (error) {
+        iframeError = { error };
+      }
+    else raw = def.iframe ?? null;
     const frame: IframeOptions | null = raw === null ? null : typeof raw === "string" ? { src: raw } : raw;
-    const key: unknown = frame ? `iframe:${JSON.stringify(frame)}` : (def.mount ?? null);
+    const key: unknown = iframeError
+      ? iframeError
+      : frame
+        ? `iframe:${JSON.stringify(frame)}`
+        : (def.mount ?? null);
     if (key !== record.mountKey) {
       if (record.mountKey !== null) {
         try {
           record.cleanup?.();
         } catch (error) {
-          console.error(error);
+          reportError(error, { source: "cleanup", viewId });
         }
         record.cleanup = null;
         record.content.replaceChildren();
       }
       record.mountKey = key;
-      if (frame) {
+      record.failure = null;
+      if (iframeError) {
+        reportError(iframeError.error, { source: "iframe", viewId });
+        showFailure(record, iframeError.error);
+      } else if (frame) {
         const frameEl = h("iframe", {
           src: frame.src,
           srcdoc: frame.srcdoc,
@@ -459,7 +504,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
           });
           record.cleanup = typeof cleanup === "function" ? cleanup : null;
         } catch (error) {
-          console.error(error);
+          reportError(error, { source: "mount", viewId });
+          record.content.replaceChildren();
+          showFailure(record, error);
         }
       }
     }
@@ -469,13 +516,34 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       record.iconHtml = icon;
     }
   }
+  /** Show a view's error fallback in place of content that failed to mount. */
+  function showFailure(record: SurfaceRecord, error: unknown) {
+    const viewId = record.controller.id;
+    record.failure = { error };
+    const retry = () => {
+      if (records.get(viewId) !== record) return;
+      record.mountKey = null;
+      record.failure = null;
+      record.content.replaceChildren();
+      mountContent(record);
+    };
+    const custom = options.errorFallback
+      ? guarded(() => options.errorFallback!({ error, view: record.controller, retry }), null, {
+          source: "callback",
+          viewId,
+        })
+      : null;
+    record.content.replaceChildren(
+      custom === null ? errorFallbackElement(titleOf(viewId), error, retry) : custom,
+    );
+  }
   function destroySurface(viewId: string) {
     const record = records.get(viewId);
     if (!record) return;
     try {
       record.cleanup?.();
     } catch (error) {
-      console.error(error);
+      reportError(error, { source: "cleanup", viewId });
     }
     record.shell.remove();
     record.icon.remove();
@@ -916,7 +984,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const drop = new Set<string>();
     for (const [id, record] of Object.entries(input.views ?? {})) {
       if (!record || options.types[record.type]) continue;
-      const decision = options.onMissingType?.(record.type, id) ?? "placeholder";
+      const decision =
+        guarded(() => options.onMissingType?.(record.type, id), undefined, {
+          source: "callback",
+          viewId: id,
+        }) ?? "placeholder";
       if (decision === "drop") drop.add(id);
     }
     const doc = sanitize(input, () => true);
@@ -1916,9 +1988,10 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   function menuFor(panel: PanelNode): MenuEntry[] {
     const def = typeOf(panel.selected);
     const controller = records.get(panel.selected)?.controller;
-    const custom =
-      typeof def.menu === "function" ? (controller ? def.menu(controller) : []) : (def.menu ?? []);
-    return custom;
+    const menuFn = def.menu;
+    if (typeof menuFn !== "function") return menuFn ?? [];
+    if (!controller) return [];
+    return guarded(() => menuFn(controller), [], { source: "menu", viewId: panel.selected });
   }
   /** The built-in items for a panel, each with a stable id. */
   function builtInMenu(panel: PanelNode): MenuEntry[] {
@@ -1985,7 +2058,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     items.push({
       id: "hide",
       label: "Hide",
-      run: () => hide(panelId, { toward: options.hideToward?.(panelId) ?? undefined }),
+      run: () =>
+        hide(panelId, {
+          toward:
+            guarded(() => options.hideToward?.(panelId), undefined, { source: "callback" }) ?? undefined,
+        }),
     });
     const closable = panel.views.filter((v) => typeOf(v).closable !== false);
     if (closable.length) {
@@ -2016,7 +2093,10 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (setting === true) return tidyMenu(all);
     const view = records.get(panel.selected)?.controller;
     if (!view) return tidyMenu(all);
-    return tidyMenu(setting(tidyMenu(all), { panelId: panel.id, view, region: regionOf(panel.id) }));
+    const context = { panelId: panel.id, view, region: regionOf(panel.id) };
+    return tidyMenu(
+      guarded(() => setting(tidyMenu(all), context), tidyMenu(all), { source: "menu", viewId: view.id }),
+    );
   }
   function openPanelMenu(panelId: string, button: HTMLElement | null, at?: { x: number; y: number }) {
     const panel = findPanel(panelId);
@@ -2029,15 +2109,21 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const reset = () => button && setAttr(button, "aria-expanded", null);
     if (options.renderMenu) {
       menu.close();
-      options.renderMenu({
-        entries,
-        x: r ? r.right : b.left + (at?.x ?? 0),
-        y: r ? r.bottom + 4 : b.top + (at?.y ?? 0),
-        align: r ? "end" : "start",
-        anchor: button,
-        panelId,
-        close: reset,
-      });
+      const render = options.renderMenu;
+      guarded(
+        () =>
+          render({
+            entries,
+            x: r ? r.right : b.left + (at?.x ?? 0),
+            y: r ? r.bottom + 4 : b.top + (at?.y ?? 0),
+            align: r ? "end" : "start",
+            anchor: button,
+            panelId,
+            close: reset,
+          }),
+        undefined,
+        { source: "callback" },
+      );
       return;
     }
     menuCloseHook = reset;
@@ -2528,6 +2614,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     slots,
     open,
     close,
+    reportError: (error, context = {}) =>
+      reportError(error, {
+        source: context.source ?? "content",
+        viewId: context.viewId && doc.views[context.viewId] ? context.viewId : undefined,
+      }),
     focus: (id: string) => {
       const panel = locatePanel(doc, id)?.panel;
       const viewId = panel ? panel.selected : id;

@@ -26,6 +26,7 @@ export type {
   StageProps,
   FloatingProps,
   ViewApi,
+  ErrorFallbackProps,
 } from "./Workspace";
-export { layout, createDocument, formatCombo } from "@danfessler/trellis";
+export { layout, createDocument, formatCombo, defaultGestureKeys } from "@danfessler/trellis";
 export type * from "@danfessler/trellis";

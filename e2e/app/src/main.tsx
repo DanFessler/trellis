@@ -76,6 +76,8 @@ if (scenario === "vanilla") {
   const [gestureType, gestureValue] = (params.get("gestures") ?? "").split(":");
   if (gestureType && options.types[gestureType])
     options.types[gestureType].gestures = gestureValue as "content" | "workspace";
+  // Tests add types with ws.update({ types: { ...w.types, … } }).
+  w.types = options.types;
   const ws = createWorkspace(app, options);
   for (const e of ["open", "close", "focus", "navigate", "change"] as const)
     ws.on(e, (d: any) => w.events.push(`${e}:${typeof d === "object" && d ? (d.id ?? "doc") : d}`));
@@ -106,6 +108,12 @@ function Counter() {
     </div>
   );
 }
+/** Throws while rendering whenever window.__boom is set. */
+function Boom() {
+  const view = useView();
+  if ((window as any).__boom) throw new Error(`boom in ${view.id}`);
+  return <p data-test="boom-ok">fine</p>;
+}
 function Opener() {
   const ws = useWorkspace();
   return (
@@ -127,7 +135,14 @@ if (scenario === "react") {
     <StrictMode>
       <WorkspaceProvider>
         <Status />
-        <Workspace motion="reduced" ref={(h) => void (w.ws = h)}>
+        <Workspace
+          motion="reduced"
+          ref={(h) => void (w.ws = h)}
+          onError={(e) => (w.errors ??= []).push(`${e.source}:${e.viewId ?? ""}`)}
+        >
+          <ViewType id="boom" title="Boom" placement="stage">
+            <Boom />
+          </ViewType>
           <ViewType id="counter" title={(v) => String(v.params.name)} placement="stage">
             <Counter />
           </ViewType>

@@ -69,6 +69,8 @@ export class Lifetime {
 type Handler = (...args: any[]) => unknown;
 export class Emitter<Events extends { [K in keyof Events]: Handler }> {
   private handlers = new Map<keyof Events, Set<Handler>>();
+  /** Where errors thrown by handlers go. One handler throwing never stops the others. */
+  constructor(private onError: (error: unknown) => void = (error) => console.error(error)) {}
   on<E extends keyof Events>(event: E, handler: Events[E]): () => void {
     let set = this.handlers.get(event);
     if (!set) this.handlers.set(event, (set = new Set()));
@@ -84,7 +86,7 @@ export class Emitter<Events extends { [K in keyof Events]: Handler }> {
         const value = handler(...args);
         if (value !== undefined) result = value;
       } catch (error) {
-        console.error(error);
+        this.onError(error);
       }
     }
     return result;

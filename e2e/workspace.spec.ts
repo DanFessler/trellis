@@ -1455,3 +1455,145 @@ test.describe("free navigation gestures", () => {
     await expect.poll(() => framed(page)).toBeNull();
   });
 });
+
+test.describe("errors in views", () => {
+  /** Adds a vanilla type whose mount throws until window.__fixed is set. */
+  const addBroken = (page: Page) =>
+    page.evaluate(() => {
+      const w = window as any;
+      w.errors = [];
+      w.ws.on("error", (e: any) => w.errors.push(`${e.source}:${e.viewId ?? ""}:${e.type ?? ""}`));
+      w.ws.update({
+        types: {
+          ...w.types,
+          broken: {
+            title: "Broken",
+            mount(el: HTMLElement) {
+              if (!w.__fixed) throw new Error("mount failed");
+              el.innerHTML = '<p data-test="broken-ok">recovered</p>';
+            },
+          },
+        },
+      });
+      return w.ws.open("broken", { placement: { beside: "right", edge: "bottom" } }).id as string;
+    });
+
+  test("a view that fails to mount shows a fallback, reports it, and the rest keeps working", async ({
+    page,
+  }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    const id = await addBroken(page);
+    const fallback = surface(page, id).locator("[data-trellis-part=view-error]");
+    await expect(fallback).toBeVisible();
+    await expect(fallback).toHaveAttribute("role", "alert");
+    await expect(fallback).toContainText("Broken");
+    await expect(fallback).toContainText("mount failed");
+    expect(await page.evaluate(() => (window as any).errors)).toContain(`mount:${id}:broken`);
+    // The rest of the workspace is untouched.
+    await surface(page, "a").locator("[data-test=input]").fill("still here");
+    await expect(surface(page, "a").locator("[data-test=input]")).toHaveValue("still here");
+    // Try again mounts it once the problem is fixed.
+    await page.evaluate(() => ((window as any).__fixed = true));
+    await fallback.getByRole("button", { name: "Try again" }).click();
+    await expect(surface(page, id).locator("[data-test=broken-ok]")).toBeVisible();
+    await expect(surface(page, id).locator("[data-trellis-part=view-error]")).toHaveCount(0);
+  });
+
+  test("errorFallback replaces the built-in fallback", async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    await page.evaluate(() =>
+      (window as any).ws.update({
+        errorFallback: ({ error, retry }: any) => {
+          const el = document.createElement("div");
+          el.dataset.test = "custom-fallback";
+          el.textContent = `custom: ${error.message}`;
+          el.addEventListener("click", retry);
+          return el;
+        },
+      }),
+    );
+    const id = await addBroken(page);
+    await expect(surface(page, id).locator("[data-test=custom-fallback]")).toHaveText("custom: mount failed");
+  });
+
+  test("a throwing title function falls back to the type and reports it", async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    const id = await page.evaluate(() => {
+      const w = window as any;
+      w.errors = [];
+      w.ws.on("error", (e: any) => w.errors.push(`${e.source}:${e.viewId ?? ""}`));
+      w.ws.update({
+        types: {
+          ...w.types,
+          untitled: {
+            title: () => {
+              throw new Error("no title");
+            },
+            mount() {},
+          },
+        },
+      });
+      return w.ws.open("untitled").id as string;
+    });
+    await expect(tab(page, id)).toContainText("untitled");
+    expect(await page.evaluate(() => (window as any).errors)).toContain(`title:${id}`);
+  });
+
+  test("a throwing event listener doesn't stop others and is reported", async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    const result = await page.evaluate(() => {
+      const w = window as any;
+      const seen: string[] = [];
+      w.ws.on("error", (e: any) => seen.push(`error:${e.source}`));
+      w.ws.on("change", () => {
+        throw new Error("listener broke");
+      });
+      w.ws.on("change", () => seen.push("second listener ran"));
+      w.ws.select("b");
+      return seen;
+    });
+    expect(result).toContain("second listener ran");
+    expect(result).toContain("error:listener");
+  });
+
+  test("ws.reportError sends an app's own errors through the same channel", async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    const seen = await page.evaluate(() => {
+      const w = window as any;
+      const out: any[] = [];
+      w.ws.on("error", (e: any) =>
+        out.push({ source: e.source, viewId: e.viewId, type: e.type, message: e.error.message }),
+      );
+      w.ws.reportError(new Error("socket dropped"), { viewId: "a", source: "content" });
+      return out;
+    });
+    expect(seen).toEqual([{ source: "content", viewId: "a", type: "editor", message: "socket dropped" }]);
+  });
+
+  test("React: a view that throws while rendering shows a fallback; other views keep their state", async ({
+    page,
+  }) => {
+    await page.goto("/?scenario=react");
+    await expect(page.locator("[data-test=inc]").first()).toBeVisible();
+    await page.locator("[data-test=inc]").first().click();
+    await expect(page.locator("[data-test=inc]").first()).toHaveText("count 1");
+    await page.evaluate(() => ((window as any).__boom = true));
+    const id = await page.evaluate(() => (window as any).ws.open("boom").id as string);
+    const fallback = surface(page, id).locator("[data-trellis-part=view-error]");
+    await expect(fallback).toBeVisible();
+    await expect(fallback).toContainText(`boom in ${id}`);
+    expect(await page.evaluate(() => (window as any).errors)).toContain(`render:${id}`);
+    // The workspace and the other views survived, state included.
+    await page.evaluate(() => (window as any).ws.focus("c1"));
+    await expect(page.locator("[data-test=inc]").first()).toHaveText("count 1");
+    await page.evaluate(() => ((window as any).__boom = false));
+    await page.evaluate((v) => (window as any).ws.focus(v), id);
+    await fallback.getByRole("button", { name: "Try again" }).click();
+    await expect(surface(page, id).locator("[data-test=boom-ok]")).toBeVisible();
+  });
+});

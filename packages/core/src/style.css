@@ -597,6 +597,39 @@
   color: var(--trellis-text);
   font-weight: 600;
 }
+:where(.trellis [data-trellis-part="view-error"]) {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+  color: var(--trellis-text-muted);
+}
+:where(.trellis [data-trellis-part="view-error"] strong) {
+  color: var(--trellis-text);
+  font-weight: 600;
+}
+:where(.trellis [data-trellis-part="view-error"] p) {
+  max-width: 44ch;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+:where(.trellis [data-trellis-part="view-error-retry"]) {
+  margin-top: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--trellis-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--trellis-text);
+  font: inherit;
+  cursor: pointer;
+}
+:where(.trellis [data-trellis-part="view-error-retry"]:focus-visible) {
+  outline: 2px solid var(--trellis-accent);
+  outline-offset: 2px;
+}
 
 /* Without a bar above it, a surface rounds all four corners. (After the base surface rule:
  * both have zero specificity, so order decides.) */
