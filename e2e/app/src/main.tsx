@@ -222,6 +222,16 @@ if (scenario === "stress") {
       ),
     ),
   });
+  // ?world=1 turns on the experimental world transform; W toggles it, to compare by feel.
+  let world = params.get("world") === "1";
+  ws.update({ worldTransform: world });
+  document.title = `Stress ${cols}×${rows} · world ${world ? "on" : "off"} (W)`;
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "w" || e.metaKey || e.ctrlKey || e.altKey || e.target instanceof HTMLInputElement) return;
+    world = !world;
+    ws.update({ worldTransform: world });
+    document.title = `Stress ${cols}×${rows} · world ${world ? "on" : "off"} (W)`;
+  });
   // Until the first frame is on screen.
   requestAnimationFrame(() => requestAnimationFrame(() => (w.startup = performance.now() - started)));
   w.ws = ws;

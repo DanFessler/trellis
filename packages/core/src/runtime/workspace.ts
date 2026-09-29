@@ -1162,7 +1162,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     }
   }
   const moving = () =>
-    camera.moving || tween.active || !!dragActive() || gesture || leaving.size > 0 || entering.size > 0;
+    !freezing &&
+    (camera.moving || tween.active || !!dragActive() || gesture || leaving.size > 0 || entering.size > 0);
 
   // ---------------------------------------------------------------- collapsed groups
   /** Panel id → the collapsed group hiding it. */
@@ -1324,10 +1325,149 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     }
   }
 
+  // ---------------------------------------------------------------- world transform (experimental)
+  /** While the camera moves, the layout is drawn once, for a view that covers the whole move, and
+   * each frame only transforms the layer that holds it. Per-frame cost stays flat however many
+   * panels there are; the trade-off is that chrome scales like a picture until the camera stops. */
+  let world: { laidOut: Rect; target: Rect } | null = null;
+  /** Drawing the layout for the world transform: treated as at rest, and views aren't told. */
+  let freezing = false;
+  let refineTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Where overlay windows were drawn, before the layer's transform is undone for them. */
+  let worldBases = new Map<HTMLElement, { x: number; y: number }>();
+  const worldMotion = () =>
+    !!options.worldTransform &&
+    (camera.moving || zooming) &&
+    !dragActive() &&
+    !tween.active &&
+    leaving.size === 0 &&
+    entering.size === 0;
+  const covers = (outer: Rect, inner: Rect) =>
+    inner.x >= outer.x - 1e-6 &&
+    inner.y >= outer.y - 1e-6 &&
+    inner.x + inner.w <= outer.x + outer.w + 1e-6 &&
+    inner.y + inner.h <= outer.y + outer.h + 1e-6;
+  const grow = (r: Rect, by: number): Rect => ({
+    x: r.x - r.w * by,
+    y: r.y - r.h * by,
+    w: r.w * (1 + 2 * by),
+    h: r.h * (1 + 2 * by),
+  });
   function render(time = performance.now()) {
     if (lifetime.disposed) return;
+    if (worldMotion()) return renderWorld(time);
+    if (world) endWorld();
+    renderFrame(time);
+  }
+  function renderWorld(time: number) {
+    const c = camera.value;
+    const target = camera.moving ? camera.target : c;
+    // How far the view has zoomed in past the drawn layout: beyond this it gets too soft.
+    const magnified = world ? world.laidOut.w / c.w : 1;
+    const stale =
+      !world ||
+      !covers(world.laidOut, c) ||
+      magnified > 3 ||
+      (camera.moving && !sameRect(world.target, target));
+    if (stale) {
+      // An animated move draws the box around where it starts and ends, so every frame in between
+      // is covered. A gesture draws a margin around the view and redraws as it leaves it.
+      const u = camera.moving
+        ? grow(
+            {
+              x: Math.min(c.x, target.x),
+              y: Math.min(c.y, target.y),
+              w: Math.max(c.x + c.w, target.x + target.w) - Math.min(c.x, target.x),
+              h: Math.max(c.y + c.h, target.y + target.h) - Math.min(c.y, target.y),
+            },
+            0.01,
+          )
+        : grow(c, 0.25);
+      drawWorld(u, time);
+      world = { laidOut: u, target: { ...target } };
+    }
+    placeWorld();
+    // A gesture that pauses gets a sharp redraw for where it is now.
+    lifetime.clearTimeout(refineTimer);
+    if (zooming && world && Math.abs(world.laidOut.w / c.w - 1) > 0.3)
+      refineTimer = lifetime.timeout(() => {
+        if (!worldMotion() || !world) return;
+        world = null;
+        render();
+      }, 150);
+  }
+  /** Draw the whole layout as if the camera were at `view`, with the layer untransformed. */
+  function drawWorld(view: Rect, time: number) {
+    setStyle(layer, "transform", "");
+    const value = camera.value;
+    camera.value = view;
+    freezing = true;
+    try {
+      renderFrame(time);
+    } finally {
+      camera.value = value;
+      freezing = false;
+    }
+    worldBases = new Map();
+  }
+  /** Map the drawn layout onto the current camera with one transform on the layer. */
+  function placeWorld() {
+    const value = camera.value;
+    camera.value = world!.laidOut;
+    const drawn = toScreen(UNIT);
+    camera.value = value;
+    const now = toScreen(UNIT);
+    const kx = now.w / drawn.w;
+    const ky = now.h / drawn.h;
+    const tx = now.x - kx * drawn.x;
+    const ty = now.y - ky * drawn.y;
+    setStyle(layer, "transformOrigin", "0 0");
+    setStyle(layer, "transform", `matrix(${kx}, 0, 0, ${ky}, ${tx}, ${ty})`);
+    // Overlay windows float above the camera: undo the layer's transform for them.
+    const undo = (el: HTMLElement | null | undefined) => {
+      if (!el) return;
+      let at = worldBases.get(el);
+      if (!at) {
+        const m = /translate\(([-\d.e]+)px, ([-\d.e]+)px\)/.exec(el.style.transform);
+        if (!m) return;
+        at = { x: Number(m[1]), y: Number(m[2]) };
+        worldBases.set(el, at);
+      }
+      setStyle(el, "transformOrigin", "0 0");
+      setStyle(
+        el,
+        "transform",
+        `matrix(${1 / kx}, 0, 0, ${1 / ky}, ${(at.x - tx) / kx}, ${(at.y - ty) / ky})`,
+      );
+    };
+    for (const f of doc.floating) {
+      if (f.layer !== "overlay") continue;
+      const dom = panelDoms.get(f.panel.id);
+      undo(dom?.el);
+      undo(dom?.handles);
+      if (dom && dom.tabbar.parentElement === layer) undo(dom.tabbar);
+      for (const v of f.panel.views) undo(records.get(v)?.shell);
+    }
+    // The backdrop and the empty stage live outside the layer: place them for this frame.
+    const s = stageScreen();
+    if (s) {
+      place(backdrop, s, false);
+      place(stageEmpty, s, false);
+      setStyle(root, "--trellis-stage-x", `${s.x}px`);
+      setStyle(root, "--trellis-stage-y", `${s.y}px`);
+      setStyle(root, "--trellis-stage-w", `${s.w}px`);
+      setStyle(root, "--trellis-stage-h", `${s.h}px`);
+    }
+  }
+  function endWorld() {
+    world = null;
+    lifetime.clearTimeout(refineTimer);
+    setStyle(layer, "transform", "");
+    worldBases = new Map();
+  }
+  function renderFrame(time: number) {
     computeCollapsed();
-    const round = !moving();
+    const round = !freezing && !moving();
     if (moving()) settledState = false;
     const stage = findStage(doc.root);
     // While dragging, the stage follows the preview like any docked node (it makes room too).
@@ -1625,7 +1765,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       panelId: panel?.id ?? controller.state.panelId,
       interactive: !busy && usableAt(controller.id, safe),
       // Size and scale settle once motion stops: views never re-render per frame.
-      ...(moving()
+      ...(moving() || freezing
         ? {}
         : {
             size: { width: Math.round(width), height: Math.round(height) },

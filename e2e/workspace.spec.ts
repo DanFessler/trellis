@@ -2099,3 +2099,198 @@ test.describe("strict pages", () => {
     void browserName;
   });
 });
+
+test.describe("world transform (experimental)", () => {
+  /** Where the camera says each visible docked panel is on screen right now, and where it's drawn.
+   * The layer is moved with one transform, so the gaps between panels scale with it while the
+   * camera moves (the documented trade-off): each panel's center must be exact, and its size exact
+   * once that scaled gap is allowed for. */
+  const geometry = (page: Page) =>
+    page.evaluate(() => {
+      const ws = (window as any).ws;
+      const layer = ws.element.querySelector(".trellis-layer") as HTMLElement;
+      const m = new DOMMatrix(
+        getComputedStyle(layer).transform === "none" ? "" : getComputedStyle(layer).transform,
+      );
+      const kx = m.a;
+      const ky = m.d;
+      const host = ws.element.getBoundingClientRect();
+      const gap = parseFloat(getComputedStyle(ws.element).getPropertyValue("--trellis-gap")) || 0;
+      const pad = gap / 2;
+      const rtl = getComputedStyle(ws.element).direction === "rtl";
+      const c = ws.navigation.camera;
+      const W = host.width - pad * 2;
+      const H = host.height - pad * 2;
+      const out: { id: string; dx: number; dy: number; dw: number; dh: number }[] = [];
+      for (const [id, e] of ws.getLayoutRects() as Map<string, any>) {
+        if (e.node.kind !== "panel") continue;
+        const el = document.querySelector<HTMLElement>(`[data-trellis-part=panel][data-panel="${id}"]`);
+        if (!el || getComputedStyle(el).display === "none") continue;
+        let x = pad + ((e.rect.x - c.x) / c.w) * W;
+        const w = (e.rect.w / c.w) * W;
+        if (rtl) x = host.width - x - w;
+        const expected = {
+          x: x + pad,
+          y: pad + ((e.rect.y - c.y) / c.h) * H + pad,
+          w: w - gap,
+          h: (e.rect.h / c.h) * H - gap,
+        };
+        const r = el.getBoundingClientRect();
+        // Only panels that are actually on screen.
+        if (r.right < host.left || r.left > host.right || r.bottom < host.top || r.top > host.bottom)
+          continue;
+        out.push({
+          id,
+          dx: Math.abs(r.left - host.left + r.width / 2 - (expected.x + expected.w / 2)),
+          dy: Math.abs(r.top - host.top + r.height / 2 - (expected.y + expected.h / 2)),
+          dw: Math.abs(r.width - (expected.w + gap - gap * kx)),
+          dh: Math.abs(r.height - (expected.h + gap - gap * ky)),
+        });
+      }
+      return out;
+    });
+  /** Samples geometry on several frames of an animated zoom to `target`. */
+  const sampleZoom = async (page: Page, target: string) => {
+    await page.evaluate((t) => (window as any).ws.navigation.frame(t), target);
+    const samples = [];
+    for (let i = 0; i < 8; i++) {
+      await page.evaluate(() => new Promise(requestAnimationFrame));
+      samples.push(...(await geometry(page)));
+    }
+    return samples;
+  };
+  /** Waits for the camera, once it has started moving, to come to rest. */
+  const still = async (page: Page) => {
+    const camera = () => page.evaluate(() => JSON.stringify((window as any).ws.navigation.camera));
+    let last = await camera();
+    for (let i = 0; i < 50; i++) {
+      await page.waitForTimeout(250);
+      const now = await camera();
+      if (now === last && i > 0) return;
+      last = now;
+    }
+    throw new Error("the camera never came to rest");
+  };
+  const worst = (samples: { dx: number; dy: number; dw: number; dh: number }[]) =>
+    Math.max(0, ...samples.map((s) => Math.max(s.dx, s.dy, s.dw, s.dh)));
+
+  for (const dir of ["ltr", "rtl"])
+    test(`panels are drawn exactly where the camera puts them, every frame (${dir})`, async ({ page }) => {
+      await page.goto(`/?scenario=vanilla&navigation=free&dir=${dir}`);
+      await expect(tab(page, "a")).toBeVisible();
+      await page.evaluate(() => (window as any).ws.update({ motion: "full", worldTransform: true }));
+      const zoomIn = await sampleZoom(page, "left");
+      expect(zoomIn.length).toBeGreaterThan(8);
+      expect(worst(zoomIn)).toBeLessThan(1.5);
+      await still(page);
+      const zoomOut = await sampleZoom(page, "all");
+      expect(worst(zoomOut)).toBeLessThan(1.5);
+    });
+
+  test("overlay floating windows stay put while the camera moves", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&navigation=free");
+    await expect(tab(page, "a")).toBeVisible();
+    const id = await page.evaluate(() => {
+      const ws = (window as any).ws;
+      ws.update({ motion: "full", worldTransform: true });
+      return ws.open("files", { placement: { float: { x: 0.55, y: 0.5, w: 0.3, h: 0.35 } } })
+        .panelId as string;
+    });
+    // Let it finish appearing.
+    await page.waitForTimeout(500);
+    const before = await box(panel(page, id));
+    await page.evaluate(() => (window as any).ws.navigation.frame("left"));
+    for (let i = 0; i < 6; i++) {
+      await page.evaluate(() => new Promise(requestAnimationFrame));
+      const now = await box(panel(page, id));
+      for (const k of ["x", "y", "width", "height"] as const)
+        expect(Math.abs(now[k] - before[k])).toBeLessThan(1);
+    }
+  });
+
+  test("with many panels, a camera move restyles only a few elements per frame", async ({ page }) => {
+    await page.goto("/?scenario=stress&cols=10&rows=10&tabs=3");
+    await page.waitForFunction(() => (window as any).startup !== undefined);
+    const perFrame = await page.evaluate(async () => {
+      const ws = (window as any).ws;
+      ws.update({ motion: "full", worldTransform: true });
+      const changed = new Set<Node>();
+      const observer = new MutationObserver((records) => records.forEach((r) => changed.add(r.target)));
+      observer.observe(ws.element, { attributes: true, subtree: true });
+      const counts: number[] = [];
+      ws.navigation.frame(ws.getSnapshot().views[0].panelId);
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+      for (let i = 0; i < 12; i++) {
+        changed.clear();
+        await new Promise(requestAnimationFrame);
+        await Promise.resolve();
+        observer.takeRecords().forEach((r) => changed.add(r.target));
+        counts.push(changed.size);
+      }
+      observer.disconnect();
+      return counts.sort((a, b) => a - b);
+    });
+    // The median frame restyles a handful of elements, not hundreds.
+    expect(perFrame[Math.floor(perFrame.length / 2)]).toBeLessThanOrEqual(8);
+  });
+
+  test("the layout a camera move ends on is the same as without it", async ({ page }) => {
+    const settled = async (world: boolean) => {
+      await page.goto("/?scenario=vanilla&navigation=free");
+      await expect(tab(page, "a")).toBeVisible();
+      await page.evaluate((w) => (window as any).ws.update({ motion: "full", worldTransform: w }), world);
+      await page.evaluate(() => (window as any).ws.navigation.frame("left"));
+      await still(page);
+      // What's on screen: elements out of view keep wherever they were last drawn.
+      return page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>("[data-trellis-part=panel], [data-trellis-part=surface]")]
+          .filter((el) => {
+            const style = getComputedStyle(el);
+            const r = el.getBoundingClientRect();
+            return (
+              style.display !== "none" && style.visibility !== "hidden" && r.right > 0 && r.left < innerWidth
+            );
+          })
+          .map((el) => {
+            const r = el.getBoundingClientRect();
+            return `${el.dataset.panel ?? el.dataset.view} ${Math.round(r.x)} ${Math.round(r.y)} ${Math.round(r.width)} ${Math.round(r.height)}`;
+          })
+          .sort(),
+      );
+    };
+    const plain = await settled(false);
+    const world = await settled(true);
+    expect(world).toEqual(plain);
+    expect(
+      await page.evaluate(() => (window as any).ws.element.querySelector(".trellis-layer").style.transform),
+    ).toBe("");
+  });
+
+  test("a pinch draws correctly, and refines once it pauses", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&navigation=free");
+    await expect(tab(page, "a")).toBeVisible();
+    await page.evaluate(() => (window as any).ws.update({ worldTransform: true }));
+    const at = center(await box(surface(page, "a")));
+    // Pinch in a long way, frame by frame, checking geometry as it goes.
+    const samples = [];
+    for (let i = 0; i < 16; i++) {
+      await page.evaluate(({ x, y }) => {
+        const target = document.elementFromPoint(x, y)!;
+        target.dispatchEvent(
+          new WheelEvent("wheel", {
+            deltaY: -6.5,
+            ctrlKey: true,
+            clientX: x,
+            clientY: y,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      }, at);
+      await page.evaluate(() => new Promise(requestAnimationFrame));
+      samples.push(...(await geometry(page)));
+    }
+    expect(worst(samples)).toBeLessThan(1.5);
+  });
+});

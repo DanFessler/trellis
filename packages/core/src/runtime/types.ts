@@ -249,6 +249,10 @@ export interface WorkspaceOptions {
    * stay pushed if the divider is dragged back. `false` makes each drag work from the layout it
    * started with, so dragging back undoes the pushes. */
   keepPushed?: boolean;
+  /** Experimental. While the camera moves, lay the workspace out once and move it with a single
+   * transform, instead of laying out every panel on every frame. Much cheaper with many panels;
+   * the trade-off is that panels scale like pictures until the camera stops. Default `false`. */
+  worldTransform?: boolean;
   /** Show panel menus with your own component instead of the built-in one. */
   renderMenu?(request: MenuRequest): void;
   /** Where the built-in "Hide" animates to, e.g. your dock or tray button. */

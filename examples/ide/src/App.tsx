@@ -212,6 +212,7 @@ function StatusBar() {
   const cursor = useIde((s) => (activeEditor ? s.cursors[activeEditor] : undefined));
   const theme = useIde((s) => s.theme);
   const navigation = useIde((s) => s.navigation);
+  const worldTransform = useIde((s) => s.worldTransform);
   const diagnostics = useDiagnostics();
   const errors = diagnostics.filter((d) => d.severity === "error").length;
   const warnings = diagnostics.filter((d) => d.severity === "warning").length;
@@ -299,6 +300,19 @@ function StatusBar() {
         </button>
         <button
           className="status-item"
+          title={
+            worldTransform
+              ? "World transform (experimental): a camera move lays panels out once and moves them with one transform. Click to turn off."
+              : "World transform (experimental) is off: every panel is laid out on every frame of a camera move. Click to turn on."
+          }
+          aria-pressed={worldTransform}
+          onClick={() => ide.setWorldTransform(!worldTransform)}
+          data-testid="world-transform-toggle"
+        >
+          {worldTransform ? "World: on" : "World: off"}
+        </button>
+        <button
+          className="status-item"
           title="Switch color theme"
           onClick={() =>
             ide.setTheme(
@@ -325,6 +339,7 @@ function Shell() {
   const ws = useOptionalWorkspace();
   const theme = useIde((s) => s.theme);
   const navigation = useIde((s) => s.navigation);
+  const worldTransform = useIde((s) => s.worldTransform);
 
   // Track the last focused editor so the outline and status bar keep context while you use tool panels.
   useEffect(() => {
@@ -393,6 +408,7 @@ function Shell() {
         <Workspace
           theme={theme}
           navigation={navigation}
+          worldTransform={worldTransform}
           floating="overlay"
           storageKey={STORAGE_KEY}
           version={LAYOUT_VERSION}

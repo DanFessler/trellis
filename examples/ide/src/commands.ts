@@ -175,6 +175,13 @@ export function buildCommands(): Command[] {
       run: () => ide.setNavigation(ide.get().navigation === "free" ? "focus" : "free"),
     },
     {
+      id: "view.toggleWorldTransform",
+      title: "Toggle World Transform (Experimental)",
+      category: "View",
+      keywords: "performance renderer zoom camera transform experimental",
+      run: () => ide.setWorldTransform(!ide.get().worldTransform),
+    },
+    {
       id: "view.reset",
       title: "Reset Layout",
       category: "View",

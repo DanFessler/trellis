@@ -38,6 +38,20 @@ At 300 views, zooming spends most of its time in the browser's own layout, becau
 - Views in background tabs aren't repositioned while anything moves.
 - Views aren't told about size or scale changes mid-animation. `resize` and `scale` fire once motion settles.
 
+## Experimental: world transform
+
+`worldTransform: true` (React: `worldTransform`) moves the camera a different way. At the start of a zoom or pan, the whole workspace is laid out once for a view covering the entire move. Each frame then sets a single transform on the layer that holds it, instead of laying out every panel. Pinch and drag gestures work the same way, and are laid out again when they leave that view or zoom in more than 3×. When the camera stops, everything is laid out normally again.
+
+With 300 views and the CPU slowed 4×, slow frames fall from 29% to 8% during an animated zoom, and from 20% to 8% during a pinch. The trade-offs, while the camera moves:
+
+- Chrome, text and the gaps between panels scale like a picture, and stretch unevenly when the view's shape changes.
+- Zooming in looks slightly soft until the camera stops.
+- Collapsed groups and icon tiles are chosen for the laid-out view, not for each frame.
+
+Nothing changes once the camera is still. The option may become the default, change, or go away.
+
+`WORLD=1 npm run bench` measures with it on.
+
 ## Keeping your content fast
 
 - Pause work that nobody can see. `view.visible` is `false` for background tabs, hidden panels and views scrolled out of the camera, and the `visibility` event tells you when it changes.
