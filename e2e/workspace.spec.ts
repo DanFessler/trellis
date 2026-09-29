@@ -1824,3 +1824,152 @@ test.describe("right to left", () => {
     await expect.poll(async () => (await x(panel(page, "left"))) < (await x(panel(page, "docs")))).toBe(true);
   });
 });
+
+test.describe("permissions", () => {
+  const open = async (page: Page, permissions: unknown) => {
+    await page.goto("/?scenario=vanilla&navigation=free");
+    await expect(tab(page, "a")).toBeVisible();
+    await page.evaluate((p) => (window as any).ws.update({ permissions: p }), permissions);
+  };
+  const menuItems = async (page: Page, panelId: string) => {
+    await panel(page, panelId).locator("[data-trellis-part=panel-menu]").click();
+    const labels = await page.locator(".trellis-menu").first().getByRole("menuitem").allTextContents();
+    await page.keyboard.press("Escape");
+    return labels.map((l) => l.trim());
+  };
+  const tryDragTab = async (page: Page, view: string, target: string) => {
+    const from = center(await box(tab(page, view)));
+    const t = await box(panel(page, target));
+    await drag(page, from, { x: t.x + t.width / 2, y: t.y + t.height / 2 });
+    await page.waitForTimeout(300);
+  };
+  /** Whether dragging the first divider resizes anything. Without the resize permission there's
+   * no divider to grab (or focus) at all. */
+  const tryDivider = async (page: Page) => {
+    const before = (await doc(page)).root.weights[0];
+    const divider = page.locator("[data-trellis-part=divider][data-index='0']").first();
+    if (!(await divider.isVisible())) return false;
+    const d = await box(divider);
+    await drag(page, center(d), { x: d.x + 120, y: d.y + d.height / 2 });
+    return (await doc(page)).root.weights[0] !== before;
+  };
+
+  test("permissions: false locks every layout change, but content, tabs and code still work", async ({
+    page,
+  }) => {
+    await open(page, false);
+    const before = await doc(page);
+    // Dragging a tab onto another panel does nothing.
+    await tryDragTab(page, "outline", "docs");
+    expect((await doc(page)).root).toEqual(before.root);
+    // Dividers are gone, so there's nothing to drag or focus.
+    expect(await tryDivider(page)).toBe(false);
+    await expect(page.locator("[data-trellis-part=divider]:visible")).toHaveCount(0);
+    // No close buttons; Delete and middle-click don't close.
+    await expect(tab(page, "a").locator("[data-trellis-part=tab-close]")).toBeHidden();
+    await tab(page, "a").focus();
+    await page.keyboard.press("Delete");
+    await tab(page, "b").click({ button: "middle" });
+    expect(Object.keys((await doc(page)).views)).toEqual(Object.keys(before.views));
+    // The panel menu offers nothing that changes the layout.
+    const items = await menuItems(page, "docs");
+    for (const label of items) expect(label).not.toMatch(/^(Move|Float|Dock|Hide|Close|New split)/);
+    // Selecting tabs, typing and code all still work.
+    await tab(page, "b").click();
+    await expect(tab(page, "b")).toHaveAttribute("aria-selected", "true");
+    await surface(page, "b").locator("[data-test=input]").fill("typed");
+    await expect(surface(page, "b").locator("[data-test=input]")).toHaveValue("typed");
+    await page.evaluate(() => (window as any).ws.close("b"));
+    await expect(tab(page, "b")).toHaveCount(0);
+  });
+
+  test("each permission turns off only its own actions", async ({ page }) => {
+    await open(page, { close: false });
+    await expect(tab(page, "a").locator("[data-trellis-part=tab-close]")).toBeHidden();
+    expect(await tryDivider(page)).toBe(true);
+    await tryDragTab(page, "outline", "docs");
+    expect(await panelOf(page, "outline")).toBe("docs");
+
+    await open(page, { resize: false });
+    expect(await tryDivider(page)).toBe(false);
+    await expect(tab(page, "a").locator("[data-trellis-part=tab-close]")).toBeVisible();
+    const floating = await page.evaluate(
+      () => (window as any).ws.open("files", { placement: "float" }).panelId as string,
+    );
+    await expect(page.locator(`.trellis-handles[data-panel="${floating}"]`)).toBeHidden();
+
+    await open(page, { rearrange: false });
+    await tryDragTab(page, "outline", "docs");
+    expect(await panelOf(page, "outline")).toBe("right");
+    expect((await menuItems(page, "docs")).some((l) => l.startsWith("Move"))).toBe(false);
+    expect(await tryDivider(page)).toBe(true);
+
+    await open(page, { float: false, hide: false });
+    const items = await menuItems(page, "right");
+    expect(items.some((l) => /^(Float|Hide)/.test(l))).toBe(false);
+    expect(items.some((l) => l.startsWith("Close"))).toBe(true);
+  });
+
+  test("without float, a floating window can't be dragged into the layout", async ({ page }) => {
+    const floatInto = async () => {
+      const id = await page.evaluate(
+        () =>
+          // An editor: files may not go in the stage, where the docs panel is.
+          (window as any).ws.open("editor", {
+            params: { name: "f.ts" },
+            placement: { float: { x: 0.02, y: 0.62, w: 0.22, h: 0.3 } },
+          }).id as string,
+      );
+      const panelId = await panelOf(page, id);
+      // Drop the window, by its tab bar, onto the docs panel's tab bar.
+      const bar = await box(panel(page, panelId).locator("[data-trellis-part=tabbar]"));
+      const b = await box(tab(page, "b"));
+      await drag(
+        page,
+        { x: bar.x + bar.width * 0.65, y: bar.y + bar.height / 2 },
+        { x: b.x + b.width + 10, y: b.y + b.height / 2 },
+      );
+      await page.waitForTimeout(300);
+      return (await doc(page)).floating.some((f: any) => f.panel.id === panelId);
+    };
+    await open(page, { float: false });
+    expect(await floatInto()).toBe(true);
+    await open(page, true);
+    expect(await floatInto()).toBe(false);
+  });
+
+  test("Close other tabs leaves tabs that can't be closed", async ({ page }) => {
+    await open(page, true);
+    await page.evaluate(() =>
+      (window as any).ws.open("locked", { placement: { into: "docs" }, focus: false }),
+    );
+    await tab(page, "a").click();
+    await panel(page, "docs").locator("[data-trellis-part=panel-menu]").click();
+    await page.getByRole("menuitem", { name: "Close other tabs" }).click();
+    await expect(tab(page, "b")).toHaveCount(0);
+    const views = (await doc(page)).views;
+    expect(Object.values(views).some((v: any) => v.type === "locked")).toBe(true);
+  });
+
+  test("shortcuts respect permissions", async ({ page }) => {
+    await open(page, { close: false, float: false, hide: false });
+    await page.evaluate(() =>
+      (window as any).ws.update({ keymap: { "panel.float": "Mod+Alt+F", "panel.hide": "Mod+Alt+H" } }),
+    );
+    await tab(page, "a").focus();
+    for (const combo of ["ControlOrMeta+Alt+W", "ControlOrMeta+Alt+F", "ControlOrMeta+Alt+H"])
+      await page.keyboard.press(combo);
+    const d = await doc(page);
+    expect(d.floating).toHaveLength(0);
+    expect(d.hidden).toHaveLength(0);
+    expect(Object.keys(d.views)).toContain("a");
+  });
+
+  test("permissions change at runtime", async ({ page }) => {
+    await open(page, false);
+    await expect(tab(page, "a").locator("[data-trellis-part=tab-close]")).toBeHidden();
+    await page.evaluate(() => (window as any).ws.update({ permissions: true }));
+    await expect(tab(page, "a").locator("[data-trellis-part=tab-close]")).toBeVisible();
+    expect(await tryDivider(page)).toBe(true);
+  });
+});

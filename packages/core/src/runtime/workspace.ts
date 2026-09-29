@@ -50,6 +50,7 @@ import { Menu, tidyMenu } from "./menu";
 import { DOCK_EASE, DOCK_MS, lerpRect, LayoutTween, MOTION, RectSpring, sameRect } from "./motion";
 import type {
   ErrorSource,
+  Permissions,
   IframeOptions,
   MenuEntry,
   MenuItem,
@@ -272,6 +273,17 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
 
   // ---------------------------------------------------------------- theme
   let appliedTokens = new Set<string>();
+  // ---------------------------------------------------------------- permissions
+  /** What users may do through the interface. Code (ws.close, ws.dock, …) is never limited. */
+  function can(action: keyof Permissions): boolean {
+    const p = options.permissions;
+    if (p === undefined || p === true) return true;
+    if (p === false) return false;
+    return p[action] !== false;
+  }
+  /** Whether a user can close this view: its type allows it, and so do the permissions. */
+  const userClosable = (viewId: string) => can("close") && typeOf(viewId).closable !== false;
+
   // ---------------------------------------------------------------- direction
   /** Right to left: the layout is mirrored at the screen boundary (toScreen and fromScreen), so
    * the document stays direction-neutral: a row's first child is its start edge. */
@@ -635,7 +647,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       }
       const tab = target.closest<HTMLElement>("[data-trellis-part=tab]");
       if (tab && target.closest("[data-trellis-part=tab-close]")) return;
-      if (!panel) return;
+      if (!panel || !can("rearrange")) return;
       if (tab) dragger.begin(e, panel, tab.dataset.view!);
       else if (target.closest("[data-trellis-part=tabbar]") || d.el.hasAttribute("data-frame-only"))
         dragger.begin(e, panel, null);
@@ -741,14 +753,14 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         el.append(record.icon, title, badge, closeButton);
         lifetime.listen(closeButton, "click", (e: MouseEvent) => {
           e.stopPropagation();
-          void close(viewId);
+          if (userClosable(viewId)) void close(viewId);
         });
         lifetime.listen(el, "click", (e: MouseEvent) => {
           if ((e.target as HTMLElement).closest("[data-trellis-part=tab-close]")) return;
           selectAndFocus(viewId);
         });
         lifetime.listen(el, "auxclick", (e: MouseEvent) => {
-          if (e.button === 1 && typeOf(viewId).closable !== false) void close(viewId);
+          if (e.button === 1 && userClosable(viewId)) void close(viewId);
         });
         tab = { el, title, badge, close: closeButton };
         dom.tabs.set(viewId, tab);
@@ -791,7 +803,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         if (selected && !tab.el.hasAttribute("data-selected")) revealTab(dom.tablist, tab.el);
         setAttr(tab.el, "data-selected", selected ? "" : null);
         setAttr(tab.el, "data-focused", focusedView === viewId ? "" : null);
-        const closable = typeOf(viewId).closable !== false;
+        const closable = userClosable(viewId);
         setAttr(tab.close, "hidden", closable ? null : "");
         setAttr(tab.close, "title", `Close ${title}`);
         setAttr(tab.el, "aria-keyshortcuts", closable ? "Delete Shift+F10" : "Shift+F10");
@@ -1340,7 +1352,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       }
       if (dom.handles) {
         setStyle(dom.handles, "zIndex", String(z + 2));
-        setStyle(dom.handles, "display", onscreen && !frameOnly ? "" : "none");
+        setStyle(dom.handles, "display", onscreen && !frameOnly && can("resize") ? "" : "none");
         setStyle(dom.handles, "opacity", opacity === 1 ? "" : String(opacity));
         setStyle(dom.handles, "clipPath", clip);
         place(dom.handles, r, round);
@@ -1524,7 +1536,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     });
   }
   function renderDividers(round: boolean) {
-    const show = !tween.active && !dragActive() && !gesture;
+    // Without the resize permission there's nothing to grab or focus.
+    const show = !tween.active && !dragActive() && !gesture && can("resize");
     for (const el of dividerEls.values()) {
       const split = effectiveSplit(el.dataset.split!);
       const e = split && entries.get(split.id);
@@ -2031,7 +2044,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         shortcut: hint("frame.toggle"),
         run: () => toggleFrame(panelId),
       });
-    if (region === "floating" && floatingLayer() === "stage") {
+    if (!can("float")) {
+      // Neither Float nor Dock.
+    } else if (region === "floating" && floatingLayer() === "stage") {
       items.push({ id: "dock", label: "Dock beside stage", run: () => toggleDock(panelId) });
     } else if (region === "floating") {
       items.push({
@@ -2079,31 +2094,34 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
           run: () => dock(viewId, { beside: panelId, edge: "bottom" }),
         },
       );
-    if (moves.length) items.push({ id: "move", label: `Move ${titleOf(viewId)} to`, items: moves });
-    items.push({
-      id: "hide",
-      label: "Hide",
-      run: () =>
-        hide(panelId, {
-          toward:
-            guarded(() => options.hideToward?.(panelId), undefined, { source: "callback" }) ?? undefined,
-        }),
-    });
-    const closable = panel.views.filter((v) => typeOf(v).closable !== false);
-    if (closable.length) {
+    if (moves.length && can("rearrange"))
+      items.push({ id: "move", label: `Move ${titleOf(viewId)} to`, items: moves });
+    if (can("hide"))
+      items.push({
+        id: "hide",
+        label: "Hide",
+        run: () =>
+          hide(panelId, {
+            toward:
+              guarded(() => options.hideToward?.(panelId), undefined, { source: "callback" }) ?? undefined,
+          }),
+      });
+    // Only views a user may close: "Close other tabs" leaves non-closable tabs alone.
+    const others = panel.views.filter((v) => v !== panel.selected && userClosable(v));
+    if (userClosable(panel.selected) || others.length) {
       items.push("separator");
-      if (typeOf(panel.selected).closable !== false)
+      if (userClosable(panel.selected))
         items.push({
           id: "close",
           label: `Close ${titleOf(panel.selected)}`,
           shortcut: hint("view.close"),
           run: () => void close(panel.selected),
         });
-      if (panel.views.length > 1)
+      if (others.length)
         items.push({
           id: "close-others",
           label: "Close other tabs",
-          run: () => panel.views.filter((v) => v !== panel.selected).forEach((v) => void close(v)),
+          run: () => others.forEach((v) => void close(v)),
         });
     }
     return items;
@@ -2187,7 +2205,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       case "End":
         return go(panel.views.length - 1);
       case "Delete":
-        if (typeOf(panel.selected).closable !== false) {
+        if (userClosable(panel.selected)) {
           e.preventDefault();
           void close(panel.selected);
         }
@@ -2261,13 +2279,13 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         return;
       }
       case "view.close":
-        if (focusedView && typeOf(focusedView).closable !== false) void close(focusedView);
+        if (focusedView && userClosable(focusedView)) void close(focusedView);
         return;
       case "panel.float":
-        if (panelId) float(panelId);
+        if (panelId && can("float")) float(panelId);
         return;
       case "panel.hide":
-        if (panelId) hide(panelId);
+        if (panelId && can("hide")) hide(panelId);
         return;
     }
   }
@@ -2329,7 +2347,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     return node?.kind === "split" ? node : null;
   }
   function beginDivider(e: PointerEvent, el: HTMLElement) {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || !can("resize")) return;
     e.preventDefault();
     const origin = doc;
     const splitId = el.dataset.split!;
@@ -2372,6 +2390,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     el.addEventListener("pointercancel", up);
   }
   function equalize(splitId: string, index: number) {
+    if (!can("resize")) return;
     const split = findNode(doc.root, splitId) as SplitNode | null;
     if (!split) return;
     const weights = [...split.weights];
@@ -2380,6 +2399,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     commit({ ...doc, root: replaceNode(doc.root, splitId, { ...split, weights }) });
   }
   function dividerKey(e: KeyboardEvent, el: HTMLElement) {
+    if (!can("resize")) return;
     const split = effectiveSplit(el.dataset.split!);
     const entry = entries.get(el.dataset.split!);
     if (!split || !entry || !doc.root) return;
@@ -2414,7 +2434,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     dom.handles = wrap;
   }
   function beginFloatResize(e: PointerEvent, panelId: string, dir: string) {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || !can("resize")) return;
     e.preventDefault();
     e.stopPropagation();
     const float = doc.floating.find((f) => f.panel.id === panelId);
@@ -2532,6 +2552,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     toScreen,
     fromScreen,
     rtl: () => rtl,
+    canFloat: () => can("float"),
     panelScreen: (world) => inset(toScreen(world), pad()),
     fromScreenRect,
     floatWorld(panelId) {
@@ -2738,6 +2759,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         "tabs" in patch
       )
         applyTheme();
+      // Close buttons follow the permissions.
+      if ("permissions" in patch) updateTabs();
       if ("navigation" in patch && !navigationMode()) nav.focus(null, false);
       if (typesChanged) {
         for (const record of records.values()) mountContent(record);

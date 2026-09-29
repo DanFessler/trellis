@@ -34,6 +34,7 @@ import {
   type MenuEntry,
   type MenuRequest,
   type PanelMenuContext,
+  type Permissions,
   type Params,
   type Placement,
   type Surface,
@@ -394,6 +395,8 @@ export interface WorkspaceProps {
   /** Whether panels pushed by a divider stay pushed when it's dragged back. See the core
    * `keepPushed` option. */
   keepPushed?: boolean;
+  /** What users may change through the interface. See the core `permissions` option. */
+  permissions?: boolean | Partial<Permissions>;
   /** Layout direction: "auto" (default) follows the page; "rtl" mirrors the workspace. */
   direction?: "ltr" | "rtl" | "auto";
   /** Keys held for free-navigation gestures. See the core `gestureKeys` option. */
@@ -521,6 +524,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       keepPushed: p.keepPushed,
       gestureKeys: p.gestureKeys,
       direction: p.direction,
+      permissions: p.permissions,
       tabs: p.tabs,
       label: p.label,
       document: p.document,
@@ -582,6 +586,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
       keepPushed: props.keepPushed,
       gestureKeys: props.gestureKeys,
       direction: props.direction,
+      permissions: props.permissions,
       label: props.label,
       tabs: props.tabs,
     });
@@ -600,6 +605,7 @@ function WorkspaceImpl(props: WorkspaceProps, forwarded: Ref<WorkspaceHandle>) {
     props.keepPushed,
     JSON.stringify(props.gestureKeys ?? null),
     props.direction,
+    JSON.stringify(props.permissions ?? null),
     props.label,
     props.tabs?.fill,
     props.tabs?.inset,

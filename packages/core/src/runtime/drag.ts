@@ -74,6 +74,8 @@ export interface DragHost {
   fromScreen(p: { x: number; y: number }): { x: number; y: number };
   /** Right to left: tabs run leftward and floating rects are measured from the right. */
   rtl(): boolean;
+  /** Whether users may turn a docked panel into a floating window, or back. */
+  canFloat(): boolean;
   /** Screen rect of a docked node, inset by the gap. */
   panelScreen(world: Rect): Rect;
   /** Inverse of panelScreen. */
@@ -564,6 +566,9 @@ export function createDragController(host: DragHost) {
     if (!next) return null;
     const views = d.lifted.views;
     const layer = host.floatingLayer();
+    // Moving a floating window, or rearranging docked ones, is one thing; changing which it is
+    // takes the float permission.
+    if (!host.canFloat() && !!d.fromFloat !== (next.kind === "float")) return null;
     if (next.kind === "float") return layer && host.allowed(views, "floating") ? next : null;
     if (next.kind === "stage") return host.allowed(views, "stage") ? next : null;
     const doc = d.pdoc;

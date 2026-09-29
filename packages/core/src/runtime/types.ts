@@ -209,6 +209,10 @@ export interface WorkspaceOptions {
   /** CSS custom properties applied to the workspace, e.g. { "--trellis-accent": "#f60" }. */
   tokens?: Record<string, string>;
   keymap?: Keymap;
+  /** What users may change through the interface: `false` locks the layout, `true` (default)
+   * allows everything, or turn off each of these. Calls from code always work, so an admin tool or
+   * a server-driven layout can still change it. Can change at any time. */
+  permissions?: boolean | Partial<Permissions>;
   /** Layout direction. "auto" (default) follows the page (the `dir` attribute or CSS `direction`
    * around the workspace); "rtl" mirrors the layout, tabs, menus, keys and gestures. Documents are
    * direction-neutral: a row's first child sits at its start edge either way. */
@@ -266,6 +270,21 @@ export interface WorkspaceSnapshot {
   canGoForward: boolean;
   framings: Framing[];
   dragging: boolean;
+}
+
+export interface Permissions {
+  /** Drag tabs and panels: docking, tabbing, reordering, moving floating windows, and the panel
+   * menu's Move and New split items. */
+  rearrange: boolean;
+  /** Resize with dividers (dragging, arrow keys, double-click) and floating windows' edges. */
+  resize: boolean;
+  /** Close views: close buttons, middle-click, Delete, the Close menu items and shortcut. */
+  close: boolean;
+  /** Turn panels into floating windows and back: the Float and Dock menu items, the float
+   * shortcut, and dragging a whole panel between the layout and the desktop. */
+  float: boolean;
+  /** Hide panels: the Hide menu item and shortcut. */
+  hide: boolean;
 }
 
 /** Where an error came from: a view type's `mount`, its cleanup, `title`, `iframe` or `menu`
