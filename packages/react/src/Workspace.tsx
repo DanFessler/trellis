@@ -395,9 +395,9 @@ export interface WorkspaceProps {
   /** Whether panels pushed by a divider stay pushed when it's dragged back. See the core
    * `keepPushed` option. */
   keepPushed?: boolean;
-  /** Experimental: move the workspace with one transform while the camera moves. See the core
-   * `worldTransform` option. */
-  worldTransform?: boolean;
+  /** Experimental: move the workspace with one transform while the camera moves, or `"auto"` to
+   * decide per move. See the core `worldTransform` option. */
+  worldTransform?: boolean | "auto";
   /** What users may change through the interface. See the core `permissions` option. */
   permissions?: boolean | Partial<Permissions>;
   /** Layout direction: "auto" (default) follows the page; "rtl" mirrors the workspace. */

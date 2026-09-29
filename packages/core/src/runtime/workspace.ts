@@ -42,6 +42,7 @@ import type {
   SplitNode,
 } from "../model/types";
 import { errorFallbackElement, h, icons, place, setAttr, setStyle } from "./dom";
+import { RendererChoice } from "./renderer-choice";
 import { DEFAULT_KEYMAP, formatCombo, matches, type Command } from "./keymap";
 import { defaultGestureKeys } from "./gestures";
 import { Emitter, Lifetime } from "./lifetime";
@@ -221,6 +222,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   let lastStagePanel: string | null = null;
   const badges = new Map<string, string | number | boolean | null>();
   const panelDoms = new Map<string, PanelDom>();
+  /** Each panel's size when last drawn on screen, to count the panels a render resized. */
+  const drawnSizes = new Map<string, string>();
   const records = new Map<string, SurfaceRecord>();
   const dividerEls = new Map<string, HTMLElement>();
   const lastRects = new Map<string, Rect>();
@@ -737,6 +740,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     return dom;
   }
   function destroyPanelDom(panelId: string) {
+    drawnSizes.delete(panelId);
     const dom = panelDoms.get(panelId);
     if (!dom) return;
     dom.el.remove();
@@ -1097,6 +1101,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   function tick(time: number) {
     frame = 0;
     const dt = lastTime ? (time - lastTime) / 1000 : 0.016;
+    if (lastTime) choice.frameInterval(time - lastTime);
     lastTime = time;
     let moving = false;
     if (camera.moving && !gesture) {
@@ -1335,13 +1340,37 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   let refineTimer: ReturnType<typeof setTimeout> | undefined;
   /** Where overlay windows were drawn, before the layer's transform is undone for them. */
   let worldBases = new Map<HTMLElement, { x: number; y: number }>();
+  /** The camera is moving, and nothing else is. */
+  const cameraMotion = () =>
+    (camera.moving || zooming) && !dragActive() && !tween.active && leaving.size === 0 && entering.size === 0;
   const worldMotion = () =>
-    !!options.worldTransform &&
-    (camera.moving || zooming) &&
-    !dragActive() &&
-    !tween.active &&
-    leaving.size === 0 &&
-    entering.size === 0;
+    cameraMotion() &&
+    (options.worldTransform === true || (options.worldTransform === "auto" && move === "world"));
+  /** For `worldTransform: "auto"`: which renderer this camera move uses, and how layouts perform. */
+  const choice = new RendererChoice();
+  let move: "plain" | "world" | null = null;
+  let lastMoveFrame = 0;
+  /** Panels drawn on screen by the last render, and how many of them changed size. */
+  let drawnPanels = 0;
+  let resizedPanels = 0;
+  /** Docked panels in view at the start or the end of the camera move, and every floating one. */
+  function panelsInMove() {
+    const c = camera.value;
+    const t = camera.moving ? camera.target : c;
+    const meets = (a: Rect, b: Rect) =>
+      a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+    let n = doc.floating.length;
+    for (const e of entries.values())
+      if (e.node.kind === "panel" && (meets(e.rect, c) || meets(e.rect, t))) n++;
+    return n;
+  }
+  /** Runs a render and returns how long it took, including the browser's layout. */
+  function timed(run: () => void) {
+    const start = performance.now();
+    run();
+    void root.offsetWidth;
+    return performance.now() - start;
+  }
   const covers = (outer: Rect, inner: Rect) =>
     inner.x >= outer.x - 1e-6 &&
     inner.y >= outer.y - 1e-6 &&
@@ -1355,9 +1384,23 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   });
   function render(time = performance.now()) {
     if (lifetime.disposed) return;
+    const auto = options.worldTransform === "auto";
+    // Decided when the camera starts moving, even if something else is animating too: world mode
+    // takes over once that's done.
+    if (auto && (camera.moving || zooming)) {
+      if (move === null) move = choice.startMove(panelsInMove()) ? "world" : "plain";
+      else if (move === "plain" && lastMoveFrame && choice.frame(time - lastMoveFrame)) move = "world";
+      lastMoveFrame = time;
+    } else {
+      move = null;
+      lastMoveFrame = 0;
+    }
     if (worldMotion()) return renderWorld(time);
     if (world) endWorld();
-    renderFrame(time);
+    if (!auto) return renderFrame(time);
+    const ms = timed(() => renderFrame(time));
+    if (move === "plain") choice.plainFrame(ms, drawnPanels);
+    else if (!moving()) choice.fullLayout(ms, resizedPanels);
   }
   function renderWorld(time: number) {
     const c = camera.value;
@@ -1403,7 +1446,12 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     camera.value = view;
     freezing = true;
     try {
-      renderFrame(time);
+      if (options.worldTransform === "auto")
+        choice.fullLayout(
+          timed(() => renderFrame(time)),
+          resizedPanels,
+        );
+      else renderFrame(time);
     } finally {
       camera.value = value;
       freezing = false;
@@ -1466,6 +1514,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     worldBases = new Map();
   }
   function renderFrame(time: number) {
+    drawnPanels = 0;
+    resizedPanels = 0;
     computeCollapsed();
     const round = !freezing && !moving();
     if (moving()) settledState = false;
@@ -1537,6 +1587,12 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         continue;
       }
       const onscreen = inView(r) && r.w > 2 && r.h > 2;
+      if (onscreen) {
+        drawnPanels++;
+        const size = `${Math.round(r.w)}×${Math.round(r.h)}`;
+        if (drawnSizes.get(panelId) !== size) resizedPanels++;
+        drawnSizes.set(panelId, size);
+      }
       setStyle(dom.el, "display", onscreen ? "" : "none");
       setStyle(dom.el, "opacity", opacity === 1 ? "" : String(opacity));
       const z = zOf.get(panelId) ?? 10;

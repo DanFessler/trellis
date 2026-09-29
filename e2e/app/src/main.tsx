@@ -207,11 +207,18 @@ if (scenario === "stress") {
   const types: WorkspaceOptions["types"] = {
     cell: { title: (v) => `Cell ${v.params.n}`, mount: input("cell") },
   };
+  // ?world=1 or ?world=auto sets the experimental world transform; W cycles off, auto and on, to
+  // compare by feel.
+  const modes = [false, "auto", true] as const;
+  let world = modes.indexOf(
+    params.get("world") === "1" ? true : params.get("world") === "auto" ? "auto" : false,
+  );
   let n = 0;
   const started = performance.now();
   const ws = createWorkspace(app, {
     types,
     navigation: "free",
+    worldTransform: modes[world],
     defaultLayout: L.row(
       Array.from({ length: cols }, () =>
         L.column(
@@ -222,15 +229,15 @@ if (scenario === "stress") {
       ),
     ),
   });
-  // ?world=1 turns on the experimental world transform; W toggles it, to compare by feel.
-  let world = params.get("world") === "1";
-  ws.update({ worldTransform: world });
-  document.title = `Stress ${cols}×${rows} · world ${world ? "on" : "off"} (W)`;
+  const apply = () => {
+    ws.update({ worldTransform: modes[world] });
+    document.title = `Stress ${cols}×${rows} · world ${["off", "auto", "on"][world]} (W)`;
+  };
+  apply();
   window.addEventListener("keydown", (e) => {
     if (e.key !== "w" || e.metaKey || e.ctrlKey || e.altKey || e.target instanceof HTMLInputElement) return;
-    world = !world;
-    ws.update({ worldTransform: world });
-    document.title = `Stress ${cols}×${rows} · world ${world ? "on" : "off"} (W)`;
+    world = (world + 1) % modes.length;
+    apply();
   });
   // Until the first frame is on screen.
   requestAnimationFrame(() => requestAnimationFrame(() => (w.startup = performance.now() - started)));

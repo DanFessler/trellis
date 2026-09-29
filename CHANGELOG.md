@@ -13,8 +13,9 @@
 - `permissions`, to lock the layout or allow only some changes: `rearrange`, `resize`, `close`, `float` and `hide`.
   Calls from code are never limited.
 - Experimental `worldTransform` option: while the camera moves, the workspace is laid out once and moved with one
-  transform. With 300 views and the CPU slowed 4×, slow frames during a zoom fall from 29% to 8%. Panels scale like
-  pictures until the camera stops. Off by default.
+  transform. With 300 views and the CPU slowed 4×, slow frames during a zoom fall from 30–40% to under 10%. Panels
+  scale like pictures until the camera stops. `"auto"` uses it only for moves that would otherwise stutter, judged
+  from how long layouts take on the machine. Off by default.
 - `npm run bench`, which measures startup, memory and frame timing for large workspaces.
 - Performance and Security pages in the docs.
 

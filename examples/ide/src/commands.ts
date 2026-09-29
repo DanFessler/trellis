@@ -1,5 +1,5 @@
 import type { LayoutNode, WorkspaceHandle } from "@danfessler/trellis-react";
-import { ide, mod, openFile, shift, type IdeTheme } from "./ide";
+import { ide, mod, nextWorldTransform, openFile, shift, type IdeTheme } from "./ide";
 import { basename, vfs } from "./vfs";
 
 export interface Command {
@@ -176,10 +176,10 @@ export function buildCommands(): Command[] {
     },
     {
       id: "view.toggleWorldTransform",
-      title: "Toggle World Transform (Experimental)",
+      title: "Cycle World Transform: Off, Auto, On (Experimental)",
       category: "View",
-      keywords: "performance renderer zoom camera transform experimental",
-      run: () => ide.setWorldTransform(!ide.get().worldTransform),
+      keywords: "performance renderer zoom camera transform experimental auto",
+      run: () => ide.setWorldTransform(nextWorldTransform(ide.get().worldTransform)),
     },
     {
       id: "view.reset",

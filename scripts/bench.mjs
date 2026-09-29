@@ -1,7 +1,8 @@
 // Performance benchmarks: startup, memory and frame timing for large workspaces, at full speed
 // and with the CPU slowed 4×. `npm run bench` (no build needed; serves the e2e app with Vite).
 // Prints Markdown tables: the numbers in docs/performance.md come from here.
-// `WORLD=1 npm run bench` measures with the experimental `worldTransform` option on.
+// `WORLD=1 npm run bench` measures with the experimental `worldTransform` option on, and
+// `WORLD=auto` with it deciding per move.
 import os from "node:os";
 import { chromium } from "@playwright/test";
 import { createServer } from "vite";
@@ -68,11 +69,10 @@ async function run(size, throttle) {
   await cdp.send("Performance.enable");
   if (throttle > 1) await cdp.send("Emulation.setCPUThrottlingRate", { rate: throttle });
   await page.goto(
-    `http://localhost:${PORT}/?scenario=stress&cols=${size.cols}&rows=${size.rows}&tabs=${size.tabs}`,
+    `http://localhost:${PORT}/?scenario=stress&cols=${size.cols}&rows=${size.rows}&tabs=${size.tabs}&world=${process.env.WORLD ?? ""}`,
   );
   await page.waitForFunction(() => window.startup !== undefined, null, { timeout: 60000 });
   const startup = await page.evaluate(() => window.startup);
-  if (process.env.WORLD) await page.evaluate(() => window.ws.update({ worldTransform: true }));
   await page.waitForTimeout(500);
   await cdp.send("HeapProfiler.collectGarbage");
   const metrics = Object.fromEntries(

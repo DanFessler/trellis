@@ -20,7 +20,7 @@ import { Outline } from "./views/Outline";
 import { Palette } from "./Palette";
 import { PREVIEW_URL, PreviewAccessory } from "./preview";
 import { countPanels, isShown, saveActive, togglePanel } from "./commands";
-import { ide, isMac, mod, shift, useIde } from "./ide";
+import { ide, isMac, mod, nextWorldTransform, shift, useIde } from "./ide";
 import { basename, languageOf, LANGUAGE_NAMES, useVfs, vfs } from "./vfs";
 import { INITIAL_EDITORS, PROJECT_NAME } from "./seed";
 import {
@@ -301,15 +301,16 @@ function StatusBar() {
         <button
           className="status-item"
           title={
-            worldTransform
-              ? "World transform (experimental): a camera move lays panels out once and moves them with one transform. Click to turn off."
-              : "World transform (experimental) is off: every panel is laid out on every frame of a camera move. Click to turn on."
+            {
+              off: "World transform (experimental) is off: every panel is laid out on every frame of a camera move. Click for auto.",
+              auto: "World transform (experimental) is auto: each camera move uses it only when laying panels out every frame would be too slow. Click to turn on.",
+              on: "World transform (experimental) is on: a camera move lays panels out once and moves them with one transform. Click to turn off.",
+            }[worldTransform]
           }
-          aria-pressed={worldTransform}
-          onClick={() => ide.setWorldTransform(!worldTransform)}
+          onClick={() => ide.setWorldTransform(nextWorldTransform(worldTransform))}
           data-testid="world-transform-toggle"
         >
-          {worldTransform ? "World: on" : "World: off"}
+          World: {worldTransform}
         </button>
         <button
           className="status-item"
@@ -408,7 +409,7 @@ function Shell() {
         <Workspace
           theme={theme}
           navigation={navigation}
-          worldTransform={worldTransform}
+          worldTransform={{ off: false, auto: "auto" as const, on: true }[worldTransform]}
           floating="overlay"
           storageKey={STORAGE_KEY}
           version={LAYOUT_VERSION}

@@ -42,7 +42,7 @@ At 300 views, zooming spends most of its time in the browser's own layout, becau
 
 `worldTransform: true` (React: `worldTransform`) moves the camera a different way. At the start of a zoom or pan, the whole workspace is laid out once for a view covering the entire move. Each frame then sets a single transform on the layer that holds it, instead of laying out every panel. Pinch and drag gestures work the same way, and are laid out again when they leave that view or zoom in more than 3×. When the camera stops, everything is laid out normally again.
 
-With 300 views and the CPU slowed 4×, slow frames fall from 29% to 8% during an animated zoom, and from 20% to 8% during a pinch. The trade-offs, while the camera moves:
+With 300 views and the CPU slowed 4×, slow frames fall from 30–40% to under 10% during an animated zoom, and from 20–25% to about 5% during a pinch. The trade-offs, while the camera moves:
 
 - Chrome, text and the gaps between panels scale like a picture, and stretch unevenly when the view's shape changes.
 - Zooming in looks slightly soft until the camera stops.
@@ -50,7 +50,18 @@ With 300 views and the CPU slowed 4×, slow frames fall from 29% to 8% during an
 
 Nothing changes once the camera is still. The option may become the default, change, or go away.
 
-`WORLD=1 npm run bench` measures with it on.
+### Auto
+
+`worldTransform: "auto"` uses the world transform only for moves that need it, so light layouts and fast machines never see the trade-offs:
+
+- It predicts what a normal moving frame would cost from how long layouts take on this machine: every layout that resizes panels is timed, and so is the one a world-mode move draws. How a moving frame compares with a full layout is learned from the normal moving frames measured.
+- A move uses the world transform when its predicted frame takes more than 70% of a display frame, and goes back to the normal renderer only below 35%, so it doesn't flip between moves.
+- Moves with fewer than 12 panels on screen always use the normal renderer.
+- As a backstop, if two of the last four frames of a move stutter (a missed display frame and over 25 ms), the rest of the move uses the world transform, and so do the next few.
+
+Pass the option when creating the workspace, so the first layout is measured. In auto mode, each render finishes the browser's layout straight away so it can be timed.
+
+`WORLD=1 npm run bench` measures with the world transform on, and `WORLD=auto` with auto.
 
 ## Keeping your content fast
 
