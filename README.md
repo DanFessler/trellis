@@ -107,6 +107,8 @@ npm run build:all    # packages + website with examples (site/dist)
 npm run verify:pack  # pack tarballs and build a fresh app against React 18 and 19
 ```
 
+The browser tests serve the test app on port 5330 and reuse whatever is already there; `E2E_PORT=5332 npm run test:e2e` picks another port. Playwright's WebKit doesn't run on older macOS releases; to run it locally, use Playwright's Linux image (`mcr.microsoft.com/playwright`) with `CI=true`.
+
 The examples live in [`examples/`](examples):
 
 | Example                       | Shows                                                                                                  | Run                                      |

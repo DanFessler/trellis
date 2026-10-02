@@ -1352,8 +1352,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const n = option.minPanels;
     return Number.isFinite(n) ? Math.max(0, n) : WORLD_MIN_PANELS;
   }
-  /** With a threshold: which renderer this camera move uses. */
+  /** With a threshold: which renderer this camera move uses, and the target it was decided for. */
   let move: "plain" | "world" | null = null;
+  let moveTarget: Rect | null = null;
   /** Docked panels in view at the start or the end of the camera move, and every floating one. */
   function panelsInMove() {
     const c = camera.value;
@@ -1378,11 +1379,14 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   });
   function render(time = performance.now()) {
     if (lifetime.disposed) return;
-    // Decided once, when the camera starts moving, even if something else is animating too: world
-    // mode takes over once that's done.
+    // Decided when the camera starts moving, or is sent somewhere else, even if something else is
+    // animating too: world mode takes over once that's done.
     const min = minPanels();
     if (min === null || !(camera.moving || zooming)) move = null;
-    else if (move === null) move = panelsInMove() >= min ? "world" : "plain";
+    else if (move === null || (camera.moving && moveTarget && !sameRect(moveTarget, camera.target))) {
+      move = panelsInMove() >= min ? "world" : "plain";
+      moveTarget = camera.moving ? { ...camera.target } : null;
+    }
     if (worldMotion()) return renderWorld(time);
     if (world) endWorld();
     renderFrame(time);

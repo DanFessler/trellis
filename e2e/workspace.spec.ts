@@ -592,29 +592,52 @@ test.describe("custom element", () => {
   });
 });
 
+/** In the page: resolves once the camera hasn't moved for three animation frames in a row. While it
+ * moves it changes every frame, however slow frames are; counting time instead mistakes one long
+ * frame for rest. */
+const cameraAtRest = async () => {
+  const camera = () => JSON.stringify((window as any).ws.navigation.camera);
+  let last = camera();
+  let same = 0;
+  const end = performance.now() + 20000;
+  while (same < 3) {
+    if (performance.now() > end) throw new Error("the camera never came to rest");
+    await new Promise(requestAnimationFrame);
+    const now = camera();
+    same = now === last ? same + 1 : 0;
+    last = now;
+  }
+};
+
 test.describe("custom element: world-transform", () => {
   /** Zooms to the note panel, and whether any frame of the move had the layer transformed. */
   const usesWorld = (page: Page, value: string | null) =>
-    page.evaluate(async (value) => {
-      const el = document.querySelector("trellis-workspace")!;
-      el.setAttribute("navigation", "free");
-      el.setAttribute("motion", "full");
-      if (value === null) el.removeAttribute("world-transform");
-      else el.setAttribute("world-transform", value);
-      const ws = (window as any).ws;
-      const layer = el.querySelector<HTMLElement>(".trellis-layer")!;
-      const target = ws.getSnapshot().views.find((v: any) => v.id === "n1").panelId;
-      ws.navigation.frame(ws.navigation.camera.w < 0.99 ? "all" : target);
-      let seen = false;
-      for (let i = 0; i < 20; i++) {
-        await new Promise(requestAnimationFrame);
-        seen ||= layer.style.transform !== "";
-      }
-      await new Promise((r) => setTimeout(r, 1500));
-      return seen;
-    }, value);
+    page
+      .evaluate(async (value) => {
+        const el = document.querySelector("trellis-workspace")!;
+        el.setAttribute("navigation", "free");
+        el.setAttribute("motion", "full");
+        if (value === null) el.removeAttribute("world-transform");
+        else el.setAttribute("world-transform", value);
+        const ws = (window as any).ws;
+        const layer = el.querySelector<HTMLElement>(".trellis-layer")!;
+        const target = ws.getSnapshot().views.find((v: any) => v.id === "n1").panelId;
+        ws.navigation.frame(ws.navigation.camera.w < 0.99 ? "all" : target);
+        let seen = false;
+        for (let i = 0; i < 20; i++) {
+          await new Promise(requestAnimationFrame);
+          seen ||= layer.style.transform !== "";
+        }
+        return seen;
+      }, value)
+      .then(async (seen) => {
+        await page.evaluate(cameraAtRest);
+        return seen;
+      });
 
   test("maps to worldTransform: on, off, auto and a panel threshold", async ({ page }) => {
+    // Six camera moves: slow where frames are slow.
+    test.slow();
     await page.goto("/?scenario=element");
     await expect(page.locator("trellis-workspace .note").first()).toBeVisible();
     expect(await usesWorld(page, null)).toBe(false);
@@ -2194,18 +2217,8 @@ test.describe("world transform (experimental)", () => {
     }
     return samples;
   };
-  /** Waits for the camera, once it has started moving, to come to rest. */
-  const still = async (page: Page) => {
-    const camera = () => page.evaluate(() => JSON.stringify((window as any).ws.navigation.camera));
-    let last = await camera();
-    for (let i = 0; i < 50; i++) {
-      await page.waitForTimeout(250);
-      const now = await camera();
-      if (now === last && i > 0) return;
-      last = now;
-    }
-    throw new Error("the camera never came to rest");
-  };
+  /** Waits for the camera to come to rest. */
+  const still = (page: Page) => page.evaluate(cameraAtRest);
   const worst = (samples: { dx: number; dy: number; dw: number; dh: number }[]) =>
     Math.max(0, ...samples.map((s) => Math.max(s.dx, s.dy, s.dw, s.dh)));
 
@@ -2337,16 +2350,22 @@ test.describe("world transform (experimental)", () => {
       target: string | "first",
       measure: false | "all" | "world" = false,
     ) => {
-      // Recorded in the page, on every frame, after the workspace has drawn it.
+      // Recorded in the page, on each frame the camera moved in: a frame's callbacks can run before
+      // the workspace's, so a frame where it hasn't moved yet isn't part of the move.
       await page.evaluate((t) => {
         const w = window as any;
         const ws = w.ws;
+        const camera = () => JSON.stringify(ws.navigation.camera);
+        let last = camera();
         ws.navigation.frame(t === "first" ? ws.getSnapshot().views[0].panelId : t);
         w.__modes = [];
         const layer = ws.element.querySelector(".trellis-layer");
+        let frames = 0;
         const record = () => {
-          if (w.__modes.length >= 40) return;
-          w.__modes.push(layer.style.transform !== "");
+          if (w.__modes.length >= 40 || frames++ > 400) return;
+          const now = camera();
+          if (now !== last) w.__modes.push(layer.style.transform !== "");
+          last = now;
           requestAnimationFrame(record);
         };
         requestAnimationFrame(record);
@@ -2367,6 +2386,7 @@ test.describe("world transform (experimental)", () => {
       await page.goto(`/?scenario=stress&${query}`);
       await page.waitForFunction(() => (window as any).startup !== undefined, null, { timeout: 60000 });
       await page.evaluate(() => (window as any).ws.update({ motion: "full" }));
+      await still(page);
     };
 
     test("a light layout stays on the normal renderer", async ({ page }) => {
@@ -2403,6 +2423,31 @@ test.describe("world transform (experimental)", () => {
       // Back out to everything: 100 panels where it ends.
       const out = await zoomFrames(page, "all");
       expect(out.modes[0]).toBe(true);
+    });
+
+    test("a move retargeted mid-way is decided again for its new end", async ({ page }) => {
+      await open(page, "cols=10&rows=10&tabs=1&world=auto");
+      await zoomFrames(page, "first");
+      const modes = await page.evaluate(async () => {
+        const ws = (window as any).ws;
+        const layer = ws.element.querySelector(".trellis-layer");
+        // Towards a neighbour: a few panels in view.
+        ws.navigation.frame(ws.getSnapshot().views[1].panelId);
+        const seen: boolean[] = [];
+        for (let i = 0; i < 3; i++) {
+          await new Promise(requestAnimationFrame);
+          seen.push(layer.style.transform !== "");
+        }
+        // Now out to everything instead: 100 panels where it ends.
+        ws.navigation.overview();
+        for (let i = 0; i < 6; i++) {
+          await new Promise(requestAnimationFrame);
+          seen.push(layer.style.transform !== "");
+        }
+        return seen;
+      });
+      expect(modes.slice(0, 3)).not.toContain(true);
+      expect(modes.slice(3)).toContain(true);
     });
 
     test("the threshold can be set", async ({ page }) => {
