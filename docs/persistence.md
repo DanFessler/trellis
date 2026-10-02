@@ -60,7 +60,7 @@ ws.setDocument(doc); // animates to it
 ws.setDocument(doc, { animate: false });
 ```
 
-`setDocument()` sanitizes the input and matches views by id. Views that exist in both documents stay mounted, new ones mount and removed ones unmount. Panels animate from where they were to where they now are.
+`setDocument()` [repairs](#damaged-and-outdated-layouts) the input and matches views by id. Views that exist in both documents stay mounted, new ones mount and removed ones unmount. Panels animate from where they were to where they now are.
 
 ### The `change` event
 
@@ -139,10 +139,48 @@ ws.on("change", (doc) => {
 });
 ```
 
-## Unknown types in saved documents
+## Recipe: several layouts per user or team
 
-Saved layouts can outlive your view types. `onMissingType(type, id)` decides what happens to a view whose type isn't registered. Return `"placeholder"` (the default) to show an "Unavailable" placeholder in its place, or `"drop"` to remove it:
+A dispatcher might switch between a call-taking layout and a radio layout, and a center might hand out its own default. Store each layout as a named document on your server:
+
+```ts
+type SavedLayout = { name: string; document: LayoutDocument };
+
+async function saveAs(name: string) {
+  await fetch(`/api/layouts/${encodeURIComponent(name)}`, {
+    method: "PUT",
+    body: JSON.stringify({ name, document: ws.getDocument() }),
+  });
+}
+
+async function open(name: string) {
+  const saved: SavedLayout = await fetch(`/api/layouts/${encodeURIComponent(name)}`).then((r) => r.json());
+  ws.setDocument(saved.document);
+}
+```
+
+Views keep their mounted content across the switch when their ids match, so a map or a call view that's in both layouts doesn't reload.
+
+For a team default set by an administrator, pass it as `defaultLayout`. `ws.reset()` then returns anyone to it. To stop users rearranging an administrator's layout, or only let some of them, set [permissions](./permissions.md).
+
+## Damaged and outdated layouts
+
+Saved layouts come back from servers, `localStorage` and older versions of your app. Trellis repairs any document before using it, so a bad one can't break the workspace:
+
+- `setDocument()` accepts any value without throwing. A document that isn't one at all, such as `null`, gives an empty workspace.
+- A saved layout in `localStorage` that isn't a layout document, or isn't valid JSON, is ignored in favour of the default layout.
+- Views without a record, or shown twice, are removed, and so are panels left without views.
+- Missing or duplicate ids are replaced, so content isn't lost.
+- Weights, floating rects, restore targets and saved framings that aren't valid fall back to sensible values.
+
+`sanitize(document)` is exported if you want to repair a document yourself, for example before storing it.
+
+### Unknown view types
+
+Saved layouts can outlive your view types. `onMissingType(type, id)` decides what happens to a view whose type isn't registered. Return `"placeholder"` (the default) to keep it, showing an "Unavailable" placeholder in its place, or `"drop"` to remove it:
 
 ```ts
 createWorkspace(el, { types, persist: { key: "app" }, onMissingType: () => "drop" });
 ```
+
+A placeholder keeps the view's record, params included, so saving the layout doesn't lose it. When the type is registered later, for example once a plugin or microfrontend loads, pass the new types to `ws.update({ types })`. The view mounts its real content in place. The placeholder is `[data-trellis-part="view-missing"]` for styling.

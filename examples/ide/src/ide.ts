@@ -17,12 +17,17 @@ export interface ConfirmRequest {
 export type PaletteMode = "commands" | "files";
 /** "focus" zooms to panels on request; "free" adds scroll, pinch and drag zooming. */
 export type IdeNavigation = "focus" | "free";
+export type IdeWorldTransform = "off" | "auto" | "on";
+export const nextWorldTransform = (w: IdeWorldTransform): IdeWorldTransform =>
+  (({ off: "auto", auto: "on", on: "off" }) as const)[w];
 
 interface IdeState {
   activeEditor: string | null;
   cursors: Record<string, Cursor>;
   theme: IdeTheme;
   navigation: IdeNavigation;
+  /** The experimental world-transform renderer. */
+  worldTransform: IdeWorldTransform;
   palette: { open: boolean; mode: PaletteMode; nonce: number };
   confirm: ConfirmRequest | null;
   toast: { text: string; nonce: number } | null;
@@ -48,11 +53,22 @@ function initialNavigation(): IdeNavigation {
   }
 }
 
+const WORLD_KEY = "trellis-ide:world-transform";
+function initialWorldTransform(): IdeWorldTransform {
+  try {
+    const v = localStorage.getItem(WORLD_KEY);
+    return v === "on" || v === "auto" ? v : "off";
+  } catch {
+    return "off";
+  }
+}
+
 let state: IdeState = {
   activeEditor: null,
   cursors: {},
   theme: initialTheme(),
   navigation: initialNavigation(),
+  worldTransform: initialWorldTransform(),
   palette: { open: false, mode: "commands", nonce: 0 },
   confirm: null,
   toast: null,
@@ -102,6 +118,14 @@ export const ide = {
       /* ignore */
     }
     set({ navigation });
+  },
+  setWorldTransform(worldTransform: IdeWorldTransform) {
+    try {
+      localStorage.setItem(WORLD_KEY, worldTransform);
+    } catch {
+      /* ignore */
+    }
+    set({ worldTransform });
   },
   openPalette(mode: PaletteMode) {
     set({ palette: { open: true, mode, nonce: state.palette.nonce + 1 } });

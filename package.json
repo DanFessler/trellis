@@ -18,7 +18,8 @@
     "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
     "check": "npm run typecheck && npm test && npm run build && npm run test:e2e",
     "verify:pack": "npm run build && node scripts/verify-pack.mjs",
-    "size": "npm run build && node scripts/size.mjs"
+    "size": "npm run build && node scripts/size.mjs",
+    "bench": "node scripts/bench.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

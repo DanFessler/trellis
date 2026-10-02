@@ -52,6 +52,8 @@ export interface NavigationHost {
   fromScreen(p: { x: number; y: number }): { x: number; y: number };
   toScreen(world: Rect): Rect;
   panelScreen(world: Rect): Rect;
+  /** Right to left, the screen is the layout mirrored. */
+  rtl(): boolean;
   /** Pause per-frame content updates while a gesture drives the camera. */
   setGesture(active: boolean): void;
   busy(): boolean;
@@ -233,8 +235,13 @@ export function createNavigator(host: NavigationHost) {
     host.camera.velocity = { x: 0, y: 0, w: 0, h: 0 };
     const b = bounds();
     const c = host.camera.value;
-    const px = (clientX - b.left) / b.width;
+    let px = (clientX - b.left) / b.width;
     const py = (clientY - b.top) / b.height;
+    // Mirrored, the pointer's place on screen is the other way round in the layout.
+    if (host.rtl()) {
+      px = 1 - px;
+      panX = -panX;
+    }
     const min = Math.min(...[...entries.values()].map((e) => Math.min(e.rect.w, e.rect.h))) * 0.65;
     factor = Math.max(min / Math.min(c.w, c.h), Math.min(factor, 1.35 / Math.max(c.w, c.h)));
     const next = {
@@ -423,7 +430,13 @@ export function createNavigator(host: NavigationHost) {
   } | null = null;
   function moveRect(e: PointerEvent) {
     const d = drag!;
-    const world = rectangleCamera({ x: d.x, y: d.y }, { x: e.clientX, y: e.clientY }, d.viewport, d.view);
+    const mirror = (x: number) => (host.rtl() ? 2 * d.viewport.x + d.viewport.w - x : x);
+    const world = rectangleCamera(
+      { x: mirror(d.x), y: d.y },
+      { x: mirror(e.clientX), y: e.clientY },
+      d.viewport,
+      d.view,
+    );
     const screen = host.toScreen(world);
     place(marqueeEl, screen);
     d.candidate = screen.w >= 8 && screen.h >= 8 ? bestFit(world, entries) : null;

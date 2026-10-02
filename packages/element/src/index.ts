@@ -10,6 +10,13 @@ import {
 
 type Options = Omit<WorkspaceOptions, "types">;
 
+/** `world-transform`: present for on, "false", "auto", or a panel count for `{ minPanels }`. */
+const worldTransform = (el: Element): WorkspaceOptions["worldTransform"] => {
+  const value = el.getAttribute("world-transform")?.trim() ?? "";
+  if (value === "auto") return "auto";
+  if (value !== "" && Number.isFinite(Number(value))) return { minPanels: Number(value) };
+  return value !== "false";
+};
 const bool = (el: Element, name: string): boolean | undefined => {
   if (!el.hasAttribute(name)) return undefined;
   const value = el.getAttribute(name);
@@ -111,7 +118,8 @@ function specFrom(el: Element): LayoutSpec | null {
  * `<trellis-workspace>`: a light-DOM custom element around `createWorkspace`.
  *
  * Attributes: theme, floating ("false" | "stage" | "overlay"), navigation ("false" | "focus" | "free"),
- * motion, storage-key, version, label, panel-menu, keep-pushed ("false" undoes pushes when a divider is dragged back).
+ * motion, storage-key, version, label, panel-menu, direction ("ltr" | "rtl" | "auto"), keep-pushed ("false" undoes pushes when a divider is dragged back),
+ * world-transform (experimental: present for on, "false", "auto", or a panel count for `{ minPanels }`).
  * Children: `<template data-view-type>` definitions, one layout root (`<trellis-split>` etc.),
  * and optional `<div slot="backdrop|stage-empty|empty|chrome">` content.
  * Properties: `types` (merged over template types), `defaultLayout`, `document`, `options`, and `workspace` (the handle).
@@ -128,6 +136,8 @@ export class TrellisWorkspaceElement extends ElementBase {
     "motion",
     "panel-menu",
     "keep-pushed",
+    "world-transform",
+    "direction",
     "tab-fill",
     "tab-inset",
   ];
@@ -214,6 +224,10 @@ export class TrellisWorkspaceElement extends ElementBase {
       ...(this.hasAttribute("motion") ? { motion: this.attr("motion") } : {}),
       ...(this.hasAttribute("panel-menu") ? { panelMenu: bool(this, "panel-menu") } : {}),
       ...(this.hasAttribute("keep-pushed") ? { keepPushed: bool(this, "keep-pushed") } : {}),
+      ...(this.hasAttribute("world-transform") ? { worldTransform: worldTransform(this) } : {}),
+      ...(this.hasAttribute("direction")
+        ? { direction: this.attr<"ltr" | "rtl" | "auto">("direction") }
+        : {}),
       ...(this.hasAttribute("tab-fill") || this.hasAttribute("tab-inset")
         ? {
             tabs: {

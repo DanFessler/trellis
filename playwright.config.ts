@@ -1,13 +1,15 @@
 import { defineConfig, devices } from "@playwright/test";
+// E2E_PORT picks another port when 5330 is taken: an existing server there is reused, whatever it is.
+const port = Number(process.env.E2E_PORT ?? 5330);
 export default defineConfig({
   testDir: "./e2e",
   testMatch: /.*\.spec\.ts/,
   fullyParallel: true,
   reporter: process.env.CI ? "github" : "list",
-  use: { baseURL: "http://localhost:5330", viewport: { width: 1200, height: 800 } },
+  use: { baseURL: `http://localhost:${port}`, viewport: { width: 1200, height: 800 } },
   webServer: {
-    command: "npx vite --config e2e/app/vite.config.ts",
-    port: 5330,
+    command: `npx vite --config e2e/app/vite.config.ts --port ${port}`,
+    port,
     reuseExistingServer: !process.env.CI,
   },
   projects: [

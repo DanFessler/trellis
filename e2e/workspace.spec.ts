@@ -592,6 +592,64 @@ test.describe("custom element", () => {
   });
 });
 
+/** In the page: resolves once the camera hasn't moved for three animation frames in a row. While it
+ * moves it changes every frame, however slow frames are; counting time instead mistakes one long
+ * frame for rest. */
+const cameraAtRest = async () => {
+  const camera = () => JSON.stringify((window as any).ws.navigation.camera);
+  let last = camera();
+  let same = 0;
+  const end = performance.now() + 20000;
+  while (same < 3) {
+    if (performance.now() > end) throw new Error("the camera never came to rest");
+    await new Promise(requestAnimationFrame);
+    const now = camera();
+    same = now === last ? same + 1 : 0;
+    last = now;
+  }
+};
+
+test.describe("custom element: world-transform", () => {
+  /** Zooms to the note panel, and whether any frame of the move had the layer transformed. */
+  const usesWorld = (page: Page, value: string | null) =>
+    page
+      .evaluate(async (value) => {
+        const el = document.querySelector("trellis-workspace")!;
+        el.setAttribute("navigation", "free");
+        el.setAttribute("motion", "full");
+        if (value === null) el.removeAttribute("world-transform");
+        else el.setAttribute("world-transform", value);
+        const ws = (window as any).ws;
+        const layer = el.querySelector<HTMLElement>(".trellis-layer")!;
+        const target = ws.getSnapshot().views.find((v: any) => v.id === "n1").panelId;
+        ws.navigation.frame(ws.navigation.camera.w < 0.99 ? "all" : target);
+        let seen = false;
+        for (let i = 0; i < 20; i++) {
+          await new Promise(requestAnimationFrame);
+          seen ||= layer.style.transform !== "";
+        }
+        return seen;
+      }, value)
+      .then(async (seen) => {
+        await page.evaluate(cameraAtRest);
+        return seen;
+      });
+
+  test("maps to worldTransform: on, off, auto and a panel threshold", async ({ page }) => {
+    // Six camera moves: slow where frames are slow.
+    test.slow();
+    await page.goto("/?scenario=element");
+    await expect(page.locator("trellis-workspace .note").first()).toBeVisible();
+    expect(await usesWorld(page, null)).toBe(false);
+    expect(await usesWorld(page, "")).toBe(true);
+    expect(await usesWorld(page, "false")).toBe(false);
+    // Two panels: fewer than auto's 40.
+    expect(await usesWorld(page, "auto")).toBe(false);
+    expect(await usesWorld(page, "2")).toBe(true);
+    expect(await usesWorld(page, "3")).toBe(false);
+  });
+});
+
 test.describe("navigation requirements", () => {
   test("floating windows are not camera targets; double-clicking one frames its desktop", async ({
     page,
@@ -1453,5 +1511,976 @@ test.describe("free navigation gestures", () => {
     );
     await page.keyboard.press("ControlOrMeta+Alt+ArrowDown");
     await expect.poll(() => framed(page)).toBeNull();
+  });
+});
+
+test.describe("errors in views", () => {
+  /** Adds a vanilla type whose mount throws until window.__fixed is set. */
+  const addBroken = (page: Page) =>
+    page.evaluate(() => {
+      const w = window as any;
+      w.errors = [];
+      w.ws.on("error", (e: any) => w.errors.push(`${e.source}:${e.viewId ?? ""}:${e.type ?? ""}`));
+      w.ws.update({
+        types: {
+          ...w.types,
+          broken: {
+            title: "Broken",
+            mount(el: HTMLElement) {
+              if (!w.__fixed) throw new Error("mount failed");
+              el.innerHTML = '<p data-test="broken-ok">recovered</p>';
+            },
+          },
+        },
+      });
+      return w.ws.open("broken", { placement: { beside: "right", edge: "bottom" } }).id as string;
+    });
+
+  test("a view that fails to mount shows a fallback, reports it, and the rest keeps working", async ({
+    page,
+  }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    const id = await addBroken(page);
+    const fallback = surface(page, id).locator("[data-trellis-part=view-error]");
+    await expect(fallback).toBeVisible();
+    await expect(fallback).toHaveAttribute("role", "alert");
+    await expect(fallback).toContainText("Broken");
+    await expect(fallback).toContainText("mount failed");
+    expect(await page.evaluate(() => (window as any).errors)).toContain(`mount:${id}:broken`);
+    // The rest of the workspace is untouched.
+    await surface(page, "a").locator("[data-test=input]").fill("still here");
+    await expect(surface(page, "a").locator("[data-test=input]")).toHaveValue("still here");
+    // Try again mounts it once the problem is fixed.
+    await page.evaluate(() => ((window as any).__fixed = true));
+    await fallback.getByRole("button", { name: "Try again" }).click();
+    await expect(surface(page, id).locator("[data-test=broken-ok]")).toBeVisible();
+    await expect(surface(page, id).locator("[data-trellis-part=view-error]")).toHaveCount(0);
+  });
+
+  test("errorFallback replaces the built-in fallback", async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    await page.evaluate(() =>
+      (window as any).ws.update({
+        errorFallback: ({ error, retry }: any) => {
+          const el = document.createElement("div");
+          el.dataset.test = "custom-fallback";
+          el.textContent = `custom: ${error.message}`;
+          el.addEventListener("click", retry);
+          return el;
+        },
+      }),
+    );
+    const id = await addBroken(page);
+    await expect(surface(page, id).locator("[data-test=custom-fallback]")).toHaveText("custom: mount failed");
+  });
+
+  test("a throwing title function falls back to the type and reports it", async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    const id = await page.evaluate(() => {
+      const w = window as any;
+      w.errors = [];
+      w.ws.on("error", (e: any) => w.errors.push(`${e.source}:${e.viewId ?? ""}`));
+      w.ws.update({
+        types: {
+          ...w.types,
+          untitled: {
+            title: () => {
+              throw new Error("no title");
+            },
+            mount() {},
+          },
+        },
+      });
+      return w.ws.open("untitled").id as string;
+    });
+    await expect(tab(page, id)).toContainText("untitled");
+    expect(await page.evaluate(() => (window as any).errors)).toContain(`title:${id}`);
+  });
+
+  test("a throwing event listener doesn't stop others and is reported", async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    const result = await page.evaluate(() => {
+      const w = window as any;
+      const seen: string[] = [];
+      w.ws.on("error", (e: any) => seen.push(`error:${e.source}`));
+      w.ws.on("change", () => {
+        throw new Error("listener broke");
+      });
+      w.ws.on("change", () => seen.push("second listener ran"));
+      w.ws.select("b");
+      return seen;
+    });
+    expect(result).toContain("second listener ran");
+    expect(result).toContain("error:listener");
+  });
+
+  test("ws.reportError sends an app's own errors through the same channel", async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    const seen = await page.evaluate(() => {
+      const w = window as any;
+      const out: any[] = [];
+      w.ws.on("error", (e: any) =>
+        out.push({ source: e.source, viewId: e.viewId, type: e.type, message: e.error.message }),
+      );
+      w.ws.reportError(new Error("socket dropped"), { viewId: "a", source: "content" });
+      return out;
+    });
+    expect(seen).toEqual([{ source: "content", viewId: "a", type: "editor", message: "socket dropped" }]);
+  });
+
+  test("React: a view that throws while rendering shows a fallback; other views keep their state", async ({
+    page,
+  }) => {
+    await page.goto("/?scenario=react");
+    await expect(page.locator("[data-test=inc]").first()).toBeVisible();
+    await page.locator("[data-test=inc]").first().click();
+    await expect(page.locator("[data-test=inc]").first()).toHaveText("count 1");
+    await page.evaluate(() => ((window as any).__boom = true));
+    const id = await page.evaluate(() => (window as any).ws.open("boom").id as string);
+    const fallback = surface(page, id).locator("[data-trellis-part=view-error]");
+    await expect(fallback).toBeVisible();
+    await expect(fallback).toContainText(`boom in ${id}`);
+    expect(await page.evaluate(() => (window as any).errors)).toContain(`render:${id}`);
+    // The workspace and the other views survived, state included.
+    await page.evaluate(() => (window as any).ws.focus("c1"));
+    await expect(page.locator("[data-test=inc]").first()).toHaveText("count 1");
+    await page.evaluate(() => ((window as any).__boom = false));
+    await page.evaluate((v) => (window as any).ws.focus(v), id);
+    await fallback.getByRole("button", { name: "Try again" }).click();
+    await expect(surface(page, id).locator("[data-test=boom-ok]")).toBeVisible();
+  });
+});
+
+test.describe("right to left", () => {
+  const open = async (page: Page, extra = "") => {
+    await page.goto(`/?scenario=vanilla&dir=rtl${extra}`);
+    await expect(tab(page, "a")).toBeVisible();
+  };
+  const x = async (locator: Locator) => (await box(locator)).x;
+  const right = async (locator: Locator) => {
+    const b = await box(locator);
+    return b.x + b.width;
+  };
+
+  test("mirrors the layout: a row's first child is on the right", async ({ page }) => {
+    await open(page);
+    expect(await x(panel(page, "left"))).toBeGreaterThan(await x(panel(page, "docs")));
+    expect(await x(panel(page, "docs"))).toBeGreaterThan(await x(panel(page, "right")));
+    await expect(page.locator(".trellis")).toHaveCSS("direction", "rtl");
+  });
+
+  test("tabs run right to left, with the panel menu at the end", async ({ page }) => {
+    await open(page);
+    expect(await x(tab(page, "files"))).toBeGreaterThan(await x(tab(page, "search")));
+    const menu = panel(page, "left").locator("[data-trellis-part=panel-menu]");
+    expect(await x(menu)).toBeLessThan(await x(tab(page, "search")));
+  });
+
+  test("arrow keys in a tab list follow reading order", async ({ page }) => {
+    await open(page);
+    // Three tabs, so next and previous differ: a, b, c from right to left.
+    await page.evaluate(() =>
+      (window as any).ws.open("editor", { id: "c", params: { name: "c.ts" }, focus: false }),
+    );
+    await tab(page, "a").click();
+    await page.keyboard.press("ArrowLeft");
+    await expect(tab(page, "b")).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("ArrowLeft");
+    await expect(tab(page, "c")).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("ArrowRight");
+    await expect(tab(page, "b")).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("dividers move the way they're dragged, by pointer and keyboard", async ({ page }) => {
+    await open(page);
+    const width = async () => (await box(panel(page, "left"))).width;
+    const before = await width();
+    const d = await box(page.locator("[data-trellis-part=divider][data-index='0']").first());
+    // The first divider sits on the left edge of the first panel, which is on the right.
+    await drag(page, center(d), { x: d.x + d.width / 2 - 100, y: d.y + d.height / 2 });
+    const dragged = await width();
+    expect(dragged).toBeGreaterThan(before + 80);
+    await page.locator("[data-trellis-part=divider][data-index='0']").first().focus();
+    await page.keyboard.press("ArrowLeft");
+    expect(await width()).toBeGreaterThan(dragged + 5);
+  });
+
+  test("dropping a tab on a panel's left edge docks it on the left", async ({ page }) => {
+    await open(page);
+    const docs = await box(panel(page, "docs"));
+    const from = center(await box(tab(page, "outline")));
+    await drag(page, from, { x: docs.x + 12, y: docs.y + docs.height / 2 }, false);
+    await page.waitForTimeout(250);
+    await page.mouse.up();
+    await expect.poll(async () => (await box(surface(page, "outline"))).x).toBeLessThan(docs.x + 40);
+    const outline = await box(surface(page, "outline"));
+    expect(outline.x + outline.width).toBeLessThanOrEqual((await box(panel(page, "docs"))).x + 12);
+    expect(outline.y).toBeGreaterThanOrEqual(docs.y - 2);
+  });
+
+  test("reordering tabs follows reading order", async ({ page }) => {
+    await open(page);
+    // a, b, c run from right to left. Drag c into the gap between a and b.
+    await page.evaluate(() =>
+      (window as any).ws.open("editor", { id: "c", params: { name: "c.ts" }, focus: false }),
+    );
+    const b = await box(tab(page, "b"));
+    const c = center(await box(tab(page, "c")));
+    await page.mouse.move(c.x, c.y);
+    await page.mouse.down();
+    await page.mouse.move(c.x + 10, c.y, { steps: 3 });
+    await page.mouse.move(b.x + b.width * 0.85, c.y, { steps: 8 });
+    await page.mouse.up();
+    await expect
+      .poll(async () => {
+        const root = (await doc(page)).root;
+        const stage = root.children.find((n: any) => n.kind === "stage");
+        return stage.child.views;
+      })
+      .toEqual(["a", "c", "b"]);
+  });
+
+  test("floating windows are placed from the right and follow the pointer", async ({ page }) => {
+    await open(page);
+    const id = await page.evaluate(
+      () =>
+        (window as any).ws.open("files", { placement: { float: { x: 0.05, y: 0.1, w: 0.3, h: 0.4 } } })
+          .panelId as string,
+    );
+    const start = await box(panel(page, id));
+    expect(start.x).toBeGreaterThan(1200 / 2);
+    const bar = await box(panel(page, id).locator("[data-trellis-part=tabbar]"));
+    await drag(
+      page,
+      { x: bar.x + bar.width - 20, y: bar.y + bar.height / 2 },
+      {
+        x: bar.x + bar.width - 80,
+        y: bar.y + bar.height / 2 + 30,
+      },
+    );
+    await expect.poll(async () => (await box(panel(page, id))).x).toBeLessThan(start.x - 30);
+  });
+
+  test("menus open toward the start edge, and submenus to the left", async ({ page }) => {
+    await open(page);
+    const button = await box(panel(page, "docs").locator("[data-trellis-part=panel-menu]"));
+    await panel(page, "docs").locator("[data-trellis-part=panel-menu]").click();
+    const menu = page.locator(".trellis-menu").first();
+    await expect(menu).toBeVisible();
+    await expect(menu).toHaveCSS("direction", "rtl");
+    expect(Math.abs((await box(menu)).x - button.x)).toBeLessThan(4);
+    const move = menu.getByRole("menuitem", { name: /^Move/ });
+    await move.focus();
+    await page.keyboard.press("ArrowLeft");
+    const sub = page.locator(".trellis-menu").nth(1);
+    await expect(sub).toBeVisible();
+    // It overlaps its parent slightly, as it does left to right.
+    expect(await right(sub)).toBeLessThanOrEqual((await box(menu)).x + 10);
+    // The split that lands on the left says so.
+    await expect(sub.getByRole("menuitem", { name: "New split left" })).toBeVisible();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.locator(".trellis-menu")).toHaveCount(1);
+    // Shortcuts keep reading left to right.
+    await expect(menu.locator(".trellis-menu-shortcut").first()).toHaveCSS("direction", "ltr");
+  });
+
+  test("navigation gestures follow the pointer", async ({ page }) => {
+    await open(page, "&navigation=free");
+    // Stepping in toward the pointer frames the panel under it.
+    const files = center(await box(surface(page, "files")));
+    await page.mouse.move(files.x, files.y);
+    for (const key of ["ControlOrMeta", "Alt"]) await page.keyboard.down(key);
+    await page.mouse.wheel(0, -100);
+    for (const key of ["Alt", "ControlOrMeta"]) await page.keyboard.up(key);
+    await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).toBe("left");
+    await page.evaluate(() => (window as any).ws.navigation.frame("all"));
+    await page.waitForTimeout(300);
+    // A rectangle around a panel frames that panel.
+    const r = await box(panel(page, "right"));
+    for (const key of ["ControlOrMeta", "Alt", "Shift"]) await page.keyboard.down(key);
+    await page.mouse.move(r.x + 4, r.y + 4);
+    await page.mouse.down();
+    await page.mouse.move(r.x + r.width - 4, r.y + r.height - 4, { steps: 6 });
+    await page.mouse.up();
+    for (const key of ["Shift", "Alt", "ControlOrMeta"]) await page.keyboard.up(key);
+    await expect.poll(() => page.evaluate(() => (window as any).ws.navigation.framed)).toBe("right");
+    // Panning moves the layout with the pointer.
+    await page.evaluate(() => (window as any).ws.navigation.frame("all"));
+    await page.waitForTimeout(300);
+    const before = await x(panel(page, "docs"));
+    const at = center(await box(surface(page, "a")));
+    for (const key of ["ControlOrMeta", "Alt"]) await page.keyboard.down(key);
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    await page.mouse.move(at.x + 120, at.y, { steps: 6 });
+    const during = await x(panel(page, "docs"));
+    await page.mouse.up();
+    for (const key of ["Alt", "ControlOrMeta"]) await page.keyboard.up(key);
+    expect(during).toBeGreaterThan(before + 60);
+  });
+
+  test("a collapsed group mirrors its lines, and double-clicking zooms to the part under the pointer", async ({
+    page,
+  }) => {
+    await open(page, "&navigation=free");
+    const ids = await page.evaluate(() => {
+      const ws = (window as any).ws;
+      const x1 = ws.open("files", { placement: { beside: "right", edge: "bottom", share: 0.5 } });
+      const x2 = ws.open("search", { placement: { beside: x1.panelId, edge: "right" } });
+      const x3 = ws.open("files", { placement: { beside: x2.panelId, edge: "right" } });
+      ws.open("search", { placement: { beside: x3.panelId, edge: "bottom" } });
+      const doc = ws.getDocument();
+      doc.root.weights = [1, 12, 0.3];
+      ws.setDocument(doc);
+      ws.navigation.overview();
+      return { x1: x1.panelId };
+    });
+    const group = page.locator("[data-trellis-part=group]");
+    await expect(group).toHaveCount(1);
+    // The row's first seam, after x1, is measured from the tile's right edge.
+    const first = group.locator("i[data-axis=x]").first();
+    expect(await first.evaluate((el) => (el as HTMLElement).style.right)).not.toBe("");
+    // x1 is the row's first part, so it's on the right of the tile.
+    const tile = await box(group);
+    await page.mouse.dblclick(tile.x + tile.width * 0.9, tile.y + tile.height / 2);
+    await expect(panel(page, ids.x1)).toBeVisible();
+  });
+
+  test("resizing a floating window from its left edge grows it leftward", async ({ page }) => {
+    await open(page);
+    const id = await page.evaluate(
+      () =>
+        (window as any).ws.open("files", { placement: { float: { x: 0.1, y: 0.1, w: 0.3, h: 0.4 } } })
+          .panelId as string,
+    );
+    const before = await box(panel(page, id));
+    const handle = page.locator(`.trellis-handles[data-panel="${id}"] [data-dir=w]`);
+    const h = center(await box(handle));
+    await page.mouse.move(h.x, h.y);
+    await page.mouse.down();
+    await page.mouse.move(h.x - 60, h.y, { steps: 5 });
+    await page.mouse.up();
+    await expect.poll(async () => (await box(panel(page, id))).width).toBeGreaterThan(before.width + 50);
+    const after = await box(panel(page, id));
+    expect(Math.abs(after.x + after.width - (before.x + before.width))).toBeLessThan(2);
+    // The document still measures it from the right: its start edge.
+    const rect = await page.evaluate(
+      (p) => (window as any).ws.getDocument().floating.find((f: any) => f.panel.id === p).rect,
+      id,
+    );
+    expect(rect.x).toBeCloseTo(0.1, 2);
+  });
+
+  test('direction: "ltr" overrides the page', async ({ page }) => {
+    await open(page);
+    await page.evaluate(() => (window as any).ws.update({ direction: "ltr" }));
+    await expect.poll(async () => (await x(panel(page, "left"))) < (await x(panel(page, "docs")))).toBe(true);
+  });
+});
+
+test.describe("permissions", () => {
+  const open = async (page: Page, permissions: unknown) => {
+    await page.goto("/?scenario=vanilla&navigation=free");
+    await expect(tab(page, "a")).toBeVisible();
+    await page.evaluate((p) => (window as any).ws.update({ permissions: p }), permissions);
+  };
+  const menuItems = async (page: Page, panelId: string) => {
+    await panel(page, panelId).locator("[data-trellis-part=panel-menu]").click();
+    const labels = await page.locator(".trellis-menu").first().getByRole("menuitem").allTextContents();
+    await page.keyboard.press("Escape");
+    return labels.map((l) => l.trim());
+  };
+  const tryDragTab = async (page: Page, view: string, target: string) => {
+    const from = center(await box(tab(page, view)));
+    const t = await box(panel(page, target));
+    await drag(page, from, { x: t.x + t.width / 2, y: t.y + t.height / 2 });
+    await page.waitForTimeout(300);
+  };
+  /** Whether dragging the first divider resizes anything. Without the resize permission there's
+   * no divider to grab (or focus) at all. */
+  const tryDivider = async (page: Page) => {
+    const before = (await doc(page)).root.weights[0];
+    const divider = page.locator("[data-trellis-part=divider][data-index='0']").first();
+    if (!(await divider.isVisible())) return false;
+    const d = await box(divider);
+    await drag(page, center(d), { x: d.x + 120, y: d.y + d.height / 2 });
+    return (await doc(page)).root.weights[0] !== before;
+  };
+
+  test("permissions: false locks every layout change, but content, tabs and code still work", async ({
+    page,
+  }) => {
+    await open(page, false);
+    const before = await doc(page);
+    // Dragging a tab onto another panel does nothing.
+    await tryDragTab(page, "outline", "docs");
+    expect((await doc(page)).root).toEqual(before.root);
+    // Dividers are gone, so there's nothing to drag or focus.
+    expect(await tryDivider(page)).toBe(false);
+    await expect(page.locator("[data-trellis-part=divider]:visible")).toHaveCount(0);
+    // No close buttons; Delete and middle-click don't close.
+    await expect(tab(page, "a").locator("[data-trellis-part=tab-close]")).toBeHidden();
+    await tab(page, "a").focus();
+    await page.keyboard.press("Delete");
+    await tab(page, "b").click({ button: "middle" });
+    expect(Object.keys((await doc(page)).views)).toEqual(Object.keys(before.views));
+    // The panel menu offers nothing that changes the layout.
+    const items = await menuItems(page, "docs");
+    for (const label of items) expect(label).not.toMatch(/^(Move|Float|Dock|Hide|Close|New split)/);
+    // Selecting tabs, typing and code all still work.
+    await tab(page, "b").click();
+    await expect(tab(page, "b")).toHaveAttribute("aria-selected", "true");
+    await surface(page, "b").locator("[data-test=input]").fill("typed");
+    await expect(surface(page, "b").locator("[data-test=input]")).toHaveValue("typed");
+    await page.evaluate(() => (window as any).ws.close("b"));
+    await expect(tab(page, "b")).toHaveCount(0);
+  });
+
+  test("each permission turns off only its own actions", async ({ page }) => {
+    await open(page, { close: false });
+    await expect(tab(page, "a").locator("[data-trellis-part=tab-close]")).toBeHidden();
+    expect(await tryDivider(page)).toBe(true);
+    await tryDragTab(page, "outline", "docs");
+    expect(await panelOf(page, "outline")).toBe("docs");
+
+    await open(page, { resize: false });
+    expect(await tryDivider(page)).toBe(false);
+    await expect(tab(page, "a").locator("[data-trellis-part=tab-close]")).toBeVisible();
+    const floating = await page.evaluate(
+      () => (window as any).ws.open("files", { placement: "float" }).panelId as string,
+    );
+    await expect(page.locator(`.trellis-handles[data-panel="${floating}"]`)).toBeHidden();
+
+    await open(page, { rearrange: false });
+    await tryDragTab(page, "outline", "docs");
+    expect(await panelOf(page, "outline")).toBe("right");
+    expect((await menuItems(page, "docs")).some((l) => l.startsWith("Move"))).toBe(false);
+    expect(await tryDivider(page)).toBe(true);
+
+    await open(page, { float: false, hide: false });
+    const items = await menuItems(page, "right");
+    expect(items.some((l) => /^(Float|Hide)/.test(l))).toBe(false);
+    expect(items.some((l) => l.startsWith("Close"))).toBe(true);
+  });
+
+  test("without float, a floating window can't be dragged into the layout", async ({ page }) => {
+    const floatInto = async () => {
+      const id = await page.evaluate(
+        () =>
+          // An editor: files may not go in the stage, where the docs panel is.
+          (window as any).ws.open("editor", {
+            params: { name: "f.ts" },
+            placement: { float: { x: 0.02, y: 0.62, w: 0.22, h: 0.3 } },
+          }).id as string,
+      );
+      const panelId = await panelOf(page, id);
+      // Drop the window, by its tab bar, onto the docs panel's tab bar.
+      const bar = await box(panel(page, panelId).locator("[data-trellis-part=tabbar]"));
+      const b = await box(tab(page, "b"));
+      await drag(
+        page,
+        { x: bar.x + bar.width * 0.65, y: bar.y + bar.height / 2 },
+        { x: b.x + b.width + 10, y: b.y + b.height / 2 },
+      );
+      await page.waitForTimeout(300);
+      return (await doc(page)).floating.some((f: any) => f.panel.id === panelId);
+    };
+    await open(page, { float: false });
+    expect(await floatInto()).toBe(true);
+    await open(page, true);
+    expect(await floatInto()).toBe(false);
+  });
+
+  test("Close other tabs leaves tabs that can't be closed", async ({ page }) => {
+    await open(page, true);
+    await page.evaluate(() =>
+      (window as any).ws.open("locked", { placement: { into: "docs" }, focus: false }),
+    );
+    await tab(page, "a").click();
+    await panel(page, "docs").locator("[data-trellis-part=panel-menu]").click();
+    await page.getByRole("menuitem", { name: "Close other tabs" }).click();
+    await expect(tab(page, "b")).toHaveCount(0);
+    const views = (await doc(page)).views;
+    expect(Object.values(views).some((v: any) => v.type === "locked")).toBe(true);
+  });
+
+  test("shortcuts respect permissions", async ({ page }) => {
+    await open(page, { close: false, float: false, hide: false });
+    await page.evaluate(() =>
+      (window as any).ws.update({ keymap: { "panel.float": "Mod+Alt+F", "panel.hide": "Mod+Alt+H" } }),
+    );
+    await tab(page, "a").focus();
+    for (const combo of ["ControlOrMeta+Alt+W", "ControlOrMeta+Alt+F", "ControlOrMeta+Alt+H"])
+      await page.keyboard.press(combo);
+    const d = await doc(page);
+    expect(d.floating).toHaveLength(0);
+    expect(d.hidden).toHaveLength(0);
+    expect(Object.keys(d.views)).toContain("a");
+  });
+
+  test("permissions change at runtime", async ({ page }) => {
+    await open(page, false);
+    await expect(tab(page, "a").locator("[data-trellis-part=tab-close]")).toBeHidden();
+    await page.evaluate(() => (window as any).ws.update({ permissions: true }));
+    await expect(tab(page, "a").locator("[data-trellis-part=tab-close]")).toBeVisible();
+    expect(await tryDivider(page)).toBe(true);
+  });
+});
+
+test.describe("saved layouts", () => {
+  /** A saved layout that also has a view of a type this app doesn't register (yet). */
+  const withUnknown = (page: Page) =>
+    page.evaluate(() => {
+      const ws = (window as any).ws;
+      const doc = ws.getDocument();
+      doc.views.chart = { type: "chart", params: { series: 3 } };
+      doc.root.children[2].views.push("chart");
+      return doc;
+    });
+
+  test("a view of an unknown type shows a placeholder, and its content once the type is registered", async ({
+    page,
+  }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    const saved = await withUnknown(page);
+    await page.evaluate((d) => (window as any).ws.setDocument(d), saved);
+    await tab(page, "chart").click();
+    await expect(surface(page, "chart").locator("[data-trellis-part=view-missing]")).toContainText("chart");
+    // Its record, params included, survives saving again.
+    expect((await doc(page)).views.chart).toEqual({ type: "chart", params: { series: 3 } });
+    await page.evaluate(() => {
+      const w = window as any;
+      w.ws.update({
+        types: {
+          ...w.types,
+          chart: {
+            title: "Chart",
+            mount: (el: HTMLElement, view: any) => {
+              el.innerHTML = `<p data-test="chart">${view.params.series} series</p>`;
+            },
+          },
+        },
+      });
+    });
+    await expect(surface(page, "chart").locator("[data-test=chart]")).toHaveText("3 series");
+    await expect(tab(page, "chart")).toContainText("Chart");
+  });
+
+  test('onMissingType: "drop" leaves unknown views out', async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    const saved = await withUnknown(page);
+    await page.evaluate((d) => {
+      const ws = (window as any).ws;
+      ws.update({ onMissingType: () => "drop" });
+      ws.setDocument(d);
+    }, saved);
+    await expect(tab(page, "chart")).toHaveCount(0);
+    expect((await doc(page)).views.chart).toBeUndefined();
+    await expect(tab(page, "outline")).toBeVisible();
+  });
+
+  test("setDocument accepts anything without throwing, and the workspace stays usable", async ({ page }) => {
+    await page.goto("/?scenario=vanilla");
+    await expect(tab(page, "a")).toBeVisible();
+    const results = await page.evaluate(() => {
+      const ws = (window as any).ws;
+      const out: string[] = [];
+      for (const junk of [null, 42, "layout", [], {}, { root: { kind: "split", children: "no" } }]) {
+        try {
+          ws.setDocument(junk);
+          out.push("ok");
+        } catch (error) {
+          out.push(String(error));
+        }
+      }
+      ws.open("editor", { params: { name: "after.ts" } });
+      return out;
+    });
+    expect(results.every((r) => r === "ok")).toBe(true);
+    await expect(page.locator("[data-trellis-part=tab]")).toHaveCount(1);
+  });
+
+  test("a corrupted saved layout falls back to the default", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&persist");
+    await expect(tab(page, "a")).toBeVisible();
+    for (const junk of ["{not json", JSON.stringify({ schema: 1, version: 1, root: 7, views: "x" })]) {
+      await page.evaluate((j) => localStorage.setItem("e2e", j), junk);
+      await page.reload();
+      await expect(tab(page, "a")).toBeVisible();
+      await expect(tab(page, "outline")).toBeVisible();
+    }
+  });
+});
+
+test.describe("strict pages", () => {
+  test("works with inline style attributes blocked and Trusted Types enforced", async ({
+    page,
+    browserName,
+  }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.route("**/?scenario=strict*", async (route) => {
+      const response = await route.fetch();
+      const html = (await response.text()).replace(
+        "<head>",
+        `<head><meta http-equiv="Content-Security-Policy" content="style-src-attr 'none'; require-trusted-types-for 'script'">`,
+      );
+      await route.fulfill({ response, body: html });
+    });
+    await page.goto("/?scenario=strict");
+    await expect(tab(page, "n3")).toBeVisible();
+    // Built-in icons are there: close buttons, the menu button, and a submenu chevron.
+    await expect(tab(page, "n3").locator("[data-trellis-part=tab-close] svg")).toBeAttached();
+    await expect(panel(page, "docs").locator("[data-trellis-part=panel-menu] svg")).toBeAttached();
+    await panel(page, "docs").locator("[data-trellis-part=panel-menu]").click();
+    await expect(page.locator(".trellis-menu .trellis-menu-chevron svg").first()).toBeAttached();
+    await page.keyboard.press("Escape");
+    // The nested group is too small, so it collapses; its lines are positioned.
+    const group = page.locator("[data-trellis-part=group]");
+    await expect(group).toHaveCount(1);
+    const tile = await box(group);
+    const first = await box(group.locator("i[data-axis=x]").first());
+    expect(first.x).toBeGreaterThan(tile.x + 2);
+    expect(first.x).toBeLessThan(tile.x + tile.width - 2);
+    // A panel too small for tabs shows its title's first letter.
+    await expect(panel(page, "left")).toHaveAttribute("data-frame-only", "");
+    await expect(panel(page, "left").locator("[data-trellis-part=frame-icon]")).toHaveText("N");
+    expect(errors).toEqual([]);
+    expect(await page.evaluate(() => (window as any).violations)).toEqual([]);
+    void browserName;
+  });
+});
+
+test.describe("world transform (experimental)", () => {
+  /** Where the camera says each visible docked panel is on screen right now, and where it's drawn.
+   * The layer is moved with one transform, so the gaps between panels scale with it while the
+   * camera moves (the documented trade-off): each panel's center must be exact, and its size exact
+   * once that scaled gap is allowed for. */
+  const geometry = (page: Page) =>
+    page.evaluate(() => {
+      const ws = (window as any).ws;
+      const layer = ws.element.querySelector(".trellis-layer") as HTMLElement;
+      const m = new DOMMatrix(
+        getComputedStyle(layer).transform === "none" ? "" : getComputedStyle(layer).transform,
+      );
+      const kx = m.a;
+      const ky = m.d;
+      const host = ws.element.getBoundingClientRect();
+      const gap = parseFloat(getComputedStyle(ws.element).getPropertyValue("--trellis-gap")) || 0;
+      const pad = gap / 2;
+      const rtl = getComputedStyle(ws.element).direction === "rtl";
+      const c = ws.navigation.camera;
+      const W = host.width - pad * 2;
+      const H = host.height - pad * 2;
+      const out: { id: string; dx: number; dy: number; dw: number; dh: number }[] = [];
+      for (const [id, e] of ws.getLayoutRects() as Map<string, any>) {
+        if (e.node.kind !== "panel") continue;
+        const el = document.querySelector<HTMLElement>(`[data-trellis-part=panel][data-panel="${id}"]`);
+        if (!el || getComputedStyle(el).display === "none") continue;
+        let x = pad + ((e.rect.x - c.x) / c.w) * W;
+        const w = (e.rect.w / c.w) * W;
+        if (rtl) x = host.width - x - w;
+        const expected = {
+          x: x + pad,
+          y: pad + ((e.rect.y - c.y) / c.h) * H + pad,
+          w: w - gap,
+          h: (e.rect.h / c.h) * H - gap,
+        };
+        const r = el.getBoundingClientRect();
+        // Only panels that are actually on screen.
+        if (r.right < host.left || r.left > host.right || r.bottom < host.top || r.top > host.bottom)
+          continue;
+        out.push({
+          id,
+          dx: Math.abs(r.left - host.left + r.width / 2 - (expected.x + expected.w / 2)),
+          dy: Math.abs(r.top - host.top + r.height / 2 - (expected.y + expected.h / 2)),
+          dw: Math.abs(r.width - (expected.w + gap - gap * kx)),
+          dh: Math.abs(r.height - (expected.h + gap - gap * ky)),
+        });
+      }
+      return out;
+    });
+  /** Samples geometry on several frames of an animated zoom to `target`. */
+  const sampleZoom = async (page: Page, target: string) => {
+    await page.evaluate((t) => (window as any).ws.navigation.frame(t), target);
+    const samples = [];
+    for (let i = 0; i < 8; i++) {
+      await page.evaluate(() => new Promise(requestAnimationFrame));
+      samples.push(...(await geometry(page)));
+    }
+    return samples;
+  };
+  /** Waits for the camera to come to rest. */
+  const still = (page: Page) => page.evaluate(cameraAtRest);
+  const worst = (samples: { dx: number; dy: number; dw: number; dh: number }[]) =>
+    Math.max(0, ...samples.map((s) => Math.max(s.dx, s.dy, s.dw, s.dh)));
+
+  for (const dir of ["ltr", "rtl"])
+    test(`panels are drawn exactly where the camera puts them, every frame (${dir})`, async ({ page }) => {
+      await page.goto(`/?scenario=vanilla&navigation=free&dir=${dir}`);
+      await expect(tab(page, "a")).toBeVisible();
+      await page.evaluate(() => (window as any).ws.update({ motion: "full", worldTransform: true }));
+      const zoomIn = await sampleZoom(page, "left");
+      expect(zoomIn.length).toBeGreaterThan(8);
+      expect(worst(zoomIn)).toBeLessThan(1.5);
+      await still(page);
+      const zoomOut = await sampleZoom(page, "all");
+      expect(worst(zoomOut)).toBeLessThan(1.5);
+    });
+
+  test("overlay floating windows stay put while the camera moves", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&navigation=free");
+    await expect(tab(page, "a")).toBeVisible();
+    const id = await page.evaluate(() => {
+      const ws = (window as any).ws;
+      ws.update({ motion: "full", worldTransform: true });
+      return ws.open("files", { placement: { float: { x: 0.55, y: 0.5, w: 0.3, h: 0.35 } } })
+        .panelId as string;
+    });
+    // Let it finish appearing.
+    await page.waitForTimeout(500);
+    const before = await box(panel(page, id));
+    await page.evaluate(() => (window as any).ws.navigation.frame("left"));
+    for (let i = 0; i < 6; i++) {
+      await page.evaluate(() => new Promise(requestAnimationFrame));
+      const now = await box(panel(page, id));
+      for (const k of ["x", "y", "width", "height"] as const)
+        expect(Math.abs(now[k] - before[k])).toBeLessThan(1);
+    }
+  });
+
+  test("with many panels, a camera move restyles only a few elements per frame", async ({ page }) => {
+    await page.goto("/?scenario=stress&cols=10&rows=10&tabs=3");
+    await page.waitForFunction(() => (window as any).startup !== undefined);
+    const perFrame = await page.evaluate(async () => {
+      const ws = (window as any).ws;
+      ws.update({ motion: "full", worldTransform: true });
+      const changed = new Set<Node>();
+      const observer = new MutationObserver((records) => records.forEach((r) => changed.add(r.target)));
+      observer.observe(ws.element, { attributes: true, subtree: true });
+      const counts: number[] = [];
+      ws.navigation.frame(ws.getSnapshot().views[0].panelId);
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+      for (let i = 0; i < 12; i++) {
+        changed.clear();
+        await new Promise(requestAnimationFrame);
+        await Promise.resolve();
+        observer.takeRecords().forEach((r) => changed.add(r.target));
+        counts.push(changed.size);
+      }
+      observer.disconnect();
+      return counts.sort((a, b) => a - b);
+    });
+    // The median frame restyles a handful of elements, not hundreds.
+    expect(perFrame[Math.floor(perFrame.length / 2)]).toBeLessThanOrEqual(8);
+  });
+
+  test("the layout a camera move ends on is the same as without it", async ({ page }) => {
+    const settled = async (world: boolean) => {
+      await page.goto("/?scenario=vanilla&navigation=free");
+      await expect(tab(page, "a")).toBeVisible();
+      await page.evaluate((w) => (window as any).ws.update({ motion: "full", worldTransform: w }), world);
+      await page.evaluate(() => (window as any).ws.navigation.frame("left"));
+      await still(page);
+      // What's on screen: elements out of view keep wherever they were last drawn.
+      return page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>("[data-trellis-part=panel], [data-trellis-part=surface]")]
+          .filter((el) => {
+            const style = getComputedStyle(el);
+            const r = el.getBoundingClientRect();
+            return (
+              style.display !== "none" && style.visibility !== "hidden" && r.right > 0 && r.left < innerWidth
+            );
+          })
+          .map((el) => {
+            const r = el.getBoundingClientRect();
+            return `${el.dataset.panel ?? el.dataset.view} ${Math.round(r.x)} ${Math.round(r.y)} ${Math.round(r.width)} ${Math.round(r.height)}`;
+          })
+          .sort(),
+      );
+    };
+    const plain = await settled(false);
+    const world = await settled(true);
+    expect(world).toEqual(plain);
+    expect(
+      await page.evaluate(() => (window as any).ws.element.querySelector(".trellis-layer").style.transform),
+    ).toBe("");
+  });
+
+  test("a pinch draws correctly, and refines once it pauses", async ({ page }) => {
+    await page.goto("/?scenario=vanilla&navigation=free");
+    await expect(tab(page, "a")).toBeVisible();
+    await page.evaluate(() => (window as any).ws.update({ worldTransform: true }));
+    const at = center(await box(surface(page, "a")));
+    // Pinch in a long way, frame by frame, checking geometry as it goes.
+    const samples = [];
+    for (let i = 0; i < 16; i++) {
+      await page.evaluate(({ x, y }) => {
+        const target = document.elementFromPoint(x, y)!;
+        target.dispatchEvent(
+          new WheelEvent("wheel", {
+            deltaY: -6.5,
+            ctrlKey: true,
+            clientX: x,
+            clientY: y,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      }, at);
+      await page.evaluate(() => new Promise(requestAnimationFrame));
+      samples.push(...(await geometry(page)));
+    }
+    expect(worst(samples)).toBeLessThan(1.5);
+  });
+
+  test.describe("auto", () => {
+    /** Runs a zoom to `target`, noting on each frame whether the layer was transformed, and, with
+     * `measure`, where the panels were: on every frame, or on frames in world mode. */
+    const zoomFrames = async (
+      page: Page,
+      target: string | "first",
+      measure: false | "all" | "world" = false,
+    ) => {
+      // Recorded in the page, on each frame the camera moved in: a frame's callbacks can run before
+      // the workspace's, so a frame where it hasn't moved yet isn't part of the move.
+      await page.evaluate((t) => {
+        const w = window as any;
+        const ws = w.ws;
+        const camera = () => JSON.stringify(ws.navigation.camera);
+        let last = camera();
+        ws.navigation.frame(t === "first" ? ws.getSnapshot().views[0].panelId : t);
+        w.__modes = [];
+        const layer = ws.element.querySelector(".trellis-layer");
+        let frames = 0;
+        const record = () => {
+          if (w.__modes.length >= 40 || frames++ > 400) return;
+          const now = camera();
+          if (now !== last) w.__modes.push(layer.style.transform !== "");
+          last = now;
+          requestAnimationFrame(record);
+        };
+        requestAnimationFrame(record);
+      }, target);
+      const samples = [];
+      for (let i = 0; measure && i < (measure === "all" ? 14 : 40); i++) {
+        await page.evaluate(() => new Promise(requestAnimationFrame));
+        const transformed = await page.evaluate(
+          () => (window as any).ws.element.querySelector(".trellis-layer").style.transform !== "",
+        );
+        if (measure === "all" || transformed) samples.push(...(await geometry(page)));
+      }
+      await still(page);
+      const modes: boolean[] = await page.evaluate(() => (window as any).__modes);
+      return { modes, samples };
+    };
+    const open = async (page: Page, query: string) => {
+      await page.goto(`/?scenario=stress&${query}`);
+      await page.waitForFunction(() => (window as any).startup !== undefined, null, { timeout: 60000 });
+      await page.evaluate(() => (window as any).ws.update({ motion: "full" }));
+      await still(page);
+    };
+
+    test("a light layout stays on the normal renderer", async ({ page }) => {
+      await page.goto("/?scenario=vanilla&navigation=free");
+      await expect(tab(page, "a")).toBeVisible();
+      await page.evaluate(() => (window as any).ws.update({ motion: "full", worldTransform: "auto" }));
+      const zoomIn = await zoomFrames(page, "left");
+      const zoomOut = await zoomFrames(page, "all");
+      expect([...zoomIn.modes, ...zoomOut.modes]).not.toContain(true);
+    });
+
+    test("a move showing 40 panels or more uses world mode from its first frame", async ({ page }) => {
+      await open(page, "cols=10&rows=10&tabs=1&world=auto");
+      const { modes } = await zoomFrames(page, "first");
+      expect(modes[0]).toBe(true);
+      expect(modes.every((m) => m)).toBe(true);
+    });
+
+    test("a move showing fewer than 40 panels uses the normal renderer", async ({ page }) => {
+      await open(page, "cols=6&rows=6&tabs=1&world=auto");
+      const { modes } = await zoomFrames(page, "first");
+      expect(modes).not.toContain(true);
+    });
+
+    test("counts the panels in view where the move starts or ends, not the whole layout", async ({
+      page,
+    }) => {
+      await open(page, "cols=10&rows=10&tabs=1&world=auto");
+      // Zoomed in on one panel, a move to its neighbour shows only a few panels.
+      await zoomFrames(page, "first");
+      const neighbour = await page.evaluate(() => (window as any).ws.getSnapshot().views[1].panelId);
+      const { modes } = await zoomFrames(page, neighbour);
+      expect(modes).not.toContain(true);
+      // Back out to everything: 100 panels where it ends.
+      const out = await zoomFrames(page, "all");
+      expect(out.modes[0]).toBe(true);
+    });
+
+    test("a move retargeted mid-way is decided again for its new end", async ({ page }) => {
+      await open(page, "cols=10&rows=10&tabs=1&world=auto");
+      await zoomFrames(page, "first");
+      const modes = await page.evaluate(async () => {
+        const ws = (window as any).ws;
+        const layer = ws.element.querySelector(".trellis-layer");
+        // Towards a neighbour: a few panels in view.
+        ws.navigation.frame(ws.getSnapshot().views[1].panelId);
+        const seen: boolean[] = [];
+        for (let i = 0; i < 3; i++) {
+          await new Promise(requestAnimationFrame);
+          seen.push(layer.style.transform !== "");
+        }
+        // Now out to everything instead: 100 panels where it ends.
+        ws.navigation.overview();
+        for (let i = 0; i < 6; i++) {
+          await new Promise(requestAnimationFrame);
+          seen.push(layer.style.transform !== "");
+        }
+        return seen;
+      });
+      expect(modes.slice(0, 3)).not.toContain(true);
+      expect(modes.slice(3)).toContain(true);
+    });
+
+    test("the threshold can be set", async ({ page }) => {
+      await open(page, "cols=6&rows=6&tabs=1");
+      await page.evaluate(() => (window as any).ws.update({ worldTransform: { minPanels: 20 } }));
+      expect((await zoomFrames(page, "first")).modes[0]).toBe(true);
+      await zoomFrames(page, "all");
+      await page.evaluate(() => (window as any).ws.update({ worldTransform: { minPanels: 50 } }));
+      expect((await zoomFrames(page, "first")).modes).not.toContain(true);
+    });
+
+    test("a move that starts while the layout is still animating decides from its start", async ({
+      page,
+    }) => {
+      await open(page, "cols=10&rows=10&tabs=1&world=auto");
+      // Cancelling a tab drag animates the layout back; zoom while it does.
+      const grab = center(
+        await page
+          .locator("[data-trellis-part=tab]:visible, [data-trellis-part=panel][data-frame-only]:visible")
+          .first()
+          .boundingBox(),
+      );
+      await page.mouse.move(grab.x, grab.y);
+      await page.mouse.down();
+      await page.mouse.move(grab.x + 20, grab.y + 20, { steps: 4 });
+      await page.mouse.move(900, 600, { steps: 10 });
+      await page.keyboard.press("Escape");
+      await page.mouse.up();
+      // Once world mode takes over, panels are where the camera puts them.
+      const { modes, samples } = await zoomFrames(page, "first", "world");
+      expect(modes).toContain(true);
+      expect(samples.length).toBeGreaterThan(0);
+      expect(worst(samples)).toBeLessThan(1.5);
+    });
   });
 });

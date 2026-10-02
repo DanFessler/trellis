@@ -10,7 +10,6 @@ import {
   hidePanel,
   insertPanel,
   locatePanel,
-  panelOfView,
   raiseFloat,
   removePanel,
   restorePanel,
@@ -42,13 +41,15 @@ import type {
   Rect,
   SplitNode,
 } from "../model/types";
-import { h, icons, place, setAttr, setStyle } from "./dom";
+import { errorFallbackElement, h, icons, place, setAttr, setStyle } from "./dom";
 import { DEFAULT_KEYMAP, formatCombo, matches, type Command } from "./keymap";
 import { defaultGestureKeys } from "./gestures";
 import { Emitter, Lifetime } from "./lifetime";
 import { Menu, tidyMenu } from "./menu";
 import { DOCK_EASE, DOCK_MS, lerpRect, LayoutTween, MOTION, RectSpring, sameRect } from "./motion";
 import type {
+  ErrorSource,
+  Permissions,
   IframeOptions,
   MenuEntry,
   MenuItem,
@@ -82,6 +83,8 @@ interface PanelDom {
   handles: HTMLElement | null;
   /** Shown instead of content when the panel is too small to use ("frame only"). */
   frameIcon: HTMLElement;
+  /** What the frame icon was last built from. */
+  frameIconKey: string;
   /** Width the accessories and menu take at the end of an overlaid title bar. */
   endInset: number;
 }
@@ -96,6 +99,8 @@ interface SurfaceRecord {
   mountKey: unknown;
   iconHtml: string | null;
   surface: Surface;
+  /** Set while the content failed to mount and shows the error fallback. */
+  failure: { error: unknown } | null;
 }
 interface Leaving {
   panel: PanelNode;
@@ -105,13 +110,30 @@ interface Leaving {
   duration: number;
 }
 
+/** Whether saved data has a layout document's shape. Details inside are repaired later (see
+ * sanitize), but a save with the wrong shape is corrupt, and the default layout wins. */
+function isDocumentShaped(value: unknown): value is LayoutDocument {
+  const doc = value as LayoutDocument | null;
+  return (
+    !!doc &&
+    typeof doc === "object" &&
+    doc.schema === 1 &&
+    (doc.root === null || (typeof doc.root === "object" && !Array.isArray(doc.root))) &&
+    !!doc.views &&
+    typeof doc.views === "object" &&
+    !Array.isArray(doc.views) &&
+    Array.isArray(doc.floating) &&
+    Array.isArray(doc.hidden)
+  );
+}
+
 const TYPE_PLACEHOLDER = (type: string): ViewTypeDefinition => ({
   title: type,
   mount(el) {
     el.append(
       h(
         "div",
-        { class: "trellis-placeholder" },
+        { class: "trellis-placeholder", "data-trellis-part": "view-missing" },
         h("strong", {}, "Unavailable"),
         h("span", {}, `No view type named “${type}” is registered.`),
       ),
@@ -119,11 +141,6 @@ const TYPE_PLACEHOLDER = (type: string): ViewTypeDefinition => ({
   },
 });
 
-const escapeHtml = (text: string) =>
-  text.replace(
-    /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
-  );
 const DEFAULT_FLOAT_SIZE = { w: 560, h: 400 };
 /** Below this size a panel shows only its icon ("frame only"). */
 const FRAME_ONLY = { w: 160, h: 64 };
@@ -132,12 +149,42 @@ const PANEL_MIN = { w: 80 };
 /** Defaults for the `detail` option: a nested group collapses into one tile when all its parts are
  * smaller than `size` × `size` on screen, too small even for an icon tile. */
 const DETAIL = { size: 48, outline: 2 };
+/** `worldTransform: "auto"`: moves with this many panels in view use the world transform. From
+ * `npm run bench` with the CPU slowed 4×: laying out 36 panels every frame kept up, 49 began to
+ * stutter. */
+const WORLD_MIN_PANELS = 40;
 
 /** Create a workspace inside `host`. Returns an imperative handle. */
 export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOptions): WorkspaceHandle {
   let options: WorkspaceOptions = { ...initialOptions };
   const lifetime = new Lifetime();
-  const events = new Emitter<WorkspaceEvents>();
+  const events = new Emitter<WorkspaceEvents>((error) => reportError(error, { source: "listener" }));
+  // ---------------------------------------------------------------- errors
+  let reporting = false;
+  /** One channel for everything that throws: the `error` event, or the console without a
+   * listener. An error thrown while reporting one goes to the console, so nothing loops. */
+  function reportError(error: unknown, context: { source: ErrorSource; viewId?: string }) {
+    if (reporting || !events.has("error")) {
+      console.error(error);
+      return;
+    }
+    const type = context.viewId ? doc?.views[context.viewId]?.type : undefined;
+    reporting = true;
+    try {
+      events.emit("error", { error, source: context.source, viewId: context.viewId, type });
+    } finally {
+      reporting = false;
+    }
+  }
+  /** Run a callback from options or a view type; if it throws, report it and use `fallback`. */
+  function guarded<T>(run: () => T, fallback: T, context: { source: ErrorSource; viewId?: string }): T {
+    try {
+      return run();
+    } catch (error) {
+      reportError(error, context);
+      return fallback;
+    }
+  }
   const listeners = new Set<() => void>();
 
   // ---------------------------------------------------------------- DOM
@@ -235,7 +282,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         try {
           return title(controller);
         } catch (error) {
-          console.error(error);
+          reportError(error, { source: "title", viewId });
         }
     } else if (title) return title;
     return record.type;
@@ -243,6 +290,32 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
 
   // ---------------------------------------------------------------- theme
   let appliedTokens = new Set<string>();
+  // ---------------------------------------------------------------- permissions
+  /** What users may do through the interface. Code (ws.close, ws.dock, …) is never limited. */
+  function can(action: keyof Permissions): boolean {
+    const p = options.permissions;
+    if (p === undefined || p === true) return true;
+    if (p === false) return false;
+    return p[action] !== false;
+  }
+  /** Whether a user can close this view: its type allows it, and so do the permissions. */
+  const userClosable = (viewId: string) => can("close") && typeOf(viewId).closable !== false;
+
+  // ---------------------------------------------------------------- direction
+  /** Right to left: the layout is mirrored at the screen boundary (toScreen and fromScreen), so
+   * the document stays direction-neutral: a row's first child is its start edge. */
+  let rtl = false;
+  /** Follow the `direction` option, or the page's own direction with "auto". Returns whether it
+   * changed. */
+  function readDirection(): boolean {
+    const direction = options.direction ?? "auto";
+    setAttr(root, "dir", direction === "auto" ? null : direction);
+    const next = getComputedStyle(root).direction === "rtl";
+    if (next === rtl) return false;
+    rtl = next;
+    setAttr(root, "data-direction", rtl ? "rtl" : null);
+    return true;
+  }
   function applyTheme() {
     setAttr(root, "data-theme", options.theme ?? "system");
     const tabs = options.tabs ?? {};
@@ -259,6 +332,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     appliedTokens = new Set(Object.keys(tokens));
     setAttr(root, "data-navigation", String(navigationMode()));
     readMetrics();
+    readDirection();
   }
   function readMetrics() {
     const style = getComputedStyle(root);
@@ -275,18 +349,21 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const p = pad();
     const W = viewport.w - p * 2;
     const H = viewport.h - p * 2;
+    const x = p + ((r.x - c.x) / c.w) * W;
+    const w = (r.w / c.w) * W;
     return {
-      x: p + ((r.x - c.x) / c.w) * W,
+      x: rtl ? viewport.w - x - w : x,
       y: p + ((r.y - c.y) / c.h) * H,
-      w: (r.w / c.w) * W,
+      w,
       h: (r.h / c.h) * H,
     };
   }
   function fromScreen(p: { x: number; y: number }) {
     const c = camera.value;
     const q = pad();
+    const x = rtl ? viewport.w - p.x : p.x;
     return {
-      x: c.x + ((p.x - q) / (viewport.w - q * 2)) * c.w,
+      x: c.x + ((x - q) / (viewport.w - q * 2)) * c.w,
       y: c.y + ((p.y - q) / (viewport.h - q * 2)) * c.h,
     };
   }
@@ -310,13 +387,16 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (layerName === "overlay") return { x: 0, y: 0, w: viewport.w, h: viewport.h };
     return toScreen(stageWorld());
   }
+  /** Floating rects are fractions of their layer, measured from its start edge. */
   function floatScreen(rect: Rect, layerName: FloatingLayer): Rect {
     const c = floatContainer(layerName);
-    return { x: c.x + rect.x * c.w, y: c.y + rect.y * c.h, w: rect.w * c.w, h: rect.h * c.h };
+    const x = rtl ? c.x + c.w - (rect.x + rect.w) * c.w : c.x + rect.x * c.w;
+    return { x, y: c.y + rect.y * c.h, w: rect.w * c.w, h: rect.h * c.h };
   }
   function screenToFloat(r: Rect, layerName: FloatingLayer): Rect {
     const c = floatContainer(layerName);
-    return { x: (r.x - c.x) / c.w, y: (r.y - c.y) / c.h, w: r.w / c.w, h: r.h / c.h };
+    const x = rtl ? (c.x + c.w - r.x - r.w) / c.w : (r.x - c.x) / c.w;
+    return { x, y: (r.y - c.y) / c.h, w: r.w / c.w, h: r.h / c.h };
   }
   /** Where a panel should be, ignoring tweens. */
   function targetRect(panelId: string): Rect | null {
@@ -338,11 +418,37 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       camera.value = value;
     }
   }
+  // Where each view and panel is, rebuilt when the document changes (documents are never edited
+  // in place). Rendering asks for every view on every frame, so walking the tree for each would
+  // cost views × panels per frame.
+  let indexed: LayoutDocument | null = null;
+  const viewIndex = new Map<string, { panel: PanelNode; region: Region | "hidden" }>();
+  const panelIndex = new Map<string, { panel: PanelNode; region: Region | "hidden" }>();
+  function located() {
+    if (indexed === doc) return;
+    indexed = doc;
+    viewIndex.clear();
+    panelIndex.clear();
+    const add = (panel: PanelNode, region: Region | "hidden") => {
+      if (panelIndex.has(panel.id)) return;
+      const entry = { panel, region };
+      panelIndex.set(panel.id, entry);
+      for (const v of panel.views) if (!viewIndex.has(v)) viewIndex.set(v, entry);
+    };
+    for (const p of panelsOf(findStage(doc.root))) add(p, "stage");
+    for (const p of panelsOf(doc.root)) add(p, "side");
+    for (const f of doc.floating) add(f.panel, "floating");
+    for (const h of doc.hidden) add(h.panel, "hidden");
+  }
+  /** The panel showing a view in the current document (panelOfView, without the walk). */
+  function panelOf(viewId: string): PanelNode | null {
+    located();
+    return viewIndex.get(viewId)?.panel ?? null;
+  }
   function regionOf(panelId: string): Region {
-    if (doc.floating.some((f) => f.panel.id === panelId)) return "floating";
-    const stage = findStage(doc.root);
-    if (stage && findNode(stage, panelId)) return "stage";
-    return "side";
+    located();
+    const region = panelIndex.get(panelId)?.region;
+    return region === "hidden" || region === undefined ? "side" : region;
   }
 
   // ---------------------------------------------------------------- surfaces
@@ -357,7 +463,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       scale: 1,
       title: titleOf(viewId),
       badge: badges.get(viewId) ?? null,
-      panelId: panelOfView(doc, viewId)?.id ?? "",
+      panelId: panelOf(viewId)?.id ?? "",
       params: doc.views[viewId]?.params ?? {},
     };
   }
@@ -377,6 +483,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     focus: (id: string) => handle.focus(id),
     close: (id: string, o?: { force?: boolean }) => close(id, o),
     hide: (id: string) => hide(id),
+    reportError: (error: unknown, context: { viewId: string; source: ErrorSource }) =>
+      reportError(error, context),
   };
   function ensureSurface(viewId: string): SurfaceRecord {
     let record = records.get(viewId);
@@ -406,6 +514,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       mountKey: null,
       iconHtml: null,
       surface: { view: controller, content, icon, accessory },
+      failure: null,
     };
     records.set(viewId, record);
     // Title functions receive the view handle, which only exists now.
@@ -419,27 +528,40 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
    * Content is only remounted when what it renders actually changes. */
   function mountContent(record: SurfaceRecord) {
     const def = typeOf(record.controller.id);
+    const viewId = record.controller.id;
     record.mountedWith = def;
     setAttr(record.shell, "class", def.className ?? null);
-    const raw = def.iframe
-      ? typeof def.iframe === "function"
-        ? def.iframe(record.controller)
-        : def.iframe
-      : null;
+    let iframeError: { error: unknown } | null = null;
+    let raw: string | IframeOptions | null = null;
+    if (typeof def.iframe === "function")
+      try {
+        raw = def.iframe(record.controller);
+      } catch (error) {
+        iframeError = { error };
+      }
+    else raw = def.iframe ?? null;
     const frame: IframeOptions | null = raw === null ? null : typeof raw === "string" ? { src: raw } : raw;
-    const key: unknown = frame ? `iframe:${JSON.stringify(frame)}` : (def.mount ?? null);
+    const key: unknown = iframeError
+      ? iframeError
+      : frame
+        ? `iframe:${JSON.stringify(frame)}`
+        : (def.mount ?? null);
     if (key !== record.mountKey) {
       if (record.mountKey !== null) {
         try {
           record.cleanup?.();
         } catch (error) {
-          console.error(error);
+          reportError(error, { source: "cleanup", viewId });
         }
         record.cleanup = null;
         record.content.replaceChildren();
       }
       record.mountKey = key;
-      if (frame) {
+      record.failure = null;
+      if (iframeError) {
+        reportError(iframeError.error, { source: "iframe", viewId });
+        showFailure(record, iframeError.error);
+      } else if (frame) {
         const frameEl = h("iframe", {
           src: frame.src,
           srcdoc: frame.srcdoc,
@@ -459,7 +581,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
           });
           record.cleanup = typeof cleanup === "function" ? cleanup : null;
         } catch (error) {
-          console.error(error);
+          reportError(error, { source: "mount", viewId });
+          record.content.replaceChildren();
+          showFailure(record, error);
         }
       }
     }
@@ -469,13 +593,34 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       record.iconHtml = icon;
     }
   }
+  /** Show a view's error fallback in place of content that failed to mount. */
+  function showFailure(record: SurfaceRecord, error: unknown) {
+    const viewId = record.controller.id;
+    record.failure = { error };
+    const retry = () => {
+      if (records.get(viewId) !== record) return;
+      record.mountKey = null;
+      record.failure = null;
+      record.content.replaceChildren();
+      mountContent(record);
+    };
+    const custom = options.errorFallback
+      ? guarded(() => options.errorFallback!({ error, view: record.controller, retry }), null, {
+          source: "callback",
+          viewId,
+        })
+      : null;
+    record.content.replaceChildren(
+      custom === null ? errorFallbackElement(titleOf(viewId), error, retry) : custom,
+    );
+  }
   function destroySurface(viewId: string) {
     const record = records.get(viewId);
     if (!record) return;
     try {
       record.cleanup?.();
     } catch (error) {
-      console.error(error);
+      reportError(error, { source: "cleanup", viewId });
     }
     record.shell.remove();
     record.icon.remove();
@@ -505,7 +650,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       "aria-haspopup": "menu",
       tabindex: "-1",
     });
-    menuButton.innerHTML = icons.more;
+    menuButton.append(icons.more());
     const tabbar = h(
       "div",
       { "data-trellis-part": "tabbar", "data-panel": panelId },
@@ -527,6 +672,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       tabs: new Map(),
       handles: null,
       frameIcon,
+      frameIconKey: "",
       endInset: 0,
     };
     panelDoms.set(panelId, dom);
@@ -545,7 +691,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       }
       const tab = target.closest<HTMLElement>("[data-trellis-part=tab]");
       if (tab && target.closest("[data-trellis-part=tab-close]")) return;
-      if (!panel) return;
+      if (!panel || !can("rearrange")) return;
       if (tab) dragger.begin(e, panel, tab.dataset.view!);
       else if (target.closest("[data-trellis-part=tabbar]") || d.el.hasAttribute("data-frame-only"))
         dragger.begin(e, panel, null);
@@ -621,7 +767,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   }
   function findPanel(panelId: string): PanelNode | null {
     if (lifted()?.id === panelId) return lifted();
-    return locatePanel(doc, panelId)?.panel ?? leaving.get(panelId)?.panel ?? null;
+    located();
+    return panelIndex.get(panelId)?.panel ?? leaving.get(panelId)?.panel ?? null;
   }
   function syncTabs(panel: PanelNode) {
     const dom = ensurePanelDom(panel.id);
@@ -640,7 +787,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         // Mouse affordance only: keyboard and screen-reader users close with Delete or the panel menu,
         // which keeps the tab free of nested interactive content.
         const closeButton = h("span", { "data-trellis-part": "tab-close", "aria-hidden": "true" });
-        closeButton.innerHTML = icons.close;
+        closeButton.append(icons.close());
         const el = h("div", {
           "data-trellis-part": "tab",
           "data-view": viewId,
@@ -651,14 +798,14 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         el.append(record.icon, title, badge, closeButton);
         lifetime.listen(closeButton, "click", (e: MouseEvent) => {
           e.stopPropagation();
-          void close(viewId);
+          if (userClosable(viewId)) void close(viewId);
         });
         lifetime.listen(el, "click", (e: MouseEvent) => {
           if ((e.target as HTMLElement).closest("[data-trellis-part=tab-close]")) return;
           selectAndFocus(viewId);
         });
         lifetime.listen(el, "auxclick", (e: MouseEvent) => {
-          if (e.button === 1 && typeOf(viewId).closable !== false) void close(viewId);
+          if (e.button === 1 && userClosable(viewId)) void close(viewId);
         });
         tab = { el, title, badge, close: closeButton };
         dom.tabs.set(viewId, tab);
@@ -701,7 +848,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         if (selected && !tab.el.hasAttribute("data-selected")) revealTab(dom.tablist, tab.el);
         setAttr(tab.el, "data-selected", selected ? "" : null);
         setAttr(tab.el, "data-focused", focusedView === viewId ? "" : null);
-        const closable = typeOf(viewId).closable !== false;
+        const closable = userClosable(viewId);
         setAttr(tab.close, "hidden", closable ? null : "");
         setAttr(tab.close, "title", `Close ${title}`);
         setAttr(tab.el, "aria-keyshortcuts", closable ? "Delete Shift+F10" : "Shift+F10");
@@ -716,9 +863,18 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       // Mirrored on the bar, which may be detached from the panel (overlay bars).
       setAttr(dom.tabbar, "data-focused", focusedPanel === panelId ? "" : null);
       setAttr(dom.tabbar, "data-single", panel.views.length === 1 ? "" : null);
-      const iconSource = records.get(panel.selected)?.icon.innerHTML ?? "";
-      const icon = iconSource || `<b>${escapeHtml(titleOf(panel.selected).slice(0, 1).toUpperCase())}</b>`;
-      if (dom.frameIcon.innerHTML !== icon) dom.frameIcon.innerHTML = icon;
+      // The selected view's icon, copied as nodes (never re-parsed), or its title's first letter.
+      const source = records.get(panel.selected)?.icon;
+      const letter = titleOf(panel.selected).slice(0, 1).toUpperCase();
+      const key = source?.childNodes.length ? source.innerHTML : `letter:${letter}`;
+      if (dom.frameIconKey !== key) {
+        dom.frameIconKey = key;
+        dom.frameIcon.replaceChildren(
+          ...(source?.childNodes.length
+            ? [...source.childNodes].map((n) => n.cloneNode(true))
+            : [h("b", {}, letter)]),
+        );
+      }
       if (barMode(panel) === "overlay")
         dom.endInset = dom.accessories.offsetWidth + dom.menuButton.offsetWidth + 24;
       // The button shows whenever the panel has a menu. The built-ins alone always give one.
@@ -859,10 +1015,10 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       }
     if (focusedView && !after.has(focusedView) && !lifted()?.views.includes(focusedView)) {
       const fallback =
-        panelOfView(doc, lastFocusFallback()) ?? panelsOf(doc.root)[0] ?? doc.floating[0]?.panel ?? null;
+        panelOf(lastFocusFallback()) ?? panelsOf(doc.root)[0] ?? doc.floating[0]?.panel ?? null;
       setFocus(fallback?.selected ?? null, false);
     } else if (focusedView) {
-      const panel = panelOfView(doc, focusedView);
+      const panel = panelOf(focusedView);
       focusedPanel = panel?.id ?? focusedPanel;
     }
     // Render now so the DOM matches the document synchronously after every change.
@@ -905,21 +1061,27 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       const raw = localStorage.getItem(options.persist.key);
       if (!raw) return null;
       const parsed = JSON.parse(raw) as LayoutDocument;
-      if (parsed?.schema !== 1) return null;
+      if (!isDocumentShaped(parsed)) return null;
       if ((options.persist.version ?? undefined) !== (parsed.version ?? undefined)) return null;
       return parsed;
     } catch {
       return null;
     }
   }
+  /** Any document from storage, a server or a caller: repaired first (see sanitize), then views
+   * of unregistered types are dropped or kept as placeholders, as onMissingType says. */
   function prepare(input: LayoutDocument): LayoutDocument {
+    const doc = sanitize(input, () => true);
     const drop = new Set<string>();
-    for (const [id, record] of Object.entries(input.views ?? {})) {
-      if (!record || options.types[record.type]) continue;
-      const decision = options.onMissingType?.(record.type, id) ?? "placeholder";
+    for (const [id, record] of Object.entries(doc.views)) {
+      if (options.types[record.type]) continue;
+      const decision =
+        guarded(() => options.onMissingType?.(record.type, id), undefined, {
+          source: "callback",
+          viewId: id,
+        }) ?? "placeholder";
       if (decision === "drop") drop.add(id);
     }
-    const doc = sanitize(input, () => true);
     let result = doc;
     for (const id of drop) result = closeViewInDoc(result, id);
     return result;
@@ -1004,7 +1166,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     }
   }
   const moving = () =>
-    camera.moving || tween.active || !!dragActive() || gesture || leaving.size > 0 || entering.size > 0;
+    !freezing &&
+    (camera.moving || tween.active || !!dragActive() || gesture || leaving.size > 0 || entering.size > 0);
 
   // ---------------------------------------------------------------- collapsed groups
   /** Panel id → the collapsed group hiding it. */
@@ -1054,8 +1217,18 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     visit(doc.root);
   }
   /** Lines for a collapsed group's splits, `outline` levels deep, as percentages of the group. */
-  function groupOutline(node: SplitNode, bounds: Rect, depth: number): string {
-    let html = "";
+  /** A collapsed group's dividing lines, as positions in percent of the tile. */
+  interface GroupLine {
+    axis: "x" | "y";
+    /** Along the tile's width, from its start edge (right when right to left). */
+    inline: number;
+    /** Down the tile's height. */
+    block: number;
+    /** The line's length, across its axis. */
+    length: number;
+  }
+  function groupOutline(node: SplitNode, bounds: Rect, depth: number): GroupLine[] {
+    const lines: GroupLine[] = [];
     const walk = (n: LayoutNode, level: number): void => {
       if (n.kind === "stage") {
         if (n.child) walk(n.child, level);
@@ -1064,19 +1237,30 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       if (n.kind !== "split" || level >= depth) return;
       const r = entries.get(n.id)?.rect;
       if (!r) return;
-      const pct = (v: number, from: number, size: number) => `${(((v - from) / size) * 100).toFixed(3)}%`;
+      const pct = (v: number, from: number, size: number) => Math.round(((v - from) / size) * 100000) / 1000;
       for (const child of n.children.slice(1)) {
         const c = entries.get(child.id)?.rect;
         if (!c) continue;
-        html +=
+        lines.push(
           n.axis === "x"
-            ? `<i data-axis="x" style="left:${pct(c.x, bounds.x, bounds.w)};top:${pct(r.y, bounds.y, bounds.h)};height:${pct(r.y + r.h, r.y, bounds.h)}"></i>`
-            : `<i data-axis="y" style="top:${pct(c.y, bounds.y, bounds.h)};left:${pct(r.x, bounds.x, bounds.w)};width:${pct(r.x + r.w, r.x, bounds.w)}"></i>`;
+            ? {
+                axis: "x",
+                inline: pct(c.x, bounds.x, bounds.w),
+                block: pct(r.y, bounds.y, bounds.h),
+                length: pct(r.y + r.h, r.y, bounds.h),
+              }
+            : {
+                axis: "y",
+                inline: pct(r.x, bounds.x, bounds.w),
+                block: pct(c.y, bounds.y, bounds.h),
+                length: pct(r.x + r.w, r.x, bounds.w),
+              },
+        );
       }
       n.children.forEach((c) => walk(c, level + 1));
     };
     walk(node, 0);
-    return html;
+    return lines;
   }
   /** The part of a collapsed group under a point, as deep as its outline shows. Zooming there always
    * makes progress, even when the whole group is too small to open at this screen size. */
@@ -1118,10 +1302,21 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         layer.append(el);
         groupEls.set(id, el);
       }
+      // Built as elements with their positions set through the style object, not markup, so a
+      // Content Security Policy that blocks inline style attributes doesn't break them.
       const lines = groupOutline(e.node, e.rect, outline);
-      if (el.dataset.lines !== lines) {
-        el.innerHTML = lines;
-        el.dataset.lines = lines;
+      const key = `${rtl}:${JSON.stringify(lines)}`;
+      if (el.dataset.lines !== key) {
+        el.dataset.lines = key;
+        el.replaceChildren(
+          ...lines.map((line) => {
+            const i = h("i", { "data-axis": line.axis });
+            i.style.setProperty(rtl ? "right" : "left", `${line.inline}%`);
+            i.style.top = `${line.block}%`;
+            i.style.setProperty(line.axis === "x" ? "height" : "width", `${line.length}%`);
+            return i;
+          }),
+        );
       }
       const count = leafIds(e.node).length;
       setAttr(el, "aria-label", `${count} panels. Double-click to zoom in.`);
@@ -1134,10 +1329,177 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     }
   }
 
+  // ---------------------------------------------------------------- world transform (experimental)
+  /** While the camera moves, the layout is drawn once, for a view that covers the whole move, and
+   * each frame only transforms the layer that holds it. Per-frame cost stays flat however many
+   * panels there are; the trade-off is that chrome scales like a picture until the camera stops. */
+  let world: { laidOut: Rect; target: Rect } | null = null;
+  /** Drawing the layout for the world transform: treated as at rest, and views aren't told. */
+  let freezing = false;
+  let refineTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Where overlay windows were drawn, before the layer's transform is undone for them. */
+  let worldBases = new Map<HTMLElement, { x: number; y: number }>();
+  /** The camera is moving, and nothing else is. */
+  const cameraMotion = () =>
+    (camera.moving || zooming) && !dragActive() && !tween.active && leaving.size === 0 && entering.size === 0;
+  const worldMotion = () => cameraMotion() && (options.worldTransform === true || move === "world");
+  /** For a panel threshold: the smallest number of panels in view that makes a move use world
+   * mode. Null when the option isn't a threshold. */
+  function minPanels(): number | null {
+    const option = options.worldTransform;
+    if (option === "auto") return WORLD_MIN_PANELS;
+    if (!option || option === true) return null;
+    const n = option.minPanels;
+    return Number.isFinite(n) ? Math.max(0, n) : WORLD_MIN_PANELS;
+  }
+  /** With a threshold: which renderer this camera move uses, and the target it was decided for. */
+  let move: "plain" | "world" | null = null;
+  let moveTarget: Rect | null = null;
+  /** Docked panels in view at the start or the end of the camera move, and every floating one. */
+  function panelsInMove() {
+    const c = camera.value;
+    const t = camera.moving ? camera.target : c;
+    const meets = (a: Rect, b: Rect) =>
+      a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+    let n = doc.floating.length;
+    for (const e of entries.values())
+      if (e.node.kind === "panel" && (meets(e.rect, c) || meets(e.rect, t))) n++;
+    return n;
+  }
+  const covers = (outer: Rect, inner: Rect) =>
+    inner.x >= outer.x - 1e-6 &&
+    inner.y >= outer.y - 1e-6 &&
+    inner.x + inner.w <= outer.x + outer.w + 1e-6 &&
+    inner.y + inner.h <= outer.y + outer.h + 1e-6;
+  const grow = (r: Rect, by: number): Rect => ({
+    x: r.x - r.w * by,
+    y: r.y - r.h * by,
+    w: r.w * (1 + 2 * by),
+    h: r.h * (1 + 2 * by),
+  });
   function render(time = performance.now()) {
     if (lifetime.disposed) return;
+    // Decided when the camera starts moving, or is sent somewhere else, even if something else is
+    // animating too: world mode takes over once that's done.
+    const min = minPanels();
+    if (min === null || !(camera.moving || zooming)) move = null;
+    else if (move === null || (camera.moving && moveTarget && !sameRect(moveTarget, camera.target))) {
+      move = panelsInMove() >= min ? "world" : "plain";
+      moveTarget = camera.moving ? { ...camera.target } : null;
+    }
+    if (worldMotion()) return renderWorld(time);
+    if (world) endWorld();
+    renderFrame(time);
+  }
+  function renderWorld(time: number) {
+    const c = camera.value;
+    const target = camera.moving ? camera.target : c;
+    // How far the view has zoomed in past the drawn layout: beyond this it gets too soft.
+    const magnified = world ? world.laidOut.w / c.w : 1;
+    const stale =
+      !world ||
+      !covers(world.laidOut, c) ||
+      magnified > 3 ||
+      (camera.moving && !sameRect(world.target, target));
+    if (stale) {
+      // An animated move draws the box around where it starts and ends, so every frame in between
+      // is covered. A gesture draws a margin around the view and redraws as it leaves it.
+      const u = camera.moving
+        ? grow(
+            {
+              x: Math.min(c.x, target.x),
+              y: Math.min(c.y, target.y),
+              w: Math.max(c.x + c.w, target.x + target.w) - Math.min(c.x, target.x),
+              h: Math.max(c.y + c.h, target.y + target.h) - Math.min(c.y, target.y),
+            },
+            0.01,
+          )
+        : grow(c, 0.25);
+      drawWorld(u, time);
+      world = { laidOut: u, target: { ...target } };
+    }
+    placeWorld();
+    // A gesture that pauses gets a sharp redraw for where it is now.
+    lifetime.clearTimeout(refineTimer);
+    if (zooming && world && Math.abs(world.laidOut.w / c.w - 1) > 0.3)
+      refineTimer = lifetime.timeout(() => {
+        if (!worldMotion() || !world) return;
+        world = null;
+        render();
+      }, 150);
+  }
+  /** Draw the whole layout as if the camera were at `view`, with the layer untransformed. */
+  function drawWorld(view: Rect, time: number) {
+    setStyle(layer, "transform", "");
+    const value = camera.value;
+    camera.value = view;
+    freezing = true;
+    try {
+      renderFrame(time);
+    } finally {
+      camera.value = value;
+      freezing = false;
+    }
+    worldBases = new Map();
+  }
+  /** Map the drawn layout onto the current camera with one transform on the layer. */
+  function placeWorld() {
+    const value = camera.value;
+    camera.value = world!.laidOut;
+    const drawn = toScreen(UNIT);
+    camera.value = value;
+    const now = toScreen(UNIT);
+    const kx = now.w / drawn.w;
+    const ky = now.h / drawn.h;
+    const tx = now.x - kx * drawn.x;
+    const ty = now.y - ky * drawn.y;
+    setStyle(layer, "transformOrigin", "0 0");
+    setStyle(layer, "transform", `matrix(${kx}, 0, 0, ${ky}, ${tx}, ${ty})`);
+    // Overlay windows float above the camera: undo the layer's transform for them.
+    const undo = (el: HTMLElement | null | undefined) => {
+      if (!el) return;
+      let at = worldBases.get(el);
+      if (!at) {
+        const m = /translate\(([-\d.e]+)px, ([-\d.e]+)px\)/.exec(el.style.transform);
+        if (!m) return;
+        at = { x: Number(m[1]), y: Number(m[2]) };
+        worldBases.set(el, at);
+      }
+      setStyle(el, "transformOrigin", "0 0");
+      setStyle(
+        el,
+        "transform",
+        `matrix(${1 / kx}, 0, 0, ${1 / ky}, ${(at.x - tx) / kx}, ${(at.y - ty) / ky})`,
+      );
+    };
+    for (const f of doc.floating) {
+      if (f.layer !== "overlay") continue;
+      const dom = panelDoms.get(f.panel.id);
+      undo(dom?.el);
+      undo(dom?.handles);
+      if (dom && dom.tabbar.parentElement === layer) undo(dom.tabbar);
+      for (const v of f.panel.views) undo(records.get(v)?.shell);
+    }
+    // The backdrop and the empty stage live outside the layer: place them for this frame.
+    const s = stageScreen();
+    if (s) {
+      place(backdrop, s, false);
+      place(stageEmpty, s, false);
+      setStyle(root, "--trellis-stage-x", `${s.x}px`);
+      setStyle(root, "--trellis-stage-y", `${s.y}px`);
+      setStyle(root, "--trellis-stage-w", `${s.w}px`);
+      setStyle(root, "--trellis-stage-h", `${s.h}px`);
+    }
+  }
+  function endWorld() {
+    world = null;
+    lifetime.clearTimeout(refineTimer);
+    setStyle(layer, "transform", "");
+    worldBases = new Map();
+  }
+  function renderFrame(time: number) {
     computeCollapsed();
-    const round = !moving();
+    const round = !freezing && !moving();
     if (moving()) settledState = false;
     const stage = findStage(doc.root);
     // While dragging, the stage follows the preview like any docked node (it makes room too).
@@ -1244,7 +1606,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       }
       if (dom.handles) {
         setStyle(dom.handles, "zIndex", String(z + 2));
-        setStyle(dom.handles, "display", onscreen && !frameOnly ? "" : "none");
+        setStyle(dom.handles, "display", onscreen && !frameOnly && can("resize") ? "" : "none");
         setStyle(dom.handles, "opacity", opacity === 1 ? "" : String(opacity));
         setStyle(dom.handles, "clipPath", clip);
         place(dom.handles, r, round);
@@ -1263,6 +1625,13 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         if (!record) continue;
         shown.add(viewId);
         const selected = panel.selected === viewId;
+        // A background tab is hidden: while things move it isn't placed each frame, only once
+        // they settle (or when it's selected).
+        if (!selected && moving()) {
+          setStyle(record.shell, "visibility", "hidden");
+          setAttr(record.shell, "inert", "");
+          continue;
+        }
         placeSurface(
           record,
           body,
@@ -1293,7 +1662,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       if (shown.has(viewId)) continue;
       setStyle(record.shell, "visibility", "hidden");
       setAttr(record.shell, "inert", "");
-      const panel = panelOfView(doc, viewId);
+      const panel = panelOf(viewId);
       const hidden = panel ? doc.hidden.some((x) => x.panel.id === panel.id) : false;
       record.controller.update({
         visible: false,
@@ -1327,10 +1696,20 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     return scale >= 0.999 || typeOf(viewId).scaling !== "inert";
   }
   function placementOf(viewId: string): ViewPlacement {
-    const panel = panelOfView(doc, viewId) ?? (lifted()?.views.includes(viewId) ? lifted() : null);
-    if (!panel) return "docked";
-    if (doc.hidden.some((x) => x.panel.id === panel.id)) return "hidden";
-    const r = regionOf(panel.id);
+    located();
+    const entry = viewIndex.get(viewId);
+    if (!entry)
+      return lifted()?.views.includes(viewId) && lifted() ? placementOfPanel(lifted()!.id) : "docked";
+    return entry.region === "hidden"
+      ? "hidden"
+      : entry.region === "floating"
+        ? "floating"
+        : entry.region === "stage"
+          ? "stage"
+          : "docked";
+  }
+  function placementOfPanel(panelId: string): ViewPlacement {
+    const r = regionOf(panelId);
     return r === "floating" ? "floating" : r === "stage" ? "stage" : "docked";
   }
   /** Whether any whole pixel of a screen rect is in view: a rect ending exactly at an edge isn't. */
@@ -1407,8 +1786,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     setAttr(shell, "inert", selected && !concealed ? null : "");
     (record as any).__size = { width: Math.round(width), height: Math.round(height) };
     (record as any).__scale = Math.round(safe * 1000) / 1000;
-    const panel =
-      panelOfView(doc, controller.id) ?? (lifted()?.views.includes(controller.id) ? lifted() : null);
+    const panel = panelOf(controller.id) ?? (lifted()?.views.includes(controller.id) ? lifted() : null);
     const onscreen = inView(body);
     const busy = !!dragActive() || gesture;
     controller.update({
@@ -1419,7 +1797,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       panelId: panel?.id ?? controller.state.panelId,
       interactive: !busy && usableAt(controller.id, safe),
       // Size and scale settle once motion stops: views never re-render per frame.
-      ...(moving()
+      ...(moving() || freezing
         ? {}
         : {
             size: { width: Math.round(width), height: Math.round(height) },
@@ -1428,7 +1806,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     });
   }
   function renderDividers(round: boolean) {
-    const show = !tween.active && !dragActive() && !gesture;
+    // Without the resize permission there's nothing to grab or focus.
+    // Hidden while anything moves (nothing to grab mid-animation), and without the resize permission.
+    const show = !tween.active && !camera.moving && !dragActive() && !gesture && can("resize");
     for (const el of dividerEls.values()) {
       const split = effectiveSplit(el.dataset.split!);
       const e = split && entries.get(split.id);
@@ -1478,7 +1858,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
 
   // ---------------------------------------------------------------- focus
   function setFocus(viewId: string | null, emit = true) {
-    const panel = viewId ? panelOfView(doc, viewId) : null;
+    const panel = viewId ? panelOf(viewId) : null;
     const nextPanel = panel?.id ?? null;
     if (focusedView === viewId && focusedPanel === nextPanel) return;
     focusedView = viewId;
@@ -1494,13 +1874,13 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     setFocus(viewId);
     raiseIfFloating(viewId);
     // A view inside a collapsed group can't be seen: zoom to it.
-    const panel = panelOfView(doc, viewId);
+    const panel = panelOf(viewId);
     if (panel && collapsedOf.has(panel.id) && !dragActive()) nav.focus(panel.id);
     // Adapters render content asynchronously; move DOM focus once it has had a frame to mount.
     if (moveDom) lifetime.frame(() => moveFocusInto(viewId));
   }
   function raiseIfFloating(viewId: string) {
-    const panel = panelOfView(doc, viewId);
+    const panel = panelOf(viewId);
     if (!panel || dragActive()) return;
     const raised = raiseFloat(doc, panel.id);
     if (raised !== doc) commit(raised, { animate: false, silent: true });
@@ -1514,7 +1894,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (target) target.focus({ preventScroll: true });
     else
       panelDoms
-        .get(panelOfView(doc, viewId)?.id ?? "")
+        .get(panelOf(viewId)?.id ?? "")
         ?.tabs.get(viewId)
         ?.el.focus({ preventScroll: true });
   }
@@ -1538,7 +1918,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   function infoOf(viewId: string): ViewInfo | null {
     const record = doc.views[viewId];
     if (!record) return null;
-    const panel = panelOfView(doc, viewId) ?? (lifted()?.views.includes(viewId) ? lifted() : null);
+    const panel = panelOf(viewId) ?? (lifted()?.views.includes(viewId) ? lifted() : null);
     return {
       id: viewId,
       type: record.type,
@@ -1681,7 +2061,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const appeared = panelDoms.get(panel.id);
     if (appeared && !from) appear(appeared.el, panel.views);
     if (o.focus !== false) {
-      const target = panelOfView(doc, id);
+      const target = panelOf(id);
       if (target && doc.floating.some((f) => f.panel.id === target.id))
         commit(raiseFloat(doc, target.id), { silent: true, animate: false });
       focusView(id, true);
@@ -1710,7 +2090,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     return null;
   }
   function reveal(viewId: string, focusIt: boolean) {
-    const panel = panelOfView(doc, viewId);
+    const panel = panelOf(viewId);
     if (!panel) return;
     if (doc.hidden.some((x) => x.panel.id === panel.id)) restore(panel.id);
     let next = selectView(doc, viewId);
@@ -1720,7 +2100,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     ensureFramedVisible(viewId);
   }
   function ensureFramedVisible(viewId: string) {
-    const panel = panelOfView(doc, viewId);
+    const panel = panelOf(viewId);
     if (panel) nav.ensureVisible(panel.id);
   }
 
@@ -1732,24 +2112,24 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (!doc.views[viewId]) return false;
     // If keyboard focus was on this view or its tab, hand it to whatever gets selected next.
     const active = document.activeElement;
-    const panelId = panelOfView(doc, viewId)?.id;
+    const panelId = panelOf(viewId)?.id;
     const tabEl = panelId ? panelDoms.get(panelId)?.tabs.get(viewId)?.el : undefined;
     const hadFocus = !!active && (!!record?.shell.contains(active) || !!tabEl?.contains(active));
     commit(closeViewInDoc(doc, viewId));
     if (hadFocus) {
       const next =
-        (panelId && locatePanel(doc, panelId)?.panel) || (focusedView ? panelOfView(doc, focusedView) : null);
+        (panelId && locatePanel(doc, panelId)?.panel) || (focusedView ? panelOf(focusedView) : null);
       if (next) panelDoms.get(next.id)?.tabs.get(next.selected)?.el.focus({ preventScroll: true });
       else root.focus({ preventScroll: true });
     }
     return true;
   }
   function resolvePanel(id: string): PanelNode | null {
-    return locatePanel(doc, id)?.panel ?? panelOfView(doc, id);
+    return locatePanel(doc, id)?.panel ?? panelOf(id);
   }
   function hide(id: string, o: { toward?: Element | Rect } = {}) {
     // A view that shares its panel is hidden on its own and restored into the same panel.
-    const owner = !locatePanel(doc, id) ? panelOfView(doc, id) : null;
+    const owner = !locatePanel(doc, id) ? panelOf(id) : null;
     if (owner && owner.views.length > 1 && !doc.hidden.some((x) => x.panel.id === owner.id)) {
       const alone: PanelNode = { kind: "panel", id: uid("panel"), views: [id], selected: id };
       const detached = detachView(doc, id);
@@ -1847,7 +2227,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     let d = doc;
     let panel: PanelNode | null = loc?.panel ?? null;
     if (!loc) {
-      const owner = panelOfView(doc, id);
+      const owner = panelOf(id);
       if (!owner) return;
       if (owner.views.length > 1) {
         d = detachView(doc, id);
@@ -1916,9 +2296,10 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   function menuFor(panel: PanelNode): MenuEntry[] {
     const def = typeOf(panel.selected);
     const controller = records.get(panel.selected)?.controller;
-    const custom =
-      typeof def.menu === "function" ? (controller ? def.menu(controller) : []) : (def.menu ?? []);
-    return custom;
+    const menuFn = def.menu;
+    if (typeof menuFn !== "function") return menuFn ?? [];
+    if (!controller) return [];
+    return guarded(() => menuFn(controller), [], { source: "menu", viewId: panel.selected });
   }
   /** The built-in items for a panel, each with a stable id. */
   function builtInMenu(panel: PanelNode): MenuEntry[] {
@@ -1934,7 +2315,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         shortcut: hint("frame.toggle"),
         run: () => toggleFrame(panelId),
       });
-    if (region === "floating" && floatingLayer() === "stage") {
+    if (!can("float")) {
+      // Neither Float nor Dock.
+    } else if (region === "floating" && floatingLayer() === "stage") {
       items.push({ id: "dock", label: "Dock beside stage", run: () => toggleDock(panelId) });
     } else if (region === "floating") {
       items.push({
@@ -1971,8 +2354,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (panel.views.length > 1 && region !== "floating")
       moves.push(
         {
+          // Toward the end edge, which is on the left when the layout is mirrored.
           id: "split-right",
-          label: "New split right",
+          label: rtl ? "New split left" : "New split right",
           run: () => dock(viewId, { beside: panelId, edge: "right" }),
         },
         {
@@ -1981,27 +2365,34 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
           run: () => dock(viewId, { beside: panelId, edge: "bottom" }),
         },
       );
-    if (moves.length) items.push({ id: "move", label: `Move ${titleOf(viewId)} to`, items: moves });
-    items.push({
-      id: "hide",
-      label: "Hide",
-      run: () => hide(panelId, { toward: options.hideToward?.(panelId) ?? undefined }),
-    });
-    const closable = panel.views.filter((v) => typeOf(v).closable !== false);
-    if (closable.length) {
+    if (moves.length && can("rearrange"))
+      items.push({ id: "move", label: `Move ${titleOf(viewId)} to`, items: moves });
+    if (can("hide"))
+      items.push({
+        id: "hide",
+        label: "Hide",
+        run: () =>
+          hide(panelId, {
+            toward:
+              guarded(() => options.hideToward?.(panelId), undefined, { source: "callback" }) ?? undefined,
+          }),
+      });
+    // Only views a user may close: "Close other tabs" leaves non-closable tabs alone.
+    const others = panel.views.filter((v) => v !== panel.selected && userClosable(v));
+    if (userClosable(panel.selected) || others.length) {
       items.push("separator");
-      if (typeOf(panel.selected).closable !== false)
+      if (userClosable(panel.selected))
         items.push({
           id: "close",
           label: `Close ${titleOf(panel.selected)}`,
           shortcut: hint("view.close"),
           run: () => void close(panel.selected),
         });
-      if (panel.views.length > 1)
+      if (others.length)
         items.push({
           id: "close-others",
           label: "Close other tabs",
-          run: () => panel.views.filter((v) => v !== panel.selected).forEach((v) => void close(v)),
+          run: () => others.forEach((v) => void close(v)),
         });
     }
     return items;
@@ -2016,7 +2407,10 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (setting === true) return tidyMenu(all);
     const view = records.get(panel.selected)?.controller;
     if (!view) return tidyMenu(all);
-    return tidyMenu(setting(tidyMenu(all), { panelId: panel.id, view, region: regionOf(panel.id) }));
+    const context = { panelId: panel.id, view, region: regionOf(panel.id) };
+    return tidyMenu(
+      guarded(() => setting(tidyMenu(all), context), tidyMenu(all), { source: "menu", viewId: view.id }),
+    );
   }
   function openPanelMenu(panelId: string, button: HTMLElement | null, at?: { x: number; y: number }) {
     const panel = findPanel(panelId);
@@ -2029,20 +2423,32 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const reset = () => button && setAttr(button, "aria-expanded", null);
     if (options.renderMenu) {
       menu.close();
-      options.renderMenu({
-        entries,
-        x: r ? r.right : b.left + (at?.x ?? 0),
-        y: r ? r.bottom + 4 : b.top + (at?.y ?? 0),
-        align: r ? "end" : "start",
-        anchor: button,
-        panelId,
-        close: reset,
-      });
+      const render = options.renderMenu;
+      guarded(
+        () =>
+          render({
+            entries,
+            x: r ? r.right : b.left + (at?.x ?? 0),
+            y: r ? r.bottom + 4 : b.top + (at?.y ?? 0),
+            align: r ? "end" : "start",
+            anchor: button,
+            panelId,
+            close: reset,
+          }),
+        undefined,
+        { source: "callback" },
+      );
       return;
     }
     menuCloseHook = reset;
-    if (r) menu.show(entries, { x: r.right - b.left, y: r.bottom - b.top + 4, alignRight: true });
-    else menu.show(entries, at ?? { x: 0, y: 0 });
+    // The menu opens toward the start edge: under the button, lined up with its outer edge.
+    if (r)
+      menu.show(entries, {
+        x: (rtl ? r.left : r.right) - b.left,
+        y: r.bottom - b.top + 4,
+        alignRight: !rtl,
+      });
+    else menu.show(entries, { ...(at ?? { x: 0, y: 0 }), alignRight: rtl });
   }
 
   // ---------------------------------------------------------------- keyboard
@@ -2058,17 +2464,19 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       setFocus(viewId);
       panelDoms.get(panelId)?.tabs.get(viewId)?.el.focus();
     };
+    // Next is the tab after this one in reading order: to the left, right to left.
+    const [next, previous] = rtl ? ["ArrowLeft", "ArrowRight"] : ["ArrowRight", "ArrowLeft"];
     switch (e.key) {
-      case "ArrowRight":
+      case next:
         return go(index + 1);
-      case "ArrowLeft":
+      case previous:
         return go(index - 1);
       case "Home":
         return go(0);
       case "End":
         return go(panel.views.length - 1);
       case "Delete":
-        if (typeOf(panel.selected).closable !== false) {
+        if (userClosable(panel.selected)) {
           e.preventDefault();
           void close(panel.selected);
         }
@@ -2142,13 +2550,13 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         return;
       }
       case "view.close":
-        if (focusedView && typeOf(focusedView).closable !== false) void close(focusedView);
+        if (focusedView && userClosable(focusedView)) void close(focusedView);
         return;
       case "panel.float":
-        if (panelId) float(panelId);
+        if (panelId && can("float")) float(panelId);
         return;
       case "panel.hide":
-        if (panelId) hide(panelId);
+        if (panelId && can("hide")) hide(panelId);
         return;
     }
   }
@@ -2183,7 +2591,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     const p = pad();
     const a = fromScreen({ x: screen.x - p, y: screen.y - p });
     const b = fromScreen({ x: screen.x + screen.w + p, y: screen.y + screen.h + p });
-    return { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y };
+    // Mirrored, the screen's left edge is the world's right edge.
+    const x = Math.min(a.x, b.x);
+    return { x, y: a.y, w: Math.abs(b.x - a.x), h: b.y - a.y };
   }
   function announce(text: string) {
     live.textContent = text;
@@ -2208,7 +2618,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     return node?.kind === "split" ? node : null;
   }
   function beginDivider(e: PointerEvent, el: HTMLElement) {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || !can("resize")) return;
     e.preventDefault();
     const origin = doc;
     const splitId = el.dataset.split!;
@@ -2251,6 +2661,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     el.addEventListener("pointercancel", up);
   }
   function equalize(splitId: string, index: number) {
+    if (!can("resize")) return;
     const split = findNode(doc.root, splitId) as SplitNode | null;
     if (!split) return;
     const weights = [...split.weights];
@@ -2259,11 +2670,17 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     commit({ ...doc, root: replaceNode(doc.root, splitId, { ...split, weights }) });
   }
   function dividerKey(e: KeyboardEvent, el: HTMLElement) {
+    if (!can("resize")) return;
     const split = effectiveSplit(el.dataset.split!);
     const entry = entries.get(el.dataset.split!);
     if (!split || !entry || !doc.root) return;
-    const decrease = split.axis === "x" ? "ArrowLeft" : "ArrowUp";
-    const increase = split.axis === "x" ? "ArrowRight" : "ArrowDown";
+    // The arrow moves the divider that way on screen, which is backwards in a mirrored row.
+    const [decrease, increase] =
+      split.axis === "y"
+        ? ["ArrowUp", "ArrowDown"]
+        : rtl
+          ? ["ArrowRight", "ArrowLeft"]
+          : ["ArrowLeft", "ArrowRight"];
     if (e.key !== decrease && e.key !== increase) return;
     e.preventDefault();
     const push = dragBoundary(doc.root, layoutMetrics(), split.id, Number(el.dataset.index));
@@ -2288,7 +2705,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     dom.handles = wrap;
   }
   function beginFloatResize(e: PointerEvent, panelId: string, dir: string) {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || !can("resize")) return;
     e.preventDefault();
     e.stopPropagation();
     const float = doc.floating.find((f) => f.panel.id === panelId);
@@ -2405,6 +2822,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     tabbarHeight: (panel) => barHeight(panel),
     toScreen,
     fromScreen,
+    rtl: () => rtl,
+    canFloat: () => can("float"),
     panelScreen: (world) => inset(toScreen(world), pad()),
     fromScreenRect,
     floatWorld(panelId) {
@@ -2458,6 +2877,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     viewport: () => viewport,
     fromScreen,
     toScreen,
+    rtl: () => rtl,
     panelScreen: (world) => inset(toScreen(world), pad()),
     setGesture(active) {
       gesture = active;
@@ -2499,6 +2919,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     if (w === viewport.w && hh === viewport.h) return;
     viewport = { w, h: hh };
     readMetrics();
+    readDirection();
     tween.stop();
     // Minimums are in pixels, so a new size can change the layout's proportions and scales.
     sync();
@@ -2528,6 +2949,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     slots,
     open,
     close,
+    reportError: (error, context = {}) =>
+      reportError(error, {
+        source: context.source ?? "content",
+        viewId: context.viewId && doc.views[context.viewId] ? context.viewId : undefined,
+      }),
     focus: (id: string) => {
       const panel = locatePanel(doc, id)?.panel;
       const viewId = panel ? panel.selected : id;
@@ -2594,6 +3020,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     update(patch) {
       const typesChanged = patch.types && patch.types !== options.types;
       options = { ...options, ...patch };
+      // With direction "auto", any update picks up a change to the page's own direction.
+      readDirection();
       if (
         "theme" in patch ||
         "tokens" in patch ||
@@ -2602,6 +3030,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
         "tabs" in patch
       )
         applyTheme();
+      // Close buttons follow the permissions.
+      if ("permissions" in patch) updateTabs();
       if ("navigation" in patch && !navigationMode()) nav.focus(null, false);
       if (typesChanged) {
         for (const record of records.values()) mountContent(record);
