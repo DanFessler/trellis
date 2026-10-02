@@ -70,8 +70,8 @@ Nothing changes once the camera is still. The option may become the default, cha
 
 | Package                       | Minified | Minified and gzipped |
 | ----------------------------- | -------- | -------------------- |
-| `@danfessler/trellis`         | 104 kB   | 37 kB                |
-| `@danfessler/trellis-react`   | 9 kB     | 3.5 kB               |
+| `@danfessler/trellis`         | 107 kB   | 38 kB                |
+| `@danfessler/trellis-react`   | 9.5 kB   | 3.6 kB               |
 | `@danfessler/trellis-element` | 6 kB     | 2.2 kB               |
 | Stylesheet                    | 22 kB    | 3.9 kB               |
 

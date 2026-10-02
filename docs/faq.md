@@ -67,7 +67,7 @@ Pinch events inside an iframe don't reach the workspace. See [Zoom gestures over
 
 ### How big is it?
 
-The core has no runtime dependencies and is about 37 kB minified and gzipped. The React adapter adds about 3 kB, and the stylesheet about 4 kB.
+The core has no runtime dependencies and is about 38 kB minified and gzipped. The React adapter adds about 3 kB, and the stylesheet about 4 kB.
 
 ### Is Trellis open source?
 

@@ -592,6 +592,41 @@ test.describe("custom element", () => {
   });
 });
 
+test.describe("custom element: world-transform", () => {
+  /** Zooms to the note panel, and whether any frame of the move had the layer transformed. */
+  const usesWorld = (page: Page, value: string | null) =>
+    page.evaluate(async (value) => {
+      const el = document.querySelector("trellis-workspace")!;
+      el.setAttribute("navigation", "free");
+      el.setAttribute("motion", "full");
+      if (value === null) el.removeAttribute("world-transform");
+      else el.setAttribute("world-transform", value);
+      const ws = (window as any).ws;
+      const layer = el.querySelector<HTMLElement>(".trellis-layer")!;
+      const target = ws.getSnapshot().views.find((v: any) => v.id === "n1").panelId;
+      ws.navigation.frame(ws.navigation.camera.w < 0.99 ? "all" : target);
+      let seen = false;
+      for (let i = 0; i < 20; i++) {
+        await new Promise(requestAnimationFrame);
+        seen ||= layer.style.transform !== "";
+      }
+      await new Promise((r) => setTimeout(r, 1500));
+      return seen;
+    }, value);
+
+  test("maps to worldTransform: on, off, auto and a panel threshold", async ({ page }) => {
+    await page.goto("/?scenario=element");
+    await expect(page.locator("trellis-workspace .note").first()).toBeVisible();
+    expect(await usesWorld(page, null)).toBe(false);
+    expect(await usesWorld(page, "")).toBe(true);
+    expect(await usesWorld(page, "false")).toBe(false);
+    // Two panels: fewer than auto's 40.
+    expect(await usesWorld(page, "auto")).toBe(false);
+    expect(await usesWorld(page, "2")).toBe(true);
+    expect(await usesWorld(page, "3")).toBe(false);
+  });
+});
+
 test.describe("navigation requirements", () => {
   test("floating windows are not camera targets; double-clicking one frames its desktop", async ({
     page,
