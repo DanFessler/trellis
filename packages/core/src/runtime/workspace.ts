@@ -2238,6 +2238,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       el.removeEventListener("pointermove", move);
       el.removeEventListener("pointerup", up);
       el.removeEventListener("pointercancel", up);
+      el.removeEventListener("lostpointercapture", up);
       setAttr(root, "data-resizing", null);
       setAttr(el, "data-active", null);
       gesture = false;
@@ -2249,6 +2250,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     el.addEventListener("pointermove", move);
     el.addEventListener("pointerup", up);
     el.addEventListener("pointercancel", up);
+    // A release the divider never hears (over an iframe, outside the window) still ends the resize.
+    el.addEventListener("lostpointercapture", up);
   }
   function equalize(splitId: string, index: number) {
     const split = findNode(doc.root, splitId) as SplitNode | null;
@@ -2326,6 +2329,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       target.removeEventListener("pointermove", move);
       target.removeEventListener("pointerup", up);
       target.removeEventListener("pointercancel", up);
+      target.removeEventListener("lostpointercapture", up);
       gesture = false;
       setAttr(root, "data-resizing", null);
       const next = doc;
@@ -2336,6 +2340,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     target.addEventListener("pointermove", move);
     target.addEventListener("pointerup", up);
     target.addEventListener("pointercancel", up);
+    target.addEventListener("lostpointercapture", up);
   }
 
   // ---------------------------------------------------------------- snapshot

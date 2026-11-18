@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Releasing a divider or floating-panel resize over an iframe no longer leaves the workspace stuck mid-resize. Content
+  ignores the pointer during a resize, as it already did during a drag, and a resize also ends if it loses the
+  pointer.
+
 ## 0.3.0 — 2026-09-28
 
 ### Changed
