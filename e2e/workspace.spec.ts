@@ -418,6 +418,19 @@ test.describe("vanilla workspace", () => {
     expect((await doc(page)).root.weights[0]).toBeLessThan(after);
   });
 
+  test("a divider resize ignores content, and ends if it loses the pointer", async ({ page }) => {
+    const divider = page.locator("[data-trellis-part=divider]").first();
+    const d = await box(divider);
+    const content = page.locator("[data-trellis-part=content]").first();
+    await drag(page, center(d), { x: d.x + 80, y: d.y + d.height / 2 }, false);
+    // Content (iframes included) can't take the release away from the divider.
+    await expect(content).toHaveCSS("pointer-events", "none");
+    await divider.evaluate((el) => el.dispatchEvent(new PointerEvent("lostpointercapture")));
+    await expect(page.locator(".trellis")).not.toHaveAttribute("data-resizing");
+    await expect(content).not.toHaveCSS("pointer-events", "none");
+    await page.mouse.up();
+  });
+
   test("opens views with placement, reuse and singletons", async ({ page }) => {
     const result = await page.evaluate(() => {
       const ws = (window as any).ws;

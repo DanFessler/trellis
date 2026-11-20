@@ -759,7 +759,12 @@
   color: var(--trellis-text-muted);
   font-weight: 550;
 }
-:where(.trellis[data-dragging] [data-trellis-part="content"]) {
+/* Iframes swallow pointer events, pointer capture or not: a release over one would never end the
+   drag or resize. */
+:where(
+  .trellis[data-dragging] [data-trellis-part="content"],
+  .trellis[data-resizing] [data-trellis-part="content"]
+) {
   pointer-events: none;
 }
 
