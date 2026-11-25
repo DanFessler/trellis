@@ -419,7 +419,11 @@
 :where(.trellis [data-trellis-part="tab"][data-badge="dot"] [data-trellis-part="tab-badge"]) {
   margin: 0 6px;
 }
-:where(.trellis [data-trellis-part="tab-close"], .trellis [data-trellis-part="panel-menu"]) {
+:where(
+  .trellis [data-trellis-part="tab-close"],
+  .trellis [data-trellis-part="panel-menu"],
+  .trellis [data-trellis-part="panel-close"]
+) {
   flex: none;
   display: inline-grid;
   place-items: center;
@@ -449,18 +453,29 @@
 :where(
   .trellis [data-trellis-part="tab-close"]:hover,
   .trellis [data-trellis-part="panel-menu"]:hover,
-  .trellis [data-trellis-part="panel-menu"][aria-expanded="true"]
+  .trellis [data-trellis-part="panel-menu"][aria-expanded="true"],
+  .trellis [data-trellis-part="panel-close"]:hover
 ) {
   opacity: 1;
   background: var(--trellis-tab-hover);
 }
-:where(.trellis [data-trellis-part="tab-close"] svg, .trellis [data-trellis-part="panel-menu"] svg) {
+:where(
+  .trellis [data-trellis-part="tab-close"] svg,
+  .trellis [data-trellis-part="panel-menu"] svg,
+  .trellis [data-trellis-part="panel-close"] svg
+) {
   width: 14px;
   height: 14px;
 }
 :where(.trellis [data-trellis-part="panel-menu"]) {
   align-self: center;
   margin-left: 2px;
+}
+/* A lone view's close button, beside the menu. Clickable even when a host lets clicks through
+ * its overlaid bar. */
+:where(.trellis [data-trellis-part="panel-close"]) {
+  align-self: center;
+  pointer-events: auto;
 }
 :where(.trellis [data-trellis-part="accessories"]) {
   display: flex;
@@ -484,6 +499,7 @@
 }
 :where(.trellis [data-trellis-part="panel"][data-compact] [data-trellis-part="tab-title"]),
 :where(.trellis [data-trellis-part="panel"][data-compact] [data-trellis-part="tab-close"]),
+:where(.trellis [data-trellis-part="panel"][data-compact] [data-trellis-part="panel-close"]),
 :where(.trellis [data-trellis-part="panel"][data-compact] [data-trellis-part="accessories"]),
 :where(.trellis [data-trellis-part="panel"][data-compact] [data-trellis-part="tab-badge"]) {
   display: none;

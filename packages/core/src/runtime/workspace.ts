@@ -78,6 +78,8 @@ interface PanelDom {
   tablist: HTMLElement;
   accessories: HTMLElement;
   menuButton: HTMLButtonElement;
+  /** Closes the panel's view when its bar shows no tab (and so no tab close button). */
+  closeButton: HTMLButtonElement;
   tabs: Map<string, TabDom>;
   handles: HTMLElement | null;
   /** Shown instead of content when the panel is too small to use ("frame only"). */
@@ -506,12 +508,21 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       tabindex: "-1",
     });
     menuButton.innerHTML = icons.more;
+    const closeButton = h("button", {
+      "data-trellis-part": "panel-close",
+      type: "button",
+      "aria-label": "Close",
+      tabindex: "-1",
+      hidden: "",
+    });
+    closeButton.innerHTML = icons.close;
     const tabbar = h(
       "div",
       { "data-trellis-part": "tabbar", "data-panel": panelId },
       tablist,
       accessories,
       menuButton,
+      closeButton,
     );
     el.append(tabbar);
     layer.append(el);
@@ -524,6 +535,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       tablist,
       accessories,
       menuButton,
+      closeButton,
       tabs: new Map(),
       handles: null,
       frameIcon,
@@ -567,6 +579,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     lifetime.listen(menuButton, "click", (e: MouseEvent) => {
       e.stopPropagation();
       openPanelMenu(d.id, menuButton);
+    });
+    lifetime.listen(closeButton, "click", (e: MouseEvent) => {
+      e.stopPropagation();
+      const panel = findPanel(d.id);
+      if (panel?.selected) void close(panel.selected);
     });
     lifetime.listen(tabbar, "contextmenu", (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -720,13 +737,18 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       const icon = iconSource || `<b>${escapeHtml(titleOf(panel.selected).slice(0, 1).toUpperCase())}</b>`;
       if (dom.frameIcon.innerHTML !== icon) dom.frameIcon.innerHTML = icon;
       if (barMode(panel) === "overlay")
-        dom.endInset = dom.accessories.offsetWidth + dom.menuButton.offsetWidth + 24;
+        dom.endInset =
+          dom.accessories.offsetWidth + dom.menuButton.offsetWidth + dom.closeButton.offsetWidth + 24;
       // The button shows whenever the panel has a menu. The built-ins alone always give one.
       const hasMenu =
         options.panelMenu === true || options.panelMenu === undefined
           ? true
           : panelMenuEntries(panel).length > 0;
       setAttr(dom.menuButton, "hidden", hasMenu ? null : "");
+      // A lone view's overlaid bar hides its tab, and the tab's close button with it.
+      const loneClose = barMode(panel) === "overlay" && typeOf(panel.selected).closable !== false;
+      setAttr(dom.closeButton, "hidden", loneClose ? null : "");
+      setAttr(dom.closeButton, "title", loneClose ? `Close ${titleOf(panel.selected)}` : null);
     }
     invalidate();
   }
@@ -981,7 +1003,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     // Adapter-rendered accessories appear after the first sync; measure overlaid bars at rest.
     for (const [id, dom] of panelDoms)
       if (dom.tabbar.hasAttribute("data-overlay")) {
-        const inset = dom.accessories.offsetWidth + dom.menuButton.offsetWidth + 24;
+        const inset =
+          dom.accessories.offsetWidth + dom.menuButton.offsetWidth + dom.closeButton.offsetWidth + 24;
         if (inset !== dom.endInset) {
           dom.endInset = inset;
           const panel = findPanel(id);

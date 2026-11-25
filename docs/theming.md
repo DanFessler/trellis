@@ -109,6 +109,7 @@ Every element Trellis renders has a `data-trellis-part` attribute:
 | `tab-icon`, `tab-title`, `tab-badge`, `tab-close` | Pieces of a tab. An empty `tab-icon` is hidden with `:empty`, so it takes no space for types without an icon.                                           |
 | `accessories` / `accessory`                       | Tab-bar area for the selected view's accessory.                                                                                                         |
 | `panel-menu`                                      | The panel's menu button.                                                                                                                                |
+| `panel-close`                                     | Closes a lone view whose overlaid bar hides its tab (`tabbar: "overlay"`). Hidden otherwise, or when the view isn't closable.                           |
 | `surface`                                         | A view's frame. Has `data-view` and `data-type`, plus the type's `className`.                                                                           |
 | `content`                                         | The view's content element. Your content mounts into it.                                                                                                |
 | `divider`                                         | A resize handle between split children.                                                                                                                 |

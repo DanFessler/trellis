@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+
+- A lone view with an overlaid bar (`tabbar: "overlay"`) gets a close button beside the panel menu, since its tab,
+  and the tab's close button, are hidden. Style it as the `panel-close` part.
+
 ### Fixed
 
 - Releasing a divider or floating-panel resize over an iframe no longer leaves the workspace stuck mid-resize. Content
