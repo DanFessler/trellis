@@ -4,8 +4,14 @@
 
 ### Added
 
-- A lone view with an overlaid bar (`tabbar: "overlay"`) gets a close button beside the panel menu, since its tab,
-  and the tab's close button, are hidden. Style it as the `panel-close` part.
+- Menu items can show as buttons in the bar: give an item `inline: true` and an `icon`. Inline items sit left of the
+  ⋯ button in list order while they fit, and the rest stay in the menu. Style them as the `actions` and `action`
+  parts.
+- `view.setMenu(entries)` sets a view's own menu items, ahead of its type's, for items whose state changes while it's
+  open. React: `<ViewMenu items>`, whose icons can be React nodes.
+- A lone view with an overlaid bar (`tabbar: "overlay"`) gets a close button at the far right, after the ⋯ button,
+  since its tab, and the tab's close button, are hidden. It never overflows into the menu. Style it as the
+  `panel-close` part.
 
 ### Fixed
 

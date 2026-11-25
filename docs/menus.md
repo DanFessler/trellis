@@ -13,7 +13,7 @@ Right-clicking a view's [accessory](./react-api.md) doesn't open the menu, becau
 
 The menu is built in three steps:
 
-1. The selected view type's `menu` items.
+1. The selected view's own items, from [`setMenu`](#items-for-one-view), then its type's `menu` items.
 2. The built-in items, unless `panelMenu` is `false`.
 3. Your `panelMenu` function, if you pass one, which gets the result of 1 and 2 and returns what to show.
 
@@ -32,6 +32,8 @@ interface MenuItem {
   disabled?: boolean;
   checked?: boolean;
   danger?: boolean;
+  inline?: boolean; // may show as a button in the bar; see below
+  icon?: string | Element; // the inline button's icon
   run?(): void;
   items?: MenuItem[]; // a submenu
 }
@@ -52,6 +54,36 @@ interface MenuItem {
 Trellis removes separators at the start or end of a menu, and repeated separators, so each step can add them freely.
 
 `shortcut` only labels the item. To make the key work, handle it in your app, or use the workspace [keymap](./keyboard-accessibility.md) for built-in commands.
+
+## Items for one view
+
+For items whose state changes while the view is open, such as a toggle, the view can set its own with `view.setMenu(entries)`. They go ahead of the type's `menu` items. Call it again whenever they change, and with `null` to clear them. In React, render a `<ViewMenu>` in the view's content instead; it updates the items as it re-renders and clears them on unmount, and icons can be React nodes:
+
+```tsx
+function Pin() {
+  const view = useView<{ pinned?: boolean }>();
+  const pinned = !!view.params.pinned;
+  return (
+    <ViewMenu
+      items={[
+        {
+          id: "pin",
+          label: pinned ? "Unpin" : "Pin",
+          icon: <PinIcon />,
+          inline: true,
+          run: () => view.setParams({ pinned: !pinned }),
+        },
+      ]}
+    />
+  );
+}
+```
+
+## Items as buttons in the bar
+
+An item with `inline: true` and an `icon` can show as a button in the panel's bar, left of the ⋯ button, with its label as the tooltip. Inline items take the bar in list order while they fit. When the panel gets too narrow, the last ones move back into the menu, in their place in the list, so put the most useful first. The bar always keeps about 120px for its tabs or title. `disabled` and `checked` carry over to the button (`checked` becomes `aria-pressed`). Submenus never show inline.
+
+In a lone view with an overlaid bar (`tabbar: "overlay"`), whose tab is hidden, a close button sits at the far right, after ⋯. It never moves into the menu, and the menu's **Close** item stays too.
 
 ## The built-in items
 

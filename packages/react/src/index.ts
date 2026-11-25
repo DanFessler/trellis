@@ -16,6 +16,7 @@ export {
   useViewTitle,
   useViewBadge,
   useCloseGuard,
+  ViewMenu,
 } from "./Workspace";
 export type {
   WorkspaceProps,
@@ -26,6 +27,8 @@ export type {
   StageProps,
   FloatingProps,
   ViewApi,
+  ViewMenuItem,
+  ViewMenuEntry,
 } from "./Workspace";
 export { layout, createDocument, formatCombo } from "@danfessler/trellis";
 export type * from "@danfessler/trellis";

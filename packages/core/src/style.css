@@ -422,7 +422,8 @@
 :where(
   .trellis [data-trellis-part="tab-close"],
   .trellis [data-trellis-part="panel-menu"],
-  .trellis [data-trellis-part="panel-close"]
+  .trellis [data-trellis-part="panel-close"],
+  .trellis [data-trellis-part="action"]
 ) {
   flex: none;
   display: inline-grid;
@@ -454,7 +455,9 @@
   .trellis [data-trellis-part="tab-close"]:hover,
   .trellis [data-trellis-part="panel-menu"]:hover,
   .trellis [data-trellis-part="panel-menu"][aria-expanded="true"],
-  .trellis [data-trellis-part="panel-close"]:hover
+  .trellis [data-trellis-part="panel-close"]:hover,
+  .trellis [data-trellis-part="action"]:not(:disabled):hover,
+  .trellis [data-trellis-part="action"][aria-pressed="true"]
 ) {
   opacity: 1;
   background: var(--trellis-tab-hover);
@@ -462,7 +465,8 @@
 :where(
   .trellis [data-trellis-part="tab-close"] svg,
   .trellis [data-trellis-part="panel-menu"] svg,
-  .trellis [data-trellis-part="panel-close"] svg
+  .trellis [data-trellis-part="panel-close"] svg,
+  .trellis [data-trellis-part="action"] svg
 ) {
   width: 14px;
   height: 14px;
@@ -470,6 +474,19 @@
 :where(.trellis [data-trellis-part="panel-menu"]) {
   align-self: center;
   margin-left: 2px;
+}
+/* A view's inline menu items, left of the menu button. Ones that don't fit stay in the menu. */
+:where(.trellis [data-trellis-part="actions"]) {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 2px;
+  margin-left: 4px;
+  pointer-events: auto;
+}
+:where(.trellis [data-trellis-part="action"]:disabled) {
+  opacity: 0.25;
+  cursor: default;
 }
 /* A lone view's close button, beside the menu. Clickable even when a host lets clicks through
  * its overlaid bar. */

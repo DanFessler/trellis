@@ -258,6 +258,7 @@ A single view's handle. Trellis passes it to `mount`, `title`, `iframe` and `men
 | `workspace`                                              | The [`WorkspaceHandle`](#workspacehandle).                                                                                   |
 | `element`                                                | The view's content element, the one `mount` receives. Reach an iframe with `view.element.querySelector("iframe")`.           |
 | `setTitle(title)`, `setParams(patch)`, `setBadge(badge)` | Updates the view. A badge is text, a number, `true` for a dot (for example for unsaved changes), or `null`.                  |
+| `setMenu(entries)`                                       | Sets the view's own [menu items](./menus.md#items-for-one-view), ahead of its type's. `null` clears them.                    |
 | `focus()`                                                | Focuses the view.                                                                                                            |
 | `hide()`                                                 | Hides the view's tab, or its whole panel if the view is alone in it.                                                         |
 | `close({ force? }?)`                                     | Closes the view. Resolves `false` if a close guard vetoed it.                                                                |

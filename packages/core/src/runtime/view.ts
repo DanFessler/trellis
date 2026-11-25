@@ -1,6 +1,6 @@
 import type { Params } from "../model/types";
 import { Emitter } from "./lifetime";
-import type { ViewEvents, ViewHandle, ViewState, WorkspaceHandle } from "./types";
+import type { MenuEntry, ViewEvents, ViewHandle, ViewState, WorkspaceHandle } from "./types";
 
 export interface ViewHost {
   workspace: WorkspaceHandle;
@@ -8,6 +8,7 @@ export interface ViewHost {
   setTitle(id: string, title: string): void;
   setParams(id: string, patch: object): void;
   setBadge(id: string, badge: string | number | boolean | null): void;
+  setMenu(id: string, entries: MenuEntry[] | null): void;
   element(id: string): HTMLElement;
   focus(id: string): void;
   close(id: string, options?: { force?: boolean }): Promise<boolean>;
@@ -75,6 +76,9 @@ export class ViewController implements ViewHandle {
   }
   setBadge(badge: string | number | boolean | null) {
     this.host.setBadge(this.id, badge);
+  }
+  setMenu(entries: MenuEntry[] | null) {
+    this.host.setMenu(this.id, entries);
   }
   focus() {
     this.host.focus(this.id);

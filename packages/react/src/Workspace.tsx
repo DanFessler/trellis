@@ -31,6 +31,7 @@ import {
   type LayoutDocument,
   type LayoutSpec,
   type MenuEntry,
+  type MenuItem,
   type MenuRequest,
   type PanelMenuContext,
   type Params,
@@ -142,6 +143,7 @@ export function useView<P extends object = Params>(): ViewApi<P> {
         setTitle: (title: string) => view.setTitle(title),
         setParams: (patch: Partial<P>) => view.setParams(patch),
         setBadge: (badge: string | number | boolean | null) => view.setBadge(badge),
+        setMenu: (entries: MenuEntry[] | null) => view.setMenu(entries),
         element: view.element,
         focus: () => view.focus(),
         close: (options?: { force?: boolean }) => view.close(options),
@@ -173,6 +175,71 @@ export function useViewBadge(badge: string | number | boolean | null | undefined
     view.setBadge(badge ?? null);
     return () => view.setBadge(null);
   }, [view, badge]);
+}
+/** A `ViewMenu` item: a menu item whose icon can be a React node. */
+export interface ViewMenuItem extends Omit<MenuItem, "icon" | "items"> {
+  /** Shown on the item's inline button. A React node, or trusted SVG/HTML markup as a string. */
+  icon?: ReactNode;
+  items?: ViewMenuItem[];
+}
+export type ViewMenuEntry = ViewMenuItem | "separator";
+/**
+ * This view's own menu items, ahead of its type's `menu` items. Items marked `inline` show as
+ * buttons in the panel's bar while they fit, and in the menu when they don't. Render it anywhere
+ * in the view's content; it renders nothing in place. Runs the latest `run` on click.
+ */
+export function ViewMenu({ items }: { items: ViewMenuEntry[] }): ReactNode {
+  const view = useContext(ViewContext);
+  const latest = useRef(items);
+  latest.current = items;
+  const hosts = useRef(new Map<string, HTMLElement>());
+  const keyOf = (item: ViewMenuItem) => item.id ?? item.label;
+  const hostFor = (key: string) => {
+    let el = hosts.current.get(key);
+    if (!el) {
+      el = document.createElement("span");
+      el.style.display = "contents";
+      hosts.current.set(key, el);
+    }
+    return el;
+  };
+  const find = (entries: ViewMenuEntry[], path: string[]): ViewMenuItem | undefined => {
+    let list = entries;
+    let found: ViewMenuItem | undefined;
+    for (const key of path) {
+      found = list.find((e): e is ViewMenuItem => e !== "separator" && keyOf(e) === key);
+      list = found?.items ?? [];
+    }
+    return found;
+  };
+  const convert = (entries: ViewMenuEntry[], path: string[]): MenuEntry[] =>
+    entries.map((e) => {
+      if (e === "separator") return e;
+      const at = [...path, keyOf(e)];
+      const { icon, items: sub, run, ...rest } = e;
+      return {
+        ...rest,
+        icon: icon == null ? undefined : isMarkup(icon) ? icon : path.length ? undefined : hostFor(keyOf(e)),
+        items: sub ? (convert(sub, at) as MenuItem[]) : undefined,
+        run: run ? () => find(latest.current, at)?.run?.() : undefined,
+      };
+    });
+  const signature = JSON.stringify(items, (key, value) =>
+    key === "icon" ? (isMarkup(value) ? value : value != null) : key === "run" ? !!value : value,
+  );
+  useLayoutEffect(() => {
+    view?.setMenu(convert(latest.current, []));
+  }, [view, signature]);
+  useEffect(() => (view ? () => view.setMenu(null) : undefined), [view]);
+  return (
+    <>
+      {items.map((e) =>
+        e !== "separator" && e.icon != null && !isMarkup(e.icon)
+          ? createPortal(e.icon, hostFor(keyOf(e)), keyOf(e))
+          : null,
+      )}
+    </>
+  );
 }
 /** Veto closing: return false (or resolve false) to keep the view open. */
 export function useCloseGuard(guard: () => boolean | Promise<boolean>) {

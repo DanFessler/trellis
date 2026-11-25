@@ -78,6 +78,13 @@ interface PanelDom {
   tablist: HTMLElement;
   accessories: HTMLElement;
   menuButton: HTMLButtonElement;
+  /** The selected view's inline menu items, as buttons left of the menu button. */
+  actions: HTMLElement;
+  actionButtons: Map<string, HTMLButtonElement>;
+  /** The items behind the buttons, by key; clicks run the latest. */
+  actionItems: Map<string, MenuItem>;
+  /** Keys of the items showing as buttons: the menu leaves them out. */
+  inline: Set<string>;
   /** Closes the panel's view when its bar shows no tab (and so no tab close button). */
   closeButton: HTMLButtonElement;
   tabs: Map<string, TabDom>;
@@ -179,6 +186,8 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   let focusedView: string | null = null;
   let lastStagePanel: string | null = null;
   const badges = new Map<string, string | number | boolean | null>();
+  /** Items views added with `setMenu`. */
+  const viewMenus = new Map<string, MenuEntry[]>();
   const panelDoms = new Map<string, PanelDom>();
   const records = new Map<string, SurfaceRecord>();
   const dividerEls = new Map<string, HTMLElement>();
@@ -371,6 +380,11 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     setTitle: (id: string, title: string) => setTitle(id, title),
     setParams: (id: string, patch: object) => setParams(id, patch),
     element: (id: string) => records.get(id)!.content,
+    setMenu: (id: string, entries: MenuEntry[] | null) => {
+      if (entries?.length) viewMenus.set(id, entries);
+      else viewMenus.delete(id);
+      updateTabs();
+    },
     setBadge: (id: string, badge: string | number | boolean | null) => {
       badges.set(id, badge);
       records.get(id)?.controller.update({ badge });
@@ -485,6 +499,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     record.controller.dispose();
     records.delete(viewId);
     badges.delete(viewId);
+    viewMenus.delete(viewId);
   }
   const uidBase = uid("trellis");
   const cssId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -500,6 +515,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       "aria-orientation": "horizontal",
     });
     const accessories = h("div", { "data-trellis-part": "accessories" });
+    const actions = h("div", { "data-trellis-part": "actions", hidden: "" });
     const menuButton = h("button", {
       "data-trellis-part": "panel-menu",
       type: "button",
@@ -521,6 +537,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       { "data-trellis-part": "tabbar", "data-panel": panelId },
       tablist,
       accessories,
+      actions,
       menuButton,
       closeButton,
     );
@@ -534,6 +551,10 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       tabbar,
       tablist,
       accessories,
+      actions,
+      actionButtons: new Map(),
+      actionItems: new Map(),
+      inline: new Set(),
       menuButton,
       closeButton,
       tabs: new Map(),
@@ -579,6 +600,12 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     lifetime.listen(menuButton, "click", (e: MouseEvent) => {
       e.stopPropagation();
       openPanelMenu(d.id, menuButton);
+    });
+    lifetime.listen(actions, "click", (e: MouseEvent) => {
+      const button = (e.target as HTMLElement).closest<HTMLElement>("[data-trellis-part=action]");
+      if (!button) return;
+      e.stopPropagation();
+      d.actionItems.get(button.dataset.action!)?.run?.();
     });
     lifetime.listen(closeButton, "click", (e: MouseEvent) => {
       e.stopPropagation();
@@ -686,6 +713,85 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       setAttr(record.shell, "aria-labelledby", tab.el.id);
     });
   }
+  const keyOf = (item: MenuItem) => item.id ?? item.label;
+  /** The selected view's items that may show as buttons, in order. */
+  function inlineCandidates(panel: PanelNode): MenuItem[] {
+    if (barMode(panel) === "hidden") return [];
+    return menuFor(panel).filter(
+      (e): e is MenuItem => e !== "separator" && !!e.inline && !!e.icon && !e.items,
+    );
+  }
+  function syncActions(dom: PanelDom, panel: PanelNode) {
+    const items = inlineCandidates(panel);
+    const keys = new Set(items.map(keyOf));
+    for (const [key, button] of dom.actionButtons)
+      if (!keys.has(key)) {
+        button.remove();
+        dom.actionButtons.delete(key);
+      }
+    dom.actionItems.clear();
+    items.forEach((item, index) => {
+      const key = keyOf(item);
+      dom.actionItems.set(key, item);
+      let button = dom.actionButtons.get(key);
+      if (!button) {
+        button = h("button", {
+          "data-trellis-part": "action",
+          "data-action": key,
+          type: "button",
+          tabindex: "-1",
+        });
+        dom.actionButtons.set(key, button);
+      }
+      if (dom.actions.children[index] !== button)
+        dom.actions.insertBefore(button, dom.actions.children[index] ?? null);
+      const icon = item.icon!;
+      if (typeof icon === "string") {
+        if (actionIcons.get(button) !== icon) button.innerHTML = icon;
+      } else if (button.firstChild !== icon || button.childNodes.length !== 1) button.replaceChildren(icon);
+      actionIcons.set(button, icon);
+      setAttr(button, "title", item.shortcut ? `${item.label} (${item.shortcut})` : item.label);
+      setAttr(button, "aria-label", item.label);
+      setAttr(button, "disabled", item.disabled ? "" : null);
+      setAttr(button, "aria-pressed", item.checked === undefined ? null : String(item.checked));
+      setAttr(button, "data-danger", item.danger ? "" : null);
+    });
+  }
+  const actionIcons = new WeakMap<HTMLElement, string | Element>();
+  /** Room a bar keeps for its tabs or title before inline items move into the menu. */
+  const BAR_RESERVE = 120;
+  /** Show as many inline items as fit, in order, and leave the rest to the menu. Then update the
+   * menu button and an overlaid bar's end inset. */
+  function refreshBarEnd(dom: PanelDom, panel: PanelNode) {
+    dom.inline.clear();
+    // A compact panel hides its bar's extras, so everything stays in the menu.
+    if (dom.actionButtons.size && !dom.el.hasAttribute("data-compact")) {
+      const buttons = [...dom.actions.children] as HTMLButtonElement[];
+      dom.actions.hidden = false;
+      for (const b of buttons) b.hidden = false;
+      const room = dom.tabbar.clientWidth - BAR_RESERVE;
+      let shown = buttons.length;
+      while (shown > 0 && endWidth(dom) > room) buttons[--shown].hidden = true;
+      for (const b of buttons.slice(0, shown)) dom.inline.add(b.dataset.action!);
+    }
+    setAttr(dom.actions, "hidden", dom.inline.size ? null : "");
+    // The button shows whenever the panel has a menu. The built-ins alone always give one.
+    const hasMenu =
+      options.panelMenu === true || options.panelMenu === undefined
+        ? true
+        : panelMenuEntries(panel).length > 0;
+    setAttr(dom.menuButton, "hidden", hasMenu ? null : "");
+    if (barMode(panel) === "overlay") dom.endInset = endWidth(dom) + 24;
+  }
+  /** Width of the bar's end: accessories, inline items, menu and close buttons. */
+  function endWidth(dom: PanelDom) {
+    return (
+      dom.accessories.offsetWidth +
+      dom.actions.offsetWidth +
+      dom.menuButton.offsetWidth +
+      dom.closeButton.offsetWidth
+    );
+  }
   /** Scroll an overflowing tab strip so a tab is visible, without scrolling the page. */
   function revealTab(list: HTMLElement, tab: HTMLElement) {
     if (list.scrollWidth <= list.clientWidth) return;
@@ -736,19 +842,12 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       const iconSource = records.get(panel.selected)?.icon.innerHTML ?? "";
       const icon = iconSource || `<b>${escapeHtml(titleOf(panel.selected).slice(0, 1).toUpperCase())}</b>`;
       if (dom.frameIcon.innerHTML !== icon) dom.frameIcon.innerHTML = icon;
-      if (barMode(panel) === "overlay")
-        dom.endInset =
-          dom.accessories.offsetWidth + dom.menuButton.offsetWidth + dom.closeButton.offsetWidth + 24;
-      // The button shows whenever the panel has a menu. The built-ins alone always give one.
-      const hasMenu =
-        options.panelMenu === true || options.panelMenu === undefined
-          ? true
-          : panelMenuEntries(panel).length > 0;
-      setAttr(dom.menuButton, "hidden", hasMenu ? null : "");
       // A lone view's overlaid bar hides its tab, and the tab's close button with it.
       const loneClose = barMode(panel) === "overlay" && typeOf(panel.selected).closable !== false;
       setAttr(dom.closeButton, "hidden", loneClose ? null : "");
       setAttr(dom.closeButton, "title", loneClose ? `Close ${titleOf(panel.selected)}` : null);
+      syncActions(dom, panel);
+      refreshBarEnd(dom, panel);
     }
     invalidate();
   }
@@ -1000,11 +1099,15 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       const scale = (record as any).__scale as number | undefined;
       if (scale !== undefined && scale !== s.scale) record.controller.update({ scale });
     }
+    // Sizes settle here: fit inline items to their bars again.
+    for (const [id, dom] of panelDoms) {
+      const panel = findPanel(id);
+      if (panel && dom.actionButtons.size) refreshBarEnd(dom, panel);
+    }
     // Adapter-rendered accessories appear after the first sync; measure overlaid bars at rest.
     for (const [id, dom] of panelDoms)
       if (dom.tabbar.hasAttribute("data-overlay")) {
-        const inset =
-          dom.accessories.offsetWidth + dom.menuButton.offsetWidth + dom.closeButton.offsetWidth + 24;
+        const inset = endWidth(dom) + 24;
         if (inset !== dom.endInset) {
           dom.endInset = inset;
           const panel = findPanel(id);
@@ -1936,12 +2039,14 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   }
 
   // ---------------------------------------------------------------- menus
+  /** The selected view's items: its own (`setMenu`), then its type's. */
   function menuFor(panel: PanelNode): MenuEntry[] {
     const def = typeOf(panel.selected);
     const controller = records.get(panel.selected)?.controller;
     const custom =
       typeof def.menu === "function" ? (controller ? def.menu(controller) : []) : (def.menu ?? []);
-    return custom;
+    const own = viewMenus.get(panel.selected) ?? [];
+    return own.length && custom.length ? [...own, "separator", ...custom] : [...own, ...custom];
   }
   /** The built-in items for a panel, each with a stable id. */
   function builtInMenu(panel: PanelNode): MenuEntry[] {
@@ -2032,7 +2137,9 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
   /** The panel's full menu: the view type's items, the built-ins, then the `panelMenu` function. */
   function panelMenuEntries(panel: PanelNode): MenuEntry[] {
     const setting = options.panelMenu ?? true;
-    const entries = menuFor(panel);
+    // Items showing as buttons in the bar aren't repeated in the menu.
+    const inline = panelDoms.get(panel.id)?.inline;
+    const entries = menuFor(panel).filter((e) => e === "separator" || !e.inline || !inline?.has(keyOf(e)));
     if (setting === false) return tidyMenu(entries);
     const builtIns = builtInMenu(panel);
     const all: MenuEntry[] = entries.length ? [...entries, "separator", ...builtIns] : builtIns;

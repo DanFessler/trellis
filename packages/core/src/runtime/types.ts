@@ -25,6 +25,13 @@ export interface MenuItem {
   disabled?: boolean;
   checked?: boolean;
   danger?: boolean;
+  /** Offer the item as a button in the panel's bar, left of the menu button. Inline items show
+   * in list order while they fit; the rest stay in the menu. Needs an `icon`; the label becomes
+   * the button's tooltip. Submenus stay in the menu. */
+  inline?: boolean;
+  /** The item's icon on its inline button: trusted SVG/HTML markup, or an element to place in it
+   * (adapters use this for rendered icons). The menu doesn't show icons. */
+  icon?: string | Element;
   run?(): void;
   items?: MenuItem[];
 }
@@ -142,6 +149,9 @@ export interface ViewHandle<P extends object = Params> {
   setParams(patch: Partial<P>): void;
   /** A count or label shown in the tab; `true` shows a dot (e.g. unsaved changes); null clears it. */
   setBadge(badge: string | number | boolean | null): void;
+  /** This view's own items, ahead of its type's `menu` items. Use it for actions whose state
+   * changes while the view is open; call again to update, null to clear. */
+  setMenu(entries: MenuEntry[] | null): void;
   focus(): void;
   close(options?: { force?: boolean }): Promise<boolean>;
   hide(): void;

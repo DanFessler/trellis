@@ -28,6 +28,7 @@ import {
   useViewTitle,
   useViewBadge,
   useCloseGuard,
+  ViewMenu,
   layout,
   createDocument,
   formatCombo,
@@ -313,6 +314,14 @@ Shows a badge on the view's tab, and clears it on unmount. Pass `true` for a dot
 useViewBadge(dirty); // a dot while dirty
 useViewBadge(errors || null); // a count, or nothing
 ```
+
+### `ViewMenu`
+
+```ts
+function ViewMenu(props: { items: ViewMenuEntry[] }): ReactNode;
+```
+
+The view's own [menu items](./menus.md#items-for-one-view), ahead of its type's `menu` items. Render it anywhere in the view's content; it renders nothing in place. Items marked `inline` show as buttons in the bar while they fit. An item's `icon` can be a React node. Clicks run the latest `run`, and the items clear on unmount.
 
 ### `useCloseGuard`
 
