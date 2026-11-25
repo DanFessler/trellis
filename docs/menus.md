@@ -81,7 +81,7 @@ function Pin() {
 
 ## Items as buttons in the bar
 
-An item with `inline: true` and an `icon` can show as a button in the panel's bar, left of the ⋯ button, with its label as the tooltip. Inline items take the bar in list order while they fit. When the panel gets too narrow, the last ones move back into the menu, in their place in the list, so put the most useful first. The bar always keeps about 120px for its tabs or title. `disabled` and `checked` carry over to the button (`checked` becomes `aria-pressed`). Submenus never show inline.
+An item with `inline: true` and an `icon` can show as a button in the panel's bar, left of the ⋯ button, with its label as the tooltip. Inline items take the bar in list order while they fit. When the panel gets too narrow, the last ones move back into the menu, in their place in the list, so put the most useful first. The bar always keeps room for its tabs or title: 120px, or the `--trellis-bar-reserve` token. `disabled` and `checked` carry over to the button (`checked` becomes `aria-pressed`). Submenus never show inline.
 
 In a lone view with an overlaid bar (`tabbar: "overlay"`), whose tab is hidden, a close button sits at the far right, after ⋯. It never moves into the menu, and the menu's **Close** item stays too.
 

@@ -758,8 +758,12 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
     });
   }
   const actionIcons = new WeakMap<HTMLElement, string | Element>();
-  /** Room a bar keeps for its tabs or title before inline items move into the menu. */
-  const BAR_RESERVE = 120;
+  /** Room a bar keeps for its tabs or title before inline items move into the menu: the
+   * `--trellis-bar-reserve` token, 120px by default. */
+  function barReserve(bar: HTMLElement) {
+    const value = parseFloat(getComputedStyle(bar).getPropertyValue("--trellis-bar-reserve"));
+    return Number.isFinite(value) ? value : 120;
+  }
   /** Show as many inline items as fit, in order, and leave the rest to the menu. Then update the
    * menu button and an overlaid bar's end inset. */
   function refreshBarEnd(dom: PanelDom, panel: PanelNode) {
@@ -769,7 +773,7 @@ export function createWorkspace(host: HTMLElement, initialOptions: WorkspaceOpti
       const buttons = [...dom.actions.children] as HTMLButtonElement[];
       dom.actions.hidden = false;
       for (const b of buttons) b.hidden = false;
-      const room = dom.tabbar.clientWidth - BAR_RESERVE;
+      const room = dom.tabbar.clientWidth - barReserve(dom.tabbar);
       let shown = buttons.length;
       while (shown > 0 && endWidth(dom) > room) buttons[--shown].hidden = true;
       for (const b of buttons.slice(0, shown)) dom.inline.add(b.dataset.action!);

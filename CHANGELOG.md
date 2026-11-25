@@ -5,7 +5,8 @@
 ### Added
 
 - Menu items can show as buttons in the bar: give an item `inline: true` and an `icon`. Inline items sit left of the
-  ⋯ button in list order while they fit, and the rest stay in the menu. Style them as the `actions` and `action`
+  ⋯ button in list order while they fit (the bar keeps `--trellis-bar-reserve`, 120px, for its tabs or title), and
+  the rest stay in the menu. Style them as the `actions` and `action`
   parts.
 - `view.setMenu(entries)` sets a view's own menu items, ahead of its type's, for items whose state changes while it's
   open. React: `<ViewMenu items>`, whose icons can be React nodes.

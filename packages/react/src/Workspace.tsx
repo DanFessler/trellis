@@ -186,7 +186,8 @@ export type ViewMenuEntry = ViewMenuItem | "separator";
 /**
  * This view's own menu items, ahead of its type's `menu` items. Items marked `inline` show as
  * buttons in the panel's bar while they fit, and in the menu when they don't. Render it anywhere
- * in the view's content; it renders nothing in place. Runs the latest `run` on click.
+ * in the view's content; it renders nothing in place. Runs the latest `run` on click. Use one
+ * per view: each sets the view's whole list.
  */
 export function ViewMenu({ items }: { items: ViewMenuEntry[] }): ReactNode {
   const view = useContext(ViewContext);
@@ -230,7 +231,9 @@ export function ViewMenu({ items }: { items: ViewMenuEntry[] }): ReactNode {
   useLayoutEffect(() => {
     view?.setMenu(convert(latest.current, []));
   }, [view, signature]);
-  useEffect(() => (view ? () => view.setMenu(null) : undefined), [view]);
+  // A layout effect, so a ViewMenu that replaces this one (same view, new component) sets its
+  // items after this clears them, not before.
+  useLayoutEffect(() => (view ? () => view.setMenu(null) : undefined), [view]);
   return (
     <>
       {items.map((e) =>

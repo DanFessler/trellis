@@ -60,16 +60,17 @@ ws.update({ tokens: { "--trellis-accent": "#f60" } }); // --trellis-radius goes 
 
 ### Metrics
 
-| Token                     | Default         | Controls                                                           |
-| ------------------------- | --------------- | ------------------------------------------------------------------ |
-| `--trellis-gap`           | `6px`           | Space between panels and around the edge.                          |
-| `--trellis-radius`        | `10px`          | Panel corner radius.                                               |
-| `--trellis-tab-radius`    | `7px`           | Tab corner radius.                                                 |
-| `--trellis-tabbar-height` | `34px`          | Tab bar height.                                                    |
-| `--trellis-tab-max-width` | `220px`         | Maximum width of a tab.                                            |
-| `--trellis-tab-inset`     | `4px`           | Space around the tabs in a tab bar. Set it with the `tabs` option. |
-| `--trellis-font`          | system UI stack | Font of all chrome.                                                |
-| `--trellis-font-size`     | `12.5px`        | Font size of all chrome.                                           |
+| Token                     | Default         | Controls                                                                                                                          |
+| ------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `--trellis-gap`           | `6px`           | Space between panels and around the edge.                                                                                         |
+| `--trellis-radius`        | `10px`          | Panel corner radius.                                                                                                              |
+| `--trellis-tab-radius`    | `7px`           | Tab corner radius.                                                                                                                |
+| `--trellis-tabbar-height` | `34px`          | Tab bar height.                                                                                                                   |
+| `--trellis-tab-max-width` | `220px`         | Maximum width of a tab.                                                                                                           |
+| `--trellis-tab-inset`     | `4px`           | Space around the tabs in a tab bar. Set it with the `tabs` option.                                                                |
+| `--trellis-bar-reserve`   | `120px`         | Room a tab bar keeps for its tabs or title before [inline menu items](./menus.md#items-as-buttons-in-the-bar) move into the menu. |
+| `--trellis-font`          | system UI stack | Font of all chrome.                                                                                                               |
+| `--trellis-font-size`     | `12.5px`        | Font size of all chrome.                                                                                                          |
 
 > **Note** Trellis reads `--trellis-gap` and `--trellis-tabbar-height` in JavaScript to lay panels out. They're re-read when the theme or tokens change and when the workspace resizes. If you change them from your own stylesheet at runtime, prefer the `tokens` option so the layout updates immediately.
 
