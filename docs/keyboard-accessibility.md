@@ -95,11 +95,15 @@ The panel menu includes **Move _tab_ to ▸**, a submenu listing the other panel
 
 ## Dividers
 
-Dividers are focusable `separator`s. <kbd>←</kbd>/<kbd>→</kbd> (or <kbd>↑</kbd>/<kbd>↓</kbd> for columns) move them by a small step. Hold <kbd>Shift</kbd> for larger steps. Double-click a divider to even out its two neighbours. Panels don't shrink below a minimum usable size: past a neighbour's minimum, a divider pushes the panels beyond it, the same as dragging.
+Dividers are focusable `separator`s. <kbd>←</kbd>/<kbd>→</kbd> (or <kbd>↑</kbd>/<kbd>↓</kbd> for columns) move them by a small step, in the direction of the arrow. Hold <kbd>Shift</kbd> for larger steps. Double-click a divider to even out its two neighbours. Panels don't shrink below a minimum usable size: past a neighbour's minimum, a divider pushes the panels beyond it, the same as dragging.
 
 ## Menus
 
 Panel menus are ARIA `menu`s. Use <kbd>↑</kbd>/<kbd>↓</kbd> and <kbd>Home</kbd>/<kbd>End</kbd> to move, <kbd>Enter</kbd> to activate, <kbd>→</kbd> to open a submenu, <kbd>←</kbd> or <kbd>Esc</kbd> to close it, and <kbd>Tab</kbd> to dismiss. When the menu closes, focus returns to where it was.
+
+## Right to left and permissions
+
+In a [right-to-left](./right-to-left.md) workspace, <kbd>←</kbd> moves to the next tab and opens submenus, following reading order. Shortcuts for actions that [permissions](./permissions.md) turn off do nothing, and locked dividers aren't focusable.
 
 ## ARIA and announcements
 

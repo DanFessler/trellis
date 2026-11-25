@@ -1,6 +1,6 @@
 import type { Params } from "../model/types";
 import { Emitter } from "./lifetime";
-import type { MenuEntry, ViewEvents, ViewHandle, ViewState, WorkspaceHandle } from "./types";
+import type { ErrorSource, MenuEntry, ViewEvents, ViewHandle, ViewState, WorkspaceHandle } from "./types";
 
 export interface ViewHost {
   workspace: WorkspaceHandle;
@@ -13,11 +13,12 @@ export interface ViewHost {
   focus(id: string): void;
   close(id: string, options?: { force?: boolean }): Promise<boolean>;
   hide(id: string): void;
+  reportError(error: unknown, context: { viewId: string; source: ErrorSource }): void;
 }
 
 /** One per view. Presentation state changes arrive from the engine's render. */
 export class ViewController implements ViewHandle {
-  readonly events = new Emitter<ViewEvents>();
+  readonly events: Emitter<ViewEvents>;
   readonly guards = new Set<() => boolean | Promise<boolean>>();
   private listeners = new Set<() => void>();
   state: ViewState;
@@ -28,6 +29,7 @@ export class ViewController implements ViewHandle {
     initial: ViewState,
   ) {
     this.state = initial;
+    this.events = new Emitter((error) => host.reportError(error, { viewId: id, source: "listener" }));
   }
   get params() {
     return this.state.params as any;
@@ -127,7 +129,12 @@ export class ViewController implements ViewHandle {
     if (next.interactive !== prev.interactive) this.events.emit("interactive", next.interactive);
     if (next.scale !== prev.scale) this.events.emit("scale", next.scale);
     this.events.emit("change", next);
-    for (const listener of [...this.listeners]) listener();
+    for (const listener of [...this.listeners])
+      try {
+        listener();
+      } catch (error) {
+        this.host.reportError(error, { viewId: this.id, source: "listener" });
+      }
   }
   /** Run close guards. Any false vetoes. */
   async canClose(): Promise<boolean> {
@@ -135,7 +142,7 @@ export class ViewController implements ViewHandle {
       try {
         if ((await guard()) === false) return false;
       } catch (error) {
-        console.error(error);
+        this.host.reportError(error, { viewId: this.id, source: "guard" });
         return false;
       }
     }

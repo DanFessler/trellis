@@ -3,12 +3,15 @@ import type {
   Edge,
   FloatingLayer,
   FloatingPanel,
+  HiddenPanel,
   LayoutDocument,
   LayoutNode,
   PanelNode,
+  Params,
   Rect,
   RestoreTarget,
   SplitNode,
+  ViewRecord,
 } from "./types";
 
 let counter = 0;
@@ -279,107 +282,168 @@ export function restorePanel(
   return { ...without, root: panel };
 }
 
-/** Repair anything inconsistent in a document from storage or a caller. */
+/**
+ * Repair anything inconsistent in a document from storage or a caller. Saved layouts come back
+ * from servers, local storage and older versions of an app, so nothing about the input is
+ * trusted: whatever arrives, this returns a valid document and never throws.
+ *
+ * - Views without a record, with an unknown type, or shown twice are dropped, and so are panels
+ *   left without views.
+ * - Missing or duplicate node ids are replaced, so content is kept.
+ * - Weights, floating rects, layers and restore targets fall back to sensible values.
+ * - Only one stage is kept.
+ */
 export function sanitize(
-  input: LayoutDocument,
+  input: unknown,
   isKnownType: (type: string) => boolean = () => true,
 ): LayoutDocument {
-  const doc: LayoutDocument = {
-    schema: 1,
-    version: input.version,
-    root: input.root ?? null,
-    floating: Array.isArray(input.floating) ? input.floating : [],
-    hidden: Array.isArray(input.hidden) ? input.hidden : [],
-    views: { ...(input.views ?? {}) },
-    navigation: input.navigation,
+  const src: Record<string, unknown> = isRecord(input) ? input : {};
+
+  // View records: a string type the app knows, plain-object params and a string title.
+  const records: Record<string, ViewRecord> = {};
+  if (isRecord(src.views))
+    for (const [id, record] of Object.entries(src.views)) {
+      if (!isRecord(record) || !isId(record.type) || !isKnownType(record.type)) continue;
+      const clean: ViewRecord = { type: record.type };
+      if (isRecord(record.params)) clean.params = record.params as Params;
+      if (typeof record.title === "string") clean.title = record.title;
+      records[id] = clean;
+    }
+
+  const shown = new Set<string>();
+  const ids = new Set<string>();
+  /** A node's id, or a fresh one if it's missing or already taken. */
+  const claim = (id: unknown, prefix: string) => {
+    const next = isId(id) && !ids.has(id) ? id : uid(prefix);
+    ids.add(next);
+    return next;
   };
-  const seen = new Set<string>();
-  const seenPanels = new Set<string>();
-  const keep = (id: string) => {
-    const record = doc.views[id];
-    if (!record || typeof record.type !== "string" || seen.has(id)) return false;
-    if (!isKnownType(record.type)) return false;
-    seen.add(id);
-    return true;
-  };
-  const fixPanel = (panel: PanelNode): PanelNode | null => {
-    if (!panel || panel.kind !== "panel" || seenPanels.has(panel.id)) return null;
-    seenPanels.add(panel.id);
-    const views = (panel.views ?? []).filter(keep);
+  const fixPanel = (panel: unknown): PanelNode | null => {
+    if (!isRecord(panel) || panel.kind !== "panel" || !Array.isArray(panel.views)) return null;
+    const views = panel.views.filter(
+      (id): id is string => typeof id === "string" && !!records[id] && !shown.has(id) && !!shown.add(id),
+    );
     if (!views.length) return null;
     return {
-      ...panel,
+      kind: "panel",
+      id: claim(panel.id, "panel"),
       views,
-      selected: views.includes(panel.selected) ? panel.selected : views[0],
+      selected:
+        typeof panel.selected === "string" && views.includes(panel.selected) ? panel.selected : views[0],
     };
   };
   let stages = 0;
-  const fixNode = (node: LayoutNode): LayoutNode | null => {
-    if (!node || typeof node !== "object") return null;
+  const fixNode = (node: unknown, depth: number): LayoutNode | null => {
+    if (!isRecord(node) || depth > 64) return null;
     if (node.kind === "panel") return fixPanel(node);
     if (node.kind === "stage") {
-      if (stages++) return node.child ? fixNode(node.child) : null;
-      const child = node.child ? fixNode(node.child) : null;
-      return {
-        kind: "stage",
-        id: node.id,
-        child: child?.kind === "stage" ? undefined : (child ?? undefined),
-      };
+      // One stage only: a second one keeps its content as an ordinary node.
+      if (stages++) return fixNode(node.child, depth + 1);
+      const id = claim(node.id, "stage");
+      const child = fixNode(node.child, depth + 1);
+      return { kind: "stage", id, child: child && child.kind !== "stage" ? child : undefined };
     }
     if (node.kind === "split" && Array.isArray(node.children)) {
+      const id = claim(node.id, "split");
+      const given = Array.isArray(node.weights) ? node.weights : [];
       const children: LayoutNode[] = [];
       const weights: number[] = [];
-      node.children.forEach((c, i) => {
-        const fixed = fixNode(c);
-        if (fixed) {
-          children.push(fixed);
-          const w = node.weights?.[i];
-          weights.push(Number.isFinite(w) && w > 0 ? w : 1);
-        }
+      node.children.forEach((child, i) => {
+        const fixed = fixNode(child, depth + 1);
+        if (!fixed) return;
+        children.push(fixed);
+        const w = given[i];
+        weights.push(typeof w === "number" && Number.isFinite(w) && w > 0 ? w : 1);
       });
       if (!children.length) return null;
-      return normalize({
-        kind: "split",
-        id: node.id,
-        axis: node.axis === "y" ? "y" : "x",
-        weights,
-        children,
-      });
+      return normalize({ kind: "split", id, axis: node.axis === "y" ? "y" : "x", weights, children });
     }
     return null;
   };
-  doc.root = doc.root ? fixNode(doc.root) : null;
-  doc.root = doc.root ? normalize(doc.root) : null;
-  doc.floating = doc.floating
-    .map((f) => {
-      const panel = f && fixPanel(f.panel);
-      return panel
-        ? {
-            panel,
-            rect: clampFloat(f.rect ?? { x: 0.2, y: 0.2, w: 0.4, h: 0.4 }),
-            z: Number.isFinite(f.z) ? f.z : 1,
-            layer: f.layer === "stage" ? ("stage" as const) : ("overlay" as const),
-          }
-        : null;
+
+  const root = fixNode(src.root, 0);
+  const floating = (Array.isArray(src.floating) ? src.floating : [])
+    .map((f): FloatingPanel | null => {
+      const panel = isRecord(f) ? fixPanel(f.panel) : null;
+      if (!panel || !isRecord(f)) return null;
+      return {
+        panel,
+        rect: clampFloat(fixRect(f.rect, { x: 0.2, y: 0.2, w: 0.4, h: 0.4 })),
+        z: finite(f.z, 1),
+        layer: f.layer === "stage" ? "stage" : "overlay",
+      };
     })
     .filter((f): f is FloatingPanel => !!f);
-  doc.hidden = doc.hidden
-    .map((h) => {
-      const panel = h && fixPanel(h.panel);
-      return panel
-        ? {
-            panel,
-            restore: h.restore ?? {
-              kind: "floating",
-              rect: { x: 0.2, y: 0.2, w: 0.5, h: 0.5 },
-              layer: "overlay",
-            },
-          }
-        : null;
+  const hidden = (Array.isArray(src.hidden) ? src.hidden : [])
+    .map((h): HiddenPanel | null => {
+      const panel = isRecord(h) ? fixPanel(h.panel) : null;
+      return panel && isRecord(h) ? { panel, restore: fixRestore(h.restore) } : null;
     })
-    .filter((h): h is NonNullable<typeof h> => !!h) as LayoutDocument["hidden"];
-  for (const id of Object.keys(doc.views)) if (!seen.has(id)) delete doc.views[id];
+    .filter((h): h is HiddenPanel => !!h);
+
+  const doc: LayoutDocument = {
+    schema: 1,
+    root: root ? normalize(root) : null,
+    floating,
+    hidden,
+    views: Object.fromEntries([...shown].map((id) => [id, records[id]])),
+  };
+  if (typeof src.version === "string" || typeof src.version === "number") doc.version = src.version;
+  const navigation = fixNavigation(src.navigation);
+  if (navigation) doc.navigation = navigation;
   return doc;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === "object" && !Array.isArray(value);
+const isId = (value: unknown): value is string => typeof value === "string" && value.length > 0;
+const finite = (value: unknown, fallback: number) =>
+  typeof value === "number" && Number.isFinite(value) ? value : fallback;
+const fixRect = (rect: unknown, fallback: Rect): Rect =>
+  isRecord(rect)
+    ? {
+        x: finite(rect.x, fallback.x),
+        y: finite(rect.y, fallback.y),
+        w: finite(rect.w, fallback.w),
+        h: finite(rect.h, fallback.h),
+      }
+    : fallback;
+const EDGES: Edge[] = ["left", "right", "top", "bottom"];
+function fixRestore(restore: unknown): RestoreTarget {
+  const fallback: RestoreTarget = {
+    kind: "floating",
+    rect: { x: 0.2, y: 0.2, w: 0.5, h: 0.5 },
+    layer: "overlay",
+  };
+  if (!isRecord(restore)) return fallback;
+  if (restore.kind === "floating")
+    return {
+      kind: "floating",
+      rect: clampFloat(fixRect(restore.rect, fallback.rect)),
+      layer: restore.layer === "stage" ? "stage" : "overlay",
+    };
+  if (restore.kind === "docked" && isId(restore.beside) && EDGES.includes(restore.edge as Edge))
+    return {
+      kind: "docked",
+      beside: restore.beside,
+      edge: restore.edge as Edge,
+      share: Math.min(0.95, Math.max(0.05, finite(restore.share, 0.3))),
+    };
+  if (restore.kind === "tab" && isId(restore.panel)) return { kind: "tab", panel: restore.panel };
+  return fallback;
+}
+function fixNavigation(navigation: unknown): LayoutDocument["navigation"] | undefined {
+  if (!isRecord(navigation)) return undefined;
+  const strings = (value: unknown) =>
+    Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : null;
+  const out: NonNullable<LayoutDocument["navigation"]> = {};
+  const frame = strings(navigation.frame);
+  if (frame) out.frame = frame;
+  if (Array.isArray(navigation.framings))
+    out.framings = navigation.framings
+      .filter((f): f is Record<string, unknown> => isRecord(f) && isId(f.id) && typeof f.name === "string")
+      .map((f) => ({ id: f.id as string, name: f.name as string, frame: strings(f.frame) ?? [] }));
+  return Object.keys(out).length ? out : undefined;
 }
 
 export function viewIds(doc: LayoutDocument): string[] {

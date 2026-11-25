@@ -6,16 +6,39 @@
 
 - Menu items can show as buttons in the bar: give an item `inline: true` and an `icon`. Inline items sit left of the
   ⋯ button in list order while they fit (the bar keeps `--trellis-bar-reserve`, 120px, for its tabs or title), and
-  the rest stay in the menu. Style them as the `actions` and `action`
-  parts.
+  the rest stay in the menu. Style them as the `actions` and `action` parts.
 - `view.setMenu(entries)` sets a view's own menu items, ahead of its type's, for items whose state changes while it's
   open. React: `<ViewMenu items>`, whose icons can be React nodes.
 - A lone view with an overlaid bar (`tabbar: "overlay"`) gets a close button at the far right, after the ⋯ button,
   since its tab, and the tab's close button, are hidden. It never overflows into the menu. Style it as the
   `panel-close` part.
+- Error isolation. A view whose content fails to mount or render shows a fallback with **Try again**, and the rest of
+  the workspace carries on. In React, each view renders in its own error boundary. Everything that throws goes to a new
+  `error` event with its source, view and type; `ws.reportError` sends your own errors the same way, and
+  `errorFallback` replaces the fallback. React gets `onError` and `errorFallback` props.
+- Right-to-left layouts. `direction: "auto"` (the default) follows the page, and `"rtl"` mirrors the layout, tabs,
+  menus, keys and gestures. Documents stay direction-neutral.
+- `permissions`, to lock the layout or allow only some changes: `rearrange`, `resize`, `close`, `float` and `hide`.
+  Calls from code are never limited.
+- Experimental `worldTransform` option: while the camera moves, the workspace is laid out once and moved with one
+  transform. With 300 views and the CPU slowed 4×, slow frames during a zoom fall from 30–40% to under 10%. Panels
+  scale like pictures until the camera stops. `{ minPanels }` uses it only for moves with that many panels in view,
+  and `"auto"` is `{ minPanels: 40 }`. Off by default.
+- `npm run bench`, which measures startup, memory and frame timing for large workspaces.
+- Performance and Security pages in the docs.
+
+### Changed
+
+- Large workspaces render much faster: with the CPU slowed 4× and 300 views, slow frames during a tab drag fall from
+  98% to 3%, and during a zoom from 84% to 22%.
+- `sanitize` and `setDocument` accept any value without throwing, and repair anything inconsistent. A saved layout
+  with the wrong shape falls back to the default layout.
+- Trellis works under a strict Content Security Policy (`style-src-attr 'none'`) and with Trusted Types enforced, as
+  long as icons aren't passed as markup strings.
 
 ### Fixed
 
+- **Close other tabs** closed tabs whose type isn't closable.
 - Releasing a divider or floating-panel resize over an iframe no longer leaves the workspace stuck mid-resize. Content
   ignores the pointer during a resize, as it already did during a drag, and a resize also ends if it loses the
   pointer.

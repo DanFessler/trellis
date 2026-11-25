@@ -20,7 +20,7 @@ import { Outline } from "./views/Outline";
 import { Palette } from "./Palette";
 import { PREVIEW_URL, PreviewAccessory } from "./preview";
 import { countPanels, isShown, saveActive, togglePanel } from "./commands";
-import { ide, isMac, mod, shift, useIde } from "./ide";
+import { ide, isMac, mod, nextWorldTransform, shift, useIde } from "./ide";
 import { basename, languageOf, LANGUAGE_NAMES, useVfs, vfs } from "./vfs";
 import { INITIAL_EDITORS, PROJECT_NAME } from "./seed";
 import {
@@ -212,6 +212,7 @@ function StatusBar() {
   const cursor = useIde((s) => (activeEditor ? s.cursors[activeEditor] : undefined));
   const theme = useIde((s) => s.theme);
   const navigation = useIde((s) => s.navigation);
+  const worldTransform = useIde((s) => s.worldTransform);
   const diagnostics = useDiagnostics();
   const errors = diagnostics.filter((d) => d.severity === "error").length;
   const warnings = diagnostics.filter((d) => d.severity === "warning").length;
@@ -299,6 +300,20 @@ function StatusBar() {
         </button>
         <button
           className="status-item"
+          title={
+            {
+              off: "World transform (experimental) is off: every panel is laid out on every frame of a camera move. Click for auto.",
+              auto: "World transform (experimental) is auto: camera moves with 40 or more panels in view use it. Click to turn on.",
+              on: "World transform (experimental) is on: a camera move lays panels out once and moves them with one transform. Click to turn off.",
+            }[worldTransform]
+          }
+          onClick={() => ide.setWorldTransform(nextWorldTransform(worldTransform))}
+          data-testid="world-transform-toggle"
+        >
+          World: {worldTransform}
+        </button>
+        <button
+          className="status-item"
           title="Switch color theme"
           onClick={() =>
             ide.setTheme(
@@ -325,6 +340,7 @@ function Shell() {
   const ws = useOptionalWorkspace();
   const theme = useIde((s) => s.theme);
   const navigation = useIde((s) => s.navigation);
+  const worldTransform = useIde((s) => s.worldTransform);
 
   // Track the last focused editor so the outline and status bar keep context while you use tool panels.
   useEffect(() => {
@@ -393,6 +409,7 @@ function Shell() {
         <Workspace
           theme={theme}
           navigation={navigation}
+          worldTransform={{ off: false, auto: "auto" as const, on: true }[worldTransform]}
           floating="overlay"
           storageKey={STORAGE_KEY}
           version={LAYOUT_VERSION}

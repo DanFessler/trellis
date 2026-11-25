@@ -13,14 +13,50 @@ export function h<K extends keyof HTMLElementTagNameMap>(
   return el;
 }
 
+/** The built-in fallback for a view whose content failed to mount. Text only: messages are never
+ * parsed as markup. */
+export function errorFallbackElement(title: string, error: unknown, retry: () => void): HTMLElement {
+  const message = error instanceof Error ? error.message : String(error);
+  const button = h("button", { type: "button", "data-trellis-part": "view-error-retry" }, "Try again");
+  button.addEventListener("click", retry);
+  return h(
+    "div",
+    { "data-trellis-part": "view-error", role: "alert" },
+    h("strong", {}, `${title} couldn’t load`),
+    h("p", {}, message),
+    button,
+  );
+}
+
+const SVG = "http://www.w3.org/2000/svg";
+/** A 16×16 icon built from elements, not markup, so it works where Trusted Types are enforced. */
+function icon(...shapes: [tag: "path" | "circle", attrs: Record<string, string>][]): () => SVGSVGElement {
+  return () => {
+    const svg = document.createElementNS(SVG, "svg");
+    svg.setAttribute("viewBox", "0 0 16 16");
+    svg.setAttribute("aria-hidden", "true");
+    for (const [tag, attrs] of shapes) {
+      const shape = document.createElementNS(SVG, tag);
+      for (const [key, value] of Object.entries(attrs)) shape.setAttribute(key, value);
+      svg.append(shape);
+    }
+    return svg;
+  };
+}
+const stroke = (d: string, width = "1.5") => ({
+  d,
+  stroke: "currentColor",
+  "stroke-width": width,
+  "stroke-linecap": "round",
+  "stroke-linejoin": "round",
+  fill: "none",
+});
+const dot = (cx: string) => ({ cx, cy: "8", r: "1.25", fill: "currentColor" });
 export const icons = {
-  close:
-    '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7m0-7l-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>',
-  more: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.5" cy="8" r="1.25" fill="currentColor"/></svg>',
-  chevron:
-    '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
-  check:
-    '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
+  close: icon(["path", stroke("M4.5 4.5l7 7m0-7l-7 7")]),
+  more: icon(["circle", dot("3.5")], ["circle", dot("8")], ["circle", dot("12.5")]),
+  chevron: icon(["path", stroke("M6 4l4 4-4 4")]),
+  check: icon(["path", stroke("M3.5 8.5l3 3 6-7", "1.6")]),
 };
 
 /** Write a style property only when it changed. Rendering runs every frame. */
