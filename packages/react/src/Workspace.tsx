@@ -804,15 +804,15 @@ interface ViewBoundaryProps {
   children: ReactNode;
 }
 class ViewBoundary extends Component<ViewBoundaryProps, { failure: { error: unknown } | null }> {
-  state = { failure: null as { error: unknown } | null };
+  override state = { failure: null as { error: unknown } | null };
   static getDerivedStateFromError(error: unknown) {
     return { failure: { error } };
   }
-  componentDidCatch(error: unknown) {
+  override componentDidCatch(error: unknown) {
     this.props.ws.reportError(error, { viewId: this.props.view.id, source: "render" });
   }
   retry = () => this.setState({ failure: null });
-  render() {
+  override render() {
     const { failure } = this.state;
     if (!failure) return this.props.children;
     const { fallback, view } = this.props;
